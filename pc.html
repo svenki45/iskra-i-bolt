@@ -568,6 +568,22 @@ function noise(freq,dur,vol,type='bandpass',delay=0){
     s.buffer=noiseBuf; f.type=type; f.frequency.value=freq; g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
     s.connect(f).connect(g).connect(sfxG); s.start(t); s.stop(t+dur+0.02); }catch(e){}
 }
+// --- made-up "Simlish"-style voice: formant-filtered syllables ---
+const VOICES={narr:{f:120,rng:30,type:'sawtooth',rate:7.5,vol:.13},spark:{f:330,rng:90,type:'triangle',rate:10,vol:.12},bolt:{f:95,rng:20,type:'square',rate:6.5,vol:.07,robo:true},boss:{f:70,rng:15,type:'sawtooth',rate:5,vol:.14,growl:true}};
+const VOWELS=[[730,1090],[270,2290],[530,1840],[570,840],[300,870],[660,1700]];
+function babble(text,v='narr'){
+  if(!actx||settings.mute) return 0; const V=VOICES[v]; const n=Math.max(3,Math.round(text.replace(/[^А-Яа-яЁёA-Za-z]/g,'').length/3.2));
+  let t=actx.currentTime+.05; const q=/\?\s*$/.test(text);
+  for(let i=0;i<n;i++){ const d=(.6+Math.random()*.6)/V.rate, o=actx.createOscillator(), g=actx.createGain(), [f1,f2]=VOWELS[Math.floor(Math.random()*VOWELS.length)];
+    const b1=actx.createBiquadFilter(), b2=actx.createBiquadFilter(); b1.type=b2.type='bandpass'; b1.frequency.value=f1; b2.frequency.value=f2; b1.Q.value=b2.Q.value=6;
+    o.type=V.type; let p=V.f+(Math.random()-.5)*V.rng*2; if(q&&i>=n-2) p*=1.25+(i-n+2)*.15; o.frequency.setValueAtTime(p,t); o.frequency.linearRampToValueAtTime(p*(.9+Math.random()*.25),t+d);
+    if(V.robo){ const lfo=actx.createOscillator(), lg=actx.createGain(); lfo.frequency.value=38; lg.gain.value=12; lfo.connect(lg); lg.connect(o.frequency); lfo.start(t); lfo.stop(t+d); }
+    if(V.growl){ const lfo=actx.createOscillator(), lg=actx.createGain(); lfo.frequency.value=22; lg.gain.value=18; lfo.connect(lg); lg.connect(o.frequency); lfo.start(t); lfo.stop(t+d); }
+    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(V.vol,t+.02); g.gain.setValueAtTime(V.vol,t+d*.7); g.gain.linearRampToValueAtTime(0,t+d);
+    o.connect(b1); o.connect(b2); b1.connect(g); b2.connect(g); g.connect(sfxG); o.start(t); o.stop(t+d+.02);
+    t+=d+(Math.random()<.18?.12:.02); }
+  return t-actx.currentTime;
+}
 function tone(f1,f2,dur,type='square',vol=0.05,delay=0){
   if(!actx) return;
   try{
@@ -3563,11 +3579,13 @@ function drawPrologue(){
   if(awake>0){ const e=.6+.4*Math.sin(t*6); c.fillStyle=`rgba(255,40,50,${awake*e})`; c.shadowColor='#ff2030'; c.shadowBlur=40*GLOW*awake; c.beginPath(); c.arc(mx-34,my-6,16,0,Math.PI*2); c.arc(mx+34,my-6,16,0,Math.PI*2); c.fill(); c.shadowBlur=0; }
   // red waves converting tools into guards (scene 3)
   if(t>9.5&&t<16){ const k=(t-9.5); for(let i=0;i<3;i++){ const r=((k*160+i*140)%520); c.strokeStyle=`rgba(255,50,60,${.5*(1-r/520)})`; c.lineWidth=4; c.beginPath(); c.arc(mx,my,r,0,Math.PI*2); c.stroke(); } }
-  const guards=[['#5dc35a','toad',W*.18,FY-30],['#e7b54a','gear',W*.33,FY-40],['#9aa8b6','eye',W*.67,H*.25],['#c2553f','queen',W*.82,FY-24]];
-  guards.forEach(([col,type,x,y],i)=>{ const k=ease((t-10.5-i*.7)/1); if(k<=0||t>16.5) return; c.save(); c.globalAlpha=k; c.translate(x,y);
-    c.fillStyle=col; if(type==='toad'){ c.beginPath(); c.ellipse(0,0,46,30,0,Math.PI,0); c.fill(); } else if(type==='gear'){ c.beginPath(); for(let j=0;j<=16;j++){ const a=j/16*Math.PI*2+t, r=j%2?30:38; c.lineTo(Math.cos(a)*r,Math.sin(a)*r); } c.fill(); }
-    else if(type==='eye'){ c.beginPath(); c.arc(0,0,32,0,Math.PI*2); c.fill(); c.fillStyle='#eaf2ff'; c.beginPath(); c.arc(0,0,18,0,Math.PI*2); c.fill(); } else { c.beginPath(); c.ellipse(0,0,58,22,0,Math.PI,0); c.fill(); }
-    c.fillStyle='#ff3040'; c.fillRect(-12,-14,7,5); c.fillRect(6,-14,7,5); c.restore(); });
+  const guards=[['toad',W*.13,FY],['gear',W*.31,FY],['eye',W*.69,H*.3],['queen',W*.87,FY]];
+  drawPrologue.bs=drawPrologue.bs||{};
+  guards.forEach(([type,x,y],i)=>{ const k=ease((t-10.3-i*.9)/1); if(k<=0||t>16.5) return; const b=drawPrologue.bs[type]||(drawPrologue.bs[type]=makeBoss(type,1));
+    const sc=.75; b.t=t; b.flash=0; b.dead=false; b.face=x<W/2?1:-1; b.x=0; b.y=0; c.save(); c.globalAlpha=k; c.translate(x-b.w*sc/2,(y===FY?FY-b.h*sc:y-b.h*sc/2)); c.scale(sc,sc);
+    try{ drawBoss(b); }catch(e){} c.restore();
+    c.save(); c.globalAlpha=k*.9; c.textAlign='center'; c.font="700 13px Unbounded, sans-serif"; c.fillStyle='#ff8a8a'; c.fillText(BOSS_NAMES[type],x,(y===FY?FY-b.h*sc-14:y+b.h*sc/2+18)); c.restore(); });
+  if(t>14&&t<16.5){ const k=ease((t-14)/1)*(1-ease((t-16)/.5)); c.save(); c.globalAlpha=k; c.textAlign='center'; c.font="700 15px Unbounded, sans-serif"; c.fillStyle='#ff4d5e'; c.fillText('…а в самом сердце — '+BOSS_NAMES.core.toUpperCase(),W/2,my+R+40); c.restore(); }
   // two survivors (scene 4-5)
   if(t>16){ const k=ease((t-16)/1.5);
     const sy=t<17.5?H*.28+(FY-30-H*.28)*ease((t-16)/1.4):FY-30, bx=t<18.5?W*.85-(W*.85-W*.47)*ease((t-17)/1.6):W*.47;
@@ -3576,13 +3594,14 @@ function drawPrologue(){
     drawSpark({kind:'spark',w:24,h:30,x:W*.42,y:sy,sx:1,sy:1,face:1,blinkT:1,inv:0,down:false,shield:false,dead:false,vx:0});
     if(t>17) drawBolt({kind:'bolt',w:34,h:56,x:bx,y:FY-56,sx:1,sy:1,face:-1,blinkT:1,inv:0,down:false,shield:false,dead:false,slam:false,vx:t<18.5?-100:0}); }
   for(const q of particles){ c.globalAlpha=Math.max(0,q.life/q.max); c.fillStyle=q.c; c.fillRect(q.x-q.s/2,q.y-q.s/2,q.s,q.s); } c.globalAlpha=1;
-  const cap=(txt,t0,t1,size,col,y)=>{ const a=Math.min(ease((t-t0)/.6),1-ease((t-t1+.6)/.6)); if(a<=0) return; c.save(); c.globalAlpha=a; c.textAlign='center'; c.textBaseline='middle'; c.font=`800 ${size}px Unbounded, 'Arial Black', sans-serif`; c.lineWidth=8; c.strokeStyle='rgba(0,0,0,.7)'; c.strokeText(txt,W/2,y||H*.1); c.fillStyle=col; c.fillText(txt,W/2,y||H*.1); c.restore(); };
+  const cap=(txt,t0,t1,size,col,y,who)=>{ const a=Math.min(ease((t-t0)/.6),1-ease((t-t1+.6)/.6)); if(a<=0) return; drawPrologue.said=drawPrologue.said||{}; if(!drawPrologue.said[txt]&&t<t1-.5){ drawPrologue.said[txt]=1; babble(txt,who||'narr'); } c.save(); c.globalAlpha=a; c.textAlign='center'; c.textBaseline='middle'; c.font=`800 ${size}px Unbounded, 'Arial Black', sans-serif`; c.lineWidth=8; c.strokeStyle='rgba(0,0,0,.7)'; c.strokeText(txt,W/2,y||H*.1); c.fillStyle=col; c.fillText(txt,W/2,y||H*.1); c.restore(); };
+  if(t<.3) drawPrologue.said={};
   cap('Старая мастерская давно закрыта. Мастер ушёл и не вернулся.',0.4,5.4,24,'#cfd8e6');
   cap('Но однажды ночью в крышу ударила молния…',5,7.6,26,'#eaf2ff');
-  cap('…и Главный Механизм проснулся.',7.4,10,30,'#ff4d5e');
+  cap('…и Главный Механизм проснулся.',7.4,10,30,'#ff4d5e',null,'boss');
   cap('Он перепрошил станки и инструменты и сделал из них своих стражей.',10,16,22,'#ffb3b3');
-  cap('Уцелели только двое: искорка из сварочного аппарата…',16,19,22,'#ffb347');
-  cap('…и упрямый болт с конвейера.',18.6,21.4,24,'#7fe8e0');
+  cap('Уцелели только двое: искорка из сварочного аппарата…',16,19,22,'#ffb347',null,'spark');
+  cap('…и упрямый болт с конвейера.',18.6,21.4,24,'#7fe8e0',null,'bolt');
   cap('Впереди 100 цехов, 10 стражей и Сердце мастерской.',21.4,25,22,'#eaf2ff');
   cap('Остановить Механизм можно только вместе.',24.6,27.4,28,'#ffd166');
   if(t>27){ const k=ease((t-27)/.8); c.fillStyle=`rgba(0,0,0,${k*.7})`; c.fillRect(0,0,W,H); c.save(); c.globalAlpha=k; c.textAlign='center'; c.textBaseline='middle'; c.font="900 86px Unbounded, 'Arial Black', sans-serif";
@@ -3624,7 +3643,8 @@ function drawEnding(){
   drawSpark(spark); drawBolt(bolt);
   for(const q of particles){ c.globalAlpha=Math.max(0,q.life/q.max); c.fillStyle=q.c; c.fillRect(q.x-q.s/2,q.y-q.s/2,q.s,q.s); } c.globalAlpha=1;
   // captions
-  const cap=(txt,t0,t1,y,size,col)=>{ const a=Math.min(ease((t-t0)/.6),1-ease((t-t1+.6)/.6)); if(a<=0) return; c.save(); c.globalAlpha=a; c.textAlign='center'; c.textBaseline='middle'; c.font=`900 ${size}px Unbounded, 'Arial Black', sans-serif`; c.lineWidth=8; c.strokeStyle='rgba(0,0,0,.6)'; c.strokeText(txt,W/2,y); c.fillStyle=col; c.fillText(txt,W/2,y); c.restore(); };
+  if(t<.3) drawEnding.said={};
+  const cap=(txt,t0,t1,y,size,col)=>{ const a=Math.min(ease((t-t0)/.6),1-ease((t-t1+.6)/.6)); if(a<=0) return; drawEnding.said=drawEnding.said||{}; if(!drawEnding.said[txt]&&t<t1-.5){ drawEnding.said[txt]=1; babble(txt,/или нет|нечто/.test(txt)?'boss':'narr'); } c.save(); c.globalAlpha=a; c.textAlign='center'; c.textBaseline='middle'; c.font=`900 ${size}px Unbounded, 'Arial Black', sans-serif`; c.lineWidth=8; c.strokeStyle='rgba(0,0,0,.6)'; c.strokeText(txt,W/2,y); c.fillStyle=col; c.fillText(txt,W/2,y); c.restore(); };
   cap('Главный Механизм остановлен.',0.5,4.5,H*.2,34,'#eaf2ff');
   cap('Справедливость восстановлена.',4.5,8,H*.2,34,'#ffd166');
   cap('Теперь можно жить спокойно…',7.5,10.6,H*.2,30,'#eaf2ff');
@@ -4121,7 +4141,7 @@ function netGuestInput(){
   if(NET.conn&&NET.conn.open){ try{ NET.conn.send({t:'in',lv:levelIdx,p:me?[Math.round(me.x*10)/10,Math.round(me.y*10)/10,Math.round(me.vx),Math.round(me.vy),me.face]:null,i:{dir:i.dir,jump:i.jump,ab:i.ab,fire:i.fire,jp:a.jp,ap:a.ap,use:a.use,nx:a.nx}}); }catch(e){} NET.acc={}; }
   return i;
 }
-const GAME_VER='0.91';
+const GAME_VER='0.92';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' beta'; $('screen').appendChild(v); })();
 window.__ib={proTest:()=>{proT=0;storyNext=null;setState("prologue");},endTest:()=>{endT=0;setState("ending");},net:{NET,netApply,netSnap},getLevel,startGame,dmgE:(e,d)=>damageEnemy(e,d),openSecret,nextLevel,hitBoss:(d)=>hitBoss(d),get outro(){return outro},get state(){return {state,levelIdx,boss,players,enemies,pickups,arena,run,movers,grid,ebullets,bullets}}};
 const hot=window.claude&&window.claude.hot;
