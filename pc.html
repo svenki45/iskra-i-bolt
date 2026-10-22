@@ -391,6 +391,9 @@ body.touch .hero>.paddiag{grid-column:1!important;grid-row:2/span 12}
 
 body.touch .ach svg,body.touch .ach .medal{transform:scale(.85)}
 #screen{position:relative}
+body.r3 .overlay .pzdeco{opacity:.3}
+body.r3 .overlay.pz{background:linear-gradient(160deg,rgba(10,22,46,.55),rgba(18,14,44,.62))!important}
+body.r3 .overlay{backdrop-filter:blur(2.5px) saturate(1.15)}
 </style>
 
 <div class="app">
@@ -3665,7 +3668,7 @@ function draw(){
     z=1+(O.mk?.45:.3)*ease(O.t/(O.boomAt*.8))*(1-ease((O.t-O.boomAt-.2)/.8));
     ox=Math.min(0,Math.max(VW-VW*z,VW/2-O.cx*z)); oy=Math.min(0,Math.max(VH-VH*z,VH*0.5-O.cy*z));
   }
-  if(r3&&!intro&&!outro&&players&&state!=='title'){ const live=players.filter(p=>!p.absent&&!p.dead); if(live.length){
+  if(r3&&!intro&&!outro&&players&&(state==='play'||state==='dying')){ const live=players.filter(p=>!p.absent&&!p.dead); if(live.length){
       let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9; for(const p of live){ x0=Math.min(x0,p.x); x1=Math.max(x1,p.x+p.w); y0=Math.min(y0,p.y); y1=Math.max(y1,p.y+p.h); }
       const want=Math.max(1,Math.min(1.45,VW/(x1-x0+620),VH/(y1-y0+380)));
       const C=draw.c3||(draw.c3={x:(x0+x1)/2,y:(y0+y1)/2,z:want}); C.x+=((x0+x1)/2-C.x)*.08; C.y+=((y0+y1)/2-C.y)*.08; C.z+=(want-C.z)*.05;
@@ -4514,8 +4517,8 @@ const R3D=(()=>{
   const col=c=>new THREE.Color(c);
   function init(){
     glc=document.createElement('canvas'); glc.id='cv3d';
-    glc.style.cssText='position:absolute;inset:0;width:100%;height:100%;display:block;z-index:0';
-    cv.parentNode.insertBefore(glc,cv); cv.style.position='relative'; cv.style.zIndex='1'; cv.style.background='transparent';
+    glc.style.cssText='position:absolute;inset:0;width:100%;height:100%;display:block';
+    cv.parentNode.insertBefore(glc,cv); cv.style.position='relative'; cv.style.background='transparent';
     renderer=new THREE.WebGLRenderer({canvas:glc,antialias:true,alpha:false,powerPreference:'high-performance'});
     glc.addEventListener('webglcontextlost',e=>{ e.preventDefault(); R.fail('WebGL context lost'); });
     renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFShadowMap;
@@ -4600,10 +4603,10 @@ const R3D=(()=>{
     const w=new THREE.MeshLambertMaterial({color:0xffffff,emissive:0x333333}); const n=type==='eye'?1:2; for(let i=0;i<n;i++){ const e=new THREE.Mesh(new THREE.SphereGeometry(type==='eye'?.26:.12,14,10),w); e.position.set(n===1?0:(i?.2:-.2),.12,.55); g.add(e); const p=new THREE.Mesh(new THREE.SphereGeometry(type==='eye'?.12:.06,10,8),new THREE.MeshLambertMaterial({color:0x111111})); p.position.set(e.position.x,.12,type==='eye'?.78:.66); g.add(p); }
     scene.add(g); shadowOnly(g); g.userData.m=body.material; return g; }
   // ---------- per frame ----------
-  R.active=()=>R.on&&grid&&['play','dying','pause','done','gameover','touchedit','netleave'].includes(state);
+  R.active=()=>R.on&&grid&&!['title','prologue','ending'].includes(state);
   R.render=(z,ox,oy)=>{
     if(!R.ready) init();
-    glc.style.display='block';
+    glc.style.display='block'; document.body.classList.add('r3');
     const w=cv.width,h=cv.height; if(glc.width!==w||glc.height!==h){ renderer.setSize(w,h,false); }
     const lvlKey=levelIdx+'|'+(arena?arena.type:'')+'|'+grid.map(r=>r.join('')).join('');
     if(lvlKey!==tileKey){ tileKey=lvlKey; buildTiles(); }
@@ -4627,7 +4630,7 @@ const R3D=(()=>{
       if(bad.length) R.fail('шейдер не собрался: '+((bad[0].diagnostics.fragmentShader&&bad[0].diagnostics.fragmentShader.log)||(bad[0].diagnostics.vertexShader&&bad[0].diagnostics.vertexShader.log)||bad[0].diagnostics.programLog||'?'));
       else if(ge) console.warn('GL error',ge); }catch(e){} }
   };
-  R.hide=()=>{ if(glc) glc.style.display='none'; };
+  R.hide=()=>{ if(glc) glc.style.display='none'; document.body.classList.remove('r3'); };
   R.fail=err=>{ R.on=false; try{ if(glc) glc.style.display='none'; }catch(e){} const msg=(err&&(err.message||err))+''; console.error('3D error',err);
     let box=document.getElementById('err3d'); if(!box){ box=document.createElement('div'); box.id='err3d'; box.style.cssText='position:fixed;left:8px;bottom:8px;z-index:9998;max-width:70vw;background:#3a0d14ee;color:#ffd6d6;font:12px/1.35 system-ui;padding:8px 10px;border-radius:8px;border:1px solid #ff6b6b'; document.body.appendChild(box); }
     box.textContent='3D не запустилось, показан 2D. Ошибка: '+msg.slice(0,220);  };
@@ -4635,7 +4638,7 @@ const R3D=(()=>{
 })();
 
 R3D.on=settings.r3d!==false&&R3D.on;
-const GAME_VER='1.10';
+const GAME_VER='1.11';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' beta'; $('screen').appendChild(v); })();
 window.__ib={proTest:()=>{proT=0;storyNext=null;setState("prologue");},endTest:()=>{endT=0;setState("ending");},net:{NET,netApply,netSnap},getLevel,startGame,dmgE:(e,d)=>damageEnemy(e,d),complete:()=>complete(),hurt:i=>hurt(players[i]),setState:x=>setState(x),startDemo:()=>startDemo(),stopDemo:()=>stopDemo(),get demo(){return demo},tr:x=>tr(x),demoAt:i=>{ lastIntro=-1; loadLevel(i); follow=true; demoT=0; setState('play'); },get combo(){return combo},openSecret,nextLevel,hitBoss:(d)=>hitBoss(d),get outro(){return outro},get state(){return {state,levelIdx,boss,players,enemies,pickups,arena,run,movers,grid,ebullets,bullets}}};
 const hot=window.claude&&window.claude.hot;
