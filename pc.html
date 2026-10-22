@@ -324,6 +324,11 @@ body.tedit #touch .tb{animation:wob 1.2s ease-in-out infinite}
 .sheroes{display:flex;gap:10px;justify-content:center}.sheroes canvas{width:110px;height:110px}
 table.rep{width:100%;border-collapse:collapse;font-size:13px}table.rep th,table.rep td{padding:5px 8px;border-bottom:1px solid rgba(156,195,255,.15);text-align:left}
 table.rep tr.hot td{color:#ff9a9a}
+.logo,.mlogo{position:relative}
+.beta{position:absolute;right:-.2em;top:-.35em;font:900 clamp(11px,1.6vw,20px) var(--display);letter-spacing:.08em;color:#0b1830;background:linear-gradient(135deg,#ffe27a,#ffb347);padding:.25em .6em;border-radius:.4em;transform:rotate(12deg);box-shadow:0 3px 0 #9a5b12,0 6px 16px rgba(0,0,0,.4);border:2px dashed rgba(11,24,48,.35);animation:stk 2.4s ease-in-out infinite}
+.beta.sm{font-size:10px;right:-4.2em;top:-.4em}
+@keyframes stk{50%{transform:rotate(8deg) scale(1.06)}}
+#verTag{position:absolute;left:8px;bottom:5px;z-index:6;font:600 11px var(--body);color:rgba(207,216,230,.55);pointer-events:none;letter-spacing:.04em}
 </style>
 
 </head>
@@ -2064,7 +2069,7 @@ function setState(s){
   if(s==='title'){
     const word=(w,cls,d0)=>[...w].map((ch,i)=>`<span class="lt ${cls}" style="animation-delay:${(d0+i*0.07).toFixed(2)}s">${ch}</span>`).join('');
     overlay.innerHTML=`<div class="titlescr">
-      <div class="logo" aria-label="Искра и Болт">${word('ИСКРА','s',0.15)}<span class="lt amp" style="animation-delay:.6s">и</span>${word('БОЛТ','b',0.7)}</div>
+      <div class="logo" aria-label="Искра и Болт">${word('ИСКРА','s',0.15)}<span class="lt amp" style="animation-delay:.6s">и</span>${word('БОЛТ','b',0.7)}<span class="beta">БЕТА</span></div>
       <p class="tag">Кооператив на двоих · 100 уровней · 10 боссов</p>
       <div class="startwrap"><div class="modes"><button class="${solo?'primary':'secondary'} start mode" id="bOne" type="button">1 ИГРОК<small>выбрать героя</small></button><button class="${solo?'secondary':'primary'} start mode" id="bTwo" type="button">2 ИГРОКА<small>${window.MOBILE_BUILD?"на одном телефоне":"за одной клавиатурой"}</small></button></div><button class="secondary" id="bOnline" type="button" style="margin-top:10px">🌐 ОНЛАЙН<small>${window.MOBILE_BUILD?"подключиться к другу на ПК":"играть с другом по интернету"}</small></button>
       <p class="press">Стрелки и Enter, или крестовина и A на геймпаде</p></div>
@@ -2076,7 +2081,7 @@ function setState(s){
   } else if(s==='menu'){
     const cont=best>0&&best<TOTAL, got=Object.keys(achGot).length, LS=latestSlot();
     overlay.innerHTML=`<div class="card menu">
-      <h2 class="mlogo"><span class="s">Искра</span> и <span class="b">Болт</span></h2>
+      <h2 class="mlogo"><span class="s">Искра</span> и <span class="b">Болт</span><span class="beta sm">БЕТА</span></h2>
       <div class="mlist">
         ${LS>=0?`<button class="primary mbig" id="bCont" type="button">Продолжить<small>слот ${LS+1} · ${MODE_NAME(slots[LS].mode)} · уровень ${Math.min(TOTAL,slots[LS].best+1)}</small></button>
         <button class="secondary" id="bNew" type="button">Новая игра<small>выбрать слот</small></button>
@@ -4064,6 +4069,8 @@ function netGuestInput(){
   if(NET.conn&&NET.conn.open){ try{ NET.conn.send({t:'in',lv:levelIdx,p:me?[Math.round(me.x*10)/10,Math.round(me.y*10)/10,Math.round(me.vx),Math.round(me.vy),me.face]:null,i:{dir:i.dir,jump:i.jump,ab:i.ab,fire:i.fire,jp:a.jp,ap:a.ap,use:a.use,nx:a.nx}}); }catch(e){} NET.acc={}; }
   return i;
 }
+const GAME_VER='0.90';
+(()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' beta'; $('screen').appendChild(v); })();
 window.__ib={endTest:()=>{endT=0;setState("ending");},net:{NET,netApply,netSnap},getLevel,startGame,dmgE:(e,d)=>damageEnemy(e,d),openSecret,nextLevel,hitBoss:(d)=>hitBoss(d),get outro(){return outro},get state(){return {state,levelIdx,boss,players,enemies,pickups,arena,run,movers,grid,ebullets,bullets}}};
 const hot=window.claude&&window.claude.hot;
 if(hot&&hot.snapshot) hot.snapshot(()=>({levelIdx,deaths,totalTime,gears,state:(state==='play'||state==='dying')?'play':'menu'}));
