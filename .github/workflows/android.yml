@@ -17,14 +17,14 @@ jobs:
       - name: Capacitor project
         working-directory: android-app
         run: |
+          set -x
           npm install
           npx cap add android
           npx cap sync android
           cp res/MainActivity.java android/app/src/main/java/com/edwarddergachev/iskraibolt/MainActivity.java
           sed -i 's#<activity#<activity android:screenOrientation="sensorLandscape"#' android/app/src/main/AndroidManifest.xml
-          for d in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do n=${d%%:*}; s=${d##*:};
-            for f in ic_launcher ic_launcher_round ic_launcher_foreground; do
-              [ -f android/app/src/main/res/mipmap-$n/$f.png ] && convert res/icon.png -resize ${s}x${s} android/app/src/main/res/mipmap-$n/$f.png; done; done
+          for n in mdpi hdpi xhdpi xxhdpi xxxhdpi; do for f in ic_launcher ic_launcher_round ic_launcher_foreground; do
+            if [ -f android/app/src/main/res/mipmap-$n/$f.png ]; then cp res/ic_$n.png android/app/src/main/res/mipmap-$n/$f.png; fi; done; done
           rm -f android/app/src/main/res/mipmap-anydpi-v26/ic_launcher*.xml
       - name: Build APK
         working-directory: android-app/android
