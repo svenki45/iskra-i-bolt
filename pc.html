@@ -320,6 +320,10 @@ body.tedit #touch .tb{animation:wob 1.2s ease-in-out infinite}
 #tedbar button{font:600 12px var(--body);padding:6px 10px;border-radius:9px;border:1px solid rgba(190,215,255,.4);background:rgba(20,36,66,.9);color:#eaf2ff}
 #tedbar button.on,#tedbar button.ok{background:#e7b54a;color:#0b1830;border-color:#e7b54a}
 #tedbar .v{min-width:3em;text-align:center;font-weight:700}
+.card.story h2{margin:0}.stxt{max-width:44ch;font-size:17px;line-height:1.5}
+.sheroes{display:flex;gap:10px;justify-content:center}.sheroes canvas{width:110px;height:110px}
+table.rep{width:100%;border-collapse:collapse;font-size:13px}table.rep th,table.rep td{padding:5px 8px;border-bottom:1px solid rgba(156,195,255,.15);text-align:left}
+table.rep tr.hot td{color:#ff9a9a}
 </style>
 
 </head>
@@ -1250,7 +1254,33 @@ let levelDowned=false, runClean=false;
 
 /* ================= state ================= */
 let state='menu', levelIdx=0, deaths=0, gears=0, levelTime=0, totalTime=0, exitHold=0, deathTimer=0, shake=0, clock=0;
-let movers=[], curTimer=3.6;
+let movers=[], curTimer=3.6, darkLvl=false, lamps=[];
+const firstDark=()=>solo?12:14;
+function isDarkLevel(n){ return n>=firstDark()&&(n===firstDark()||[4,5,6].includes(n%10)); }
+const darkCv=document.createElement('canvas');
+function updateLamps(){ if(!darkLvl) return;
+  for(const l of lamps){ if(l.lit) continue; let hit=players.some(p=>!p.absent&&!p.dead&&Math.hypot(p.x+p.w/2-l.x,p.y+p.h/2-l.y)<46)||bullets.some(b=>Math.hypot(b.x+b.w/2-l.x,b.y+b.h/2-l.y)<26);
+    if(hit){ l.lit=1; sfx('pk_shield'); burst(l.x,l.y,18,['#ffe9a8','#fff'],220,.6); rings.push({x:l.x,y:l.y,r:6,max:120,life:.5,c:'#ffd166',w:4}); if(lamps.every(q=>q.lit)){ texts.push({x:VW/2,y:VH*.3,t:'ВСЁ ОСВЕЩЕНО! +200',life:2,c:'#ffd166',big:true}); addScore(200); } } } }
+function drawDark(){
+  if(!darkLvl) return;
+  if(darkCv.width!==VW){ darkCv.width=VW; darkCv.height=VH; }
+  const g=darkCv.getContext('2d'); g.globalCompositeOperation='source-over'; g.clearRect(0,0,VW,VH); g.fillStyle='rgba(2,4,10,.94)'; g.fillRect(0,0,VW,VH);
+  g.globalCompositeOperation='destination-out';
+  const hole=(x,y,r,a=1)=>{ const gr=g.createRadialGradient(x,y,0,x,y,r); gr.addColorStop(0,`rgba(0,0,0,${a})`); gr.addColorStop(.55,`rgba(0,0,0,${a*.85})`); gr.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=gr; g.beginPath(); g.arc(x,y,r,0,Math.PI*2); g.fill(); };
+  const fl=Math.sin(clock*9)*6+Math.sin(clock*23)*3;
+  for(const p of players){ if(p.absent||p.dead) continue; const cx=p.x+p.w/2, cy=p.y+p.h/2;
+    if(p.kind==='spark') hole(cx,cy-6,(p.down?90:210)+fl); else hole(cx+p.face*30,cy-10,solo?150:85,solo?.95:.85); }
+  for(const l of lamps) if(l.lit) hole(l.x,l.y+60,190+Math.sin(clock*2+l.x)*6);
+  for(const b of bullets) if(b.kind==='spark') hole(b.x+b.w/2,b.y+b.h/2,46,.7);
+  if(exitRect) hole(exitRect.x+exitRect.w/2,exitRect.y+exitRect.h/2,46,.6);
+  for(const pl of plates) hole(pl.x*T+T/2,pl.y*T+T-6,26,.5);
+  g.globalCompositeOperation='source-over';
+  ctx.drawImage(darkCv,0,0,VW,VH);
+  // glowing eyes of enemies + unlit lamps hint
+  for(const en of enemies){ if(en.hp<=0) continue; const ex=en.x+en.w/2, ey=en.y+en.h*(en.big?.3:.45); ctx.fillStyle='rgba(255,90,80,.9)'; ctx.fillRect(ex-6,ey-2,3,3); ctx.fillRect(ex+3,ey-2,3,3); }
+  for(const l of lamps){ ctx.save(); ctx.strokeStyle=l.lit?'#ffe9a8':'rgba(255,233,168,.35)'; ctx.fillStyle=l.lit?'#fff3cf':'rgba(255,233,168,'+(.15+.12*Math.sin(clock*3+l.x))+')'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(l.x,l.y-10); ctx.lineTo(l.x,l.y-4); ctx.stroke(); ctx.beginPath(); ctx.arc(l.x,l.y+2,7,0,Math.PI*2); ctx.fill(); if(l.lit){ ctx.shadowColor='#ffd166'; ctx.shadowBlur=18*GLOW; ctx.fill(); } ctx.restore(); }
+}
 let grid, doors, doorAt, plates, exitRect, exitLocked=false, players, crates, enemies=[], boss=null, bullets=[], ebullets=[], pickups=[], particles=[], texts=[];
 const INTRO_P=3.3; let arena=null, rings=[], hitstop=0, intro=null, lastIntro=-1, staticLayer=document.createElement('canvas'), wallLayer=document.createElement('canvas'), LIVE=null, staticDirty=true, heartTimer=0, curTier=0, GLOW=1, flashA=0, flashC='#fff', titleT=0, motes=[], bgGears=[], vignetteC=null;
 let cheat=false, cheatBuf='', cheatGod=false, cheatOne=false, cheatMenu=false;
@@ -1331,6 +1361,10 @@ function loadLevel(i,keepHp){
   for(const p of pickups) if(p.type==='relic'&&((run.relics||{})[p.bossN]||[]).includes(p.ri)) p.type='heart';
   curTimer=solo?Math.max(2.4,3.8-i*0.014):3.6;
   if(L.newMech) setTimeout(()=>{ if(state==='play'||state==='loading') texts.push({x:VW/2,y:VH*0.28,t:'НОВОЕ: '+L.newMech[0].toUpperCase(),life:3.2,c:'#ffd166',big:true}); },350);
+  darkLvl=!L.boss&&isDarkLevel(i+1); lamps=[];
+  if(darkLvl){ const R=rng((i+1)*313+7); const cand=[]; for(let x=3;x<29;x++) for(let y=1;y<=8;y++) if(grid[y][x]==='.'&&grid[y-1][x]==='#') cand.push([x,y]);
+    for(let k=0;k<5&&cand.length;k++){ const c=cand.splice(Math.floor(R()*cand.length),1)[0]; if(lamps.some(l=>Math.abs(l.tx-c[0])<5)) continue; lamps.push({tx:c[0],ty:c[1],x:c[0]*T+T/2,y:c[1]*T+10,lit:0}); }
+    if(L.newMech==null&&i+1===firstDark()) setTimeout(()=>{ if(state==='play') texts.push({x:VW/2,y:VH*0.28,t:'НОВОЕ: ТЬМА',life:3.2,c:'#ffd166',big:true}); },350); }
   secretsTotal=pickups.filter(p=>p.secret).length; secretsFound=0; secretHits={}; levelHint=L.hint;
   if(carry&&!solo===!carry.solo){ for(const p of players){ const k=carry[p.kind]; if(!k||p.absent) continue; p.hp=Math.max(p.hp,k.hp); p.shield=p.shield||k.shield; for(const t in k.pw) p.pw[t]=Math.max(p.pw[t]||0,k.pw[t]); } } carry=null;
   levelDowned=false; active=0; follow=!!L.boss; outro=null;
@@ -1971,6 +2005,7 @@ const TIPS={
 let go=null; // game-over info
 function die(p,cause){
   if(state!=='play') return;
+  lvlStat(levelIdx,'d',1);
   if(cheatGod&&p&&cause!=='down'){ p.vy=-950; p.inv=1; p.onGround=false; sfx('boost'); burst(p.x+p.w/2,p.y+p.h,10,'#7fe08a',200,.4); return; }
   const b=boss&&!boss.dead?boss:null;
   const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -1982,6 +2017,7 @@ function die(p,cause){
   texts.push({x:p.x+p.w/2,y:p.y-16,t:'ОЙ!',life:.9,c:'#ff6b6b'});
 }
 function complete(){
+  lvlStat(levelIdx,'c',1); lvlStat(levelIdx,'t',Math.round(levelTime));
   sfx('win'); saveBest(levelIdx+1); saveStats();
   const L=getLevel(levelIdx);
   if(levelIdx===0) unlock('first');
@@ -2080,7 +2116,7 @@ function setState(s){
     setTimeout(()=>{ try{ $(soloHero==='bolt'?'bHB':'bHS').focus({preventScroll:true}); }catch(e){} },0);
   } else if(s==='loading'){
     const J=loadJob||{i:levelIdx,name:'',tip:'',isBoss:false};
-    overlay.innerHTML=`<div class="card load"><span class="eyebrow">${J.isBoss?'Уровень '+(J.i+1)+' · БОСС':'Уровень '+(J.i+1)+' из '+TOTAL}</span>
+    overlay.innerHTML=`<div class="card load"><span class="eyebrow">Глава ${chapterOf(J.i)+1} · ${CHAPTERS[chapterOf(J.i)]}</span><span class="eyebrow" style="opacity:.7">${J.isBoss?'Уровень '+(J.i+1)+' · БОСС':'Уровень '+(J.i+1)+' из '+TOTAL}${isDarkLevel(J.i+1)&&!J.isBoss?' · 🌑 тьма':''}</span>
       <div class="ldgear">${gearSvg(J.isBoss?'#ff6b6b':'#e7b54a')}</div>
       <h2 class="${J.isBoss?'ldboss':''}">${J.name}</h2>
       <div class="ldtrack"><div class="ldbar" id="ldBar"></div></div>
@@ -2138,6 +2174,25 @@ function setState(s){
     overlay.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.del; if(slotDel!==i){ slotDel=i; sfx('nav'); setState('slots'); return; } slots[i]=null; if(activeSlot===i){ activeSlot=-1; store.set('iskra-bolt-slot',-1); } store.set('iskra-bolt-slots',slots); slotDel=-1; sfx('off'); if(!slots.some(Boolean)) setState('menu'); else setState('slots'); });
     overlay.querySelectorAll('[data-new]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.new; newSlotTarget=i; if(slots[i]) setState('confirmNew'); else doNewGame(i); });
     $('bSlBack').onclick=()=>setState('menu');
+  } else if(s==='report'){
+    const rows=Object.entries(LVS).map(([k,o])=>({k,...o,avg:o.c?Math.round(o.t/o.c):0})).sort((a,b)=>b.d-a.d);
+    const md=m=>m==='2'?'двое':m==='spark'?'Искра':'Болт';
+    const txt=rows.map(r=>`${md(r.k.split(':')[0])}, ур. ${r.k.split(':')[1]}: падений ${r.d}, пройден ${r.c} раз, ср. время ${r.avg} с`).join('\n');
+    overlay.innerHTML=`<div class="card wide"><span class="eyebrow">Для тестов</span><h2>Отчёт по уровням</h2>
+      <p class="padst">Дайте поиграть друзьям, потом откройте этот отчёт: сверху — уровни, где падали чаще всего. Там слишком сложно или непонятно.</p>
+      <div style="max-height:46vh;overflow:auto;width:100%"><table class="rep"><tr><th>Режим</th><th>Уровень</th><th>Падений</th><th>Пройден</th><th>Ср. время</th></tr>
+      ${rows.slice(0,40).map(r=>`<tr class="${r.d>=5?'hot':''}"><td>${md(r.k.split(':')[0])}</td><td>${r.k.split(':')[1]}</td><td>${r.d}</td><td>${r.c}</td><td>${r.avg?r.avg+' с':'—'}</td></tr>`).join('')||'<tr><td colspan="5">Пока нет данных — сыграйте пару уровней.</td></tr>'}</table></div>
+      <div class="btns"><button class="secondary" id="bRepCopy" type="button">Скопировать</button><button class="secondary" id="bRepClr" type="button">Очистить</button><button class="primary" id="bRepBack" type="button">Назад · Esc</button></div></div>`;
+    $('bRepCopy').onclick=()=>{ try{ navigator.clipboard.writeText(txt); $('bRepCopy').textContent='Скопировано!'; }catch(e){} };
+    $('bRepClr').onclick=()=>{ LVS={}; try{ localStorage.removeItem('iskra-bolt-lvlstats'); }catch(e){} setState('report'); };
+    $('bRepBack').onclick=()=>setState('settings');
+  } else if(s==='story'){
+    const [h,t]=STORY[storyI];
+    overlay.innerHTML=`<div class="card story"><span class="eyebrow">${storyI+1} / ${STORY.length}</span><h2>${h}</h2><p class="stxt">${t}</p>
+      <div class="sheroes"><canvas id="pvS" width="160" height="160"></canvas><canvas id="pvB" width="160" height="160"></canvas></div>
+      <div class="btns"><button class="secondary" id="bSkip" type="button">Пропустить</button><button class="primary" id="bNext" type="button">${storyI<STORY.length-1?'Дальше · Enter':'В путь! · Enter'}</button></div></div>`;
+    $('bNext').onclick=()=>{ sfx('nav'); if(++storyI>=STORY.length){ const f=storyNext; storyNext=null; f&&f(); } else setState('story'); };
+    $('bSkip').onclick=()=>{ const f=storyNext; storyNext=null; f&&f(); };
   } else if(s==='confirmNew'){
     const mode=solo?('1 игрок · '+(soloHero==='spark'?'Искра':'Болт')):'2 игрока';
     overlay.innerHTML=`<div class="card"><span class="eyebrow" style="color:#ff6b6b">Новая игра · ${mode}</span><h2>Вы уверены?</h2>
@@ -2248,11 +2303,12 @@ function setState(s){
           ${tg('retro','Ретро-экран','Полосы как на старом мониторе')}
         </div>
       </div>
-      ${touchUI.on?'<div class="btns"><button class="secondary" id="bTedit3" type="button">Кнопки и размер экрана</button></div>':''}<div class="btns"><button class="secondary" id="bDef" type="button">Сбросить</button><button class="primary" id="bBack" type="button">Готово · Esc</button></div></div>`;
+      ${touchUI.on?'<div class="btns"><button class="secondary" id="bTedit3" type="button">Кнопки и размер экрана</button></div>':''}<div class="btns"><button class="secondary" id="bReport" type="button">Отчёт для тестов</button></div><div class="btns"><button class="secondary" id="bDef" type="button">Сбросить</button><button class="primary" id="bBack" type="button">Готово · Esc</button></div></div>`;
     for(const id of ['master','music','sfx','particles']){ const el=$(id); el.oninput=()=>{ settings[id]=el.value/100; $(id+'O').textContent=el.value+'%'; if(id==='particles') settings.quality='custom'; saveSettings(); applyVolumes(); if(id==='sfx'||id==='master') sfx('gear'); }; }
     for(const id of ['mute','glow','ambient','trails','vignette','shake','flash','retro']){ const el=$(id); el.onchange=()=>{ settings[id]=el.checked; if(!['mute','shake','flash','retro'].includes(id)) settings.quality='custom'; saveSettings(); applyVolumes(); const sc=overlay.scrollTop; setState('settings'); overlay.scrollTop=sc; }; }
     overlay.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{ settings.quality=b.dataset.q; Object.assign(settings,PRESETS[b.dataset.q]); saveSettings(); fit(); const sc=overlay.scrollTop; setState('settings'); overlay.scrollTop=sc; });
     overlay.querySelectorAll('[data-song]').forEach(b=>b.onclick=()=>{ audioInit(); previewSong=b.dataset.song; const sc=overlay.scrollTop; setState('settings'); overlay.scrollTop=sc; });
+    $('bReport').onclick=()=>setState('report');
     if($('bTedit3')) $('bTedit3').onclick=()=>{ editBack='settings'; setState('touchedit'); };
     $('bDef').onclick=()=>{ settings=Object.assign({},DEF_SETTINGS); saveSettings(); applyVolumes(); fit(); setState('settings'); };
     $('bBack').onclick=()=>setState(ctlBack);
@@ -2343,6 +2399,7 @@ function setState(s){
     if(!full) $('bShopNext').onclick=()=>nextLevel();
   } else if(s==='win'){
     overlay.innerHTML=`<div class="card"><span class="eyebrow">Все 100 уровней собраны</span><h2><span class="s">Искра</span> и <span class="b">Болт</span> победили механизм</h2>
+      <p style="max-width:46ch">Сердце мастерской остановилось. Станки затихли, и впервые за долгое время в мастерской стало по-настоящему тихо. Искра светит над верстаком, Болт снова на своём месте — и теперь никто не перепрошьёт их друзей.</p>
       <p>Общее время <span class="big">${fmt(totalTime)}</span> · падений <span class="big">${deaths}</span> · шестерёнок <span class="big">${gears}</span></p>
       <div class="btns"><button class="primary" id="bAgain" type="button">Сыграть снова · Enter</button></div></div>`;
     $('bAgain').onclick=()=>startGame(0);
@@ -2416,7 +2473,7 @@ function helpHTML(tab){
       <li><b>Треснувший пол и блоки.</b> Ломаются ударом Болта сверху или выстрелом.</li>
       <li><b>Шипы.</b> Касание — и уровень начинается заново.</li>
       <li><b>Выход.</b> Уровень пройден, когда в рамке «ВЫХОД» стоят оба героя. На боссах он открывается после победы.</li>
-      <li><b>Сердца и падение.</b> У каждого по 3 сердца. Если герой потерял все сердца и упал, уровень начинается заново.</li>
+      <li><b>Тьма.</b> На некоторых уровнях выключен свет. Искра светится сама, Болт видит только перед собой. Зажигайте лампы на потолке: подойдите или попадите в них выстрелом. Зажгли все — бонус.</li><li><b>Сердца и падение.</b> У каждого по 3 сердца. Если герой потерял все сердца и упал, уровень начинается заново.</li>
       <li><b>Арены боссов.</b> Лава обжигает, мёд замедляет, конвейеры тянут, пол может бить током, сверху могут сыпаться искры.</li>
     </ul>`;
   if(tab==='bonus'){
@@ -2474,6 +2531,14 @@ const latestSlot=()=>{ let b=-1; slots.forEach((x,i)=>{ if(x&&(b<0||x.saved>slot
 // migrate old single save into slot 1
 if(!slots.some(Boolean)&&best>0){ activeSlot=-1; snapSlot(); }
 function fmtDate(t){ const d=new Date(t), p=n=>String(n).padStart(2,'0'); return p(d.getDate())+'.'+p(d.getMonth()+1)+' '+p(d.getHours())+':'+p(d.getMinutes()); }
+const CHAPTERS=['Пробуждение','Литейный цех','Сварочный пост','Шестерёнчатый ад','Подвал Королевы','Ночная смена','Цех ошибок','Ржавые глубины','Последний конвейер','Сердце мастерской'];
+const chapterOf=i=>Math.min(9,Math.floor(i/10));
+const STORY=[['Старая мастерская','Ночью в заброшенной мастерской сам собой запустился Главный Механизм. Он собрал себе стражей и начал переделывать всё вокруг.'],
+  ['Искра и Болт','Маленькая искорка из сварочного аппарата и упрямый болт с конвейера — единственные, кого Механизм не успел перепрошить.'],
+  ['Вместе','Искра лёгкая и светит в темноте. Болт тяжёлый и сильный. Поодиночке им не пройти и одного цеха. Вместе — можно дойти до самого Сердца мастерской.']];
+var LVS=(()=>{ try{ return JSON.parse(localStorage.getItem('iskra-bolt-lvlstats')||'{}'); }catch(e){ return {}; } })();
+function lvlStat(i,k,v){ const key=(solo?soloHero:'2')+':'+(i+1); const o=LVS[key]||(LVS[key]={d:0,c:0,t:0}); o[k]+=v; try{ localStorage.setItem('iskra-bolt-lvlstats',JSON.stringify(LVS)); }catch(e){} }
+let storyI=0, storyNext=null;
 function doNewGame(slotIdx){
   if(slotIdx==null) slotIdx=newSlotTarget>=0?newSlotTarget:Math.max(0,slots.findIndex(x=>!x));
   slots[slotIdx]=null; activeSlot=slotIdx; store.set('iskra-bolt-slot',slotIdx);
@@ -2482,7 +2547,7 @@ function doNewGame(slotIdx){
   for(const k in cache) delete cache[k];
   run={score:0,wallet:0,up:{},offer:[],refresh:0,reward:null,inv:{}};
   slots[slotIdx]={mode:solo?soloHero:'2',best:0,run,ach:{},stats,saved:Date.now(),created:Date.now(),lvl:0}; store.set('iskra-bolt-slots',slots);
-  if(anyCheat()) unlock('cheater'); startGame(0);
+  if(anyCheat()) unlock('cheater'); storyI=0; storyNext=()=>startGame(0); setState('story');
 }
 let loadJob=null;
 const LOAD_STEPS=['Чертим схему уровня','Раскладываем платформы','Заводим шестерёнки','Расставляем врагов','Прячем секреты','Смазываем двери','Проверяем кнопки'];
@@ -2517,6 +2582,8 @@ function handleMeta(){
   if(state==='menu'&&pressed.has('Escape')){ setState('title'); return; }
   if(state==='hero'&&pressed.has('Escape')){ setState(heroBack); return; }
   if((state==='cheats'||state==='slots')&&pressed.has('Escape')){ setState('menu'); return; }
+  if(state==='report'&&pressed.has('Escape')){ setState('settings'); return; }
+  if(state==='story'&&(pressed.has('Escape'))){ const f=storyNext; storyNext=null; f&&f(); return; }
   if(state==='confirmNew'&&pressed.has('Escape')){ setState('slots'); return; }
   if((state==='help'||state==='levels')&&pressed.has('Escape')){ setState(state==='help'?helpBack:'menu'); return; }
   if(state==='gameover'){
@@ -2608,7 +2675,7 @@ function step(dt){
   if(NET.role==='host'&&NET.rpos&&b&&!b.absent&&!b.down){ const r=NET.rpos;
     if(Math.hypot(r[0]-b.x,r[1]-b.y)<260){ b.x=r[0]; b.y=r[1]; b.vx=r[2]; b.vy=r[3]; b.face=r[4]; } }
   for(const p of players) p.wasGround=p.onGround;
-  updateEnemies(dt); updateBoss(dt); updateArena(dt); updateBullets(dt); updatePickups(dt);
+  updateLamps(); updateEnemies(dt); updateBoss(dt); updateArena(dt); updateBullets(dt); updatePickups(dt);
   if(state==='play') updateWorld(dt);
 }
 function tick(dt){
@@ -2645,7 +2712,7 @@ function frame(now){
   tick(dt); netSend(dt);
   hudT-=dt; if(hudT<=0){ hudT=.25; $('time').textContent=fmt(totalTime); }
   draw();
-  if(state==='custom'||state==='hero'||state==='pause') drawPreviews();
+  if(state==='custom'||state==='hero'||state==='pause'||state==='story') drawPreviews();
   if(state==='controls') pollPadCapture();
   updateMusic();
   padCheckT-=dt; if(padCheckT<=0){ padCheckT=1; renderLegend(); }
@@ -3320,6 +3387,7 @@ function draw(){
   if(boss&&!boss.gone) drawBoss(boss);
   if(outro) drawOutroWorld();
   if(settings.glow) drawLights();
+  drawDark();
   drawBolt(players[1]); drawSpark(players[0]);
   if(false){ const p=players[active], bob=Math.sin(clock*6)*3, x=p.x+p.w/2, y=p.y-(p.kind==='spark'?30:14)+bob;
     ctx.fillStyle=p.kind==='spark'?'#ff8a3d':'#62c7c1'; ctx.beginPath(); ctx.moveTo(x-7,y-10); ctx.lineTo(x+7,y-10); ctx.lineTo(x,y-2); ctx.closePath(); ctx.fill();
@@ -3883,7 +3951,7 @@ function netSend(dt){
 }
 function netSnap(){
   const gs=grid?grid.map(r=>r.join('')).join('|'):''; const gch=gs!==NET.lastG; NET.lastG=gs;
-  const d={t:'s',st:state,lv:levelIdx,g:gch?gs:null,P:players,E:enemies,B:bullets,EB:ebullets,PK:pickups,BO:boss,C:crates,M:movers&&movers.map(m=>[m.x,m.y,m.timer]),
+  const d={t:'s',LA:lamps.map(l=>l.lit),st:state,lv:levelIdx,g:gch?gs:null,P:players,E:enemies,B:bullets,EB:ebullets,PK:pickups,BO:boss,C:crates,M:movers&&movers.map(m=>[m.x,m.y,m.timer]),
     D:doors&&Object.fromEntries(Object.entries(doors).map(([k,v])=>[k,[v.vis,v.solid,v.timer||0]])),PL:plates&&plates.map(p=>p.on),IN:intro,OU:outro,SC:run.score,SF:[secretsFound,secretsTotal],XL:exitLocked,TX:texts.filter(t=>t.big||t.pop).slice(-4)};
   return JSON.parse(JSON.stringify(d,NO_SET));
 }
@@ -3905,6 +3973,7 @@ function netApply(d){
   if(d.M&&movers) d.M.forEach((m,i)=>{ if(movers[i]){ movers[i].tx=m[0]; movers[i].ty=m[1]; movers[i].timer=m[2]; } });
   if(d.D&&doors) for(const k in d.D){ if(doors[k]){ doors[k].vis=d.D[k][0]; doors[k].solid=d.D[k][1]; doors[k].timer=d.D[k][2]; } }
   if(d.PL&&plates) d.PL.forEach((on,i)=>{ if(plates[i]) plates[i].on=on; });
+  if(d.LA) d.LA.forEach((v,i)=>{ if(lamps[i]) lamps[i].lit=v; });
   intro=d.IN; outro=d.OU; exitLocked=d.XL; secretsFound=d.SF[0]; secretsTotal=d.SF[1];
   const se=document.getElementById('score'); if(se) se.textContent=(d.SC||0).toLocaleString('ru-RU');
   if(d.TX) for(const t of d.TX){ if(!texts.some(x=>x.t===t.t&&Math.abs(x.life-t.life)<.5)) texts.push(t); }
