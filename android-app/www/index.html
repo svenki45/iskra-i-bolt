@@ -344,6 +344,7 @@ body.touch #overlay{padding-left:max(8px,env(safe-area-inset-left));padding-righ
 body.touch:not(.playing) #overlay{padding-top:max(14px,env(safe-area-inset-top));padding-bottom:10px}
 body.touch .mfoot{display:none}
 body.touch.playing #verTag{display:none}
+body.padmode #touch{display:none!important}
 </style>
 
 <div class="app">
@@ -432,8 +433,8 @@ let scale=1;
 /* ================= layout ================= */
 function fit(){
   const r=$('stage').getBoundingClientRect(); const tch=document.body.classList.contains('touch')&&document.body.classList.contains('playing'), TL=(typeof touchLayout!=='undefined')?touchLayout:{};
-  const side=tch&&!TL.over?touchSide()*2:0;
-  const s=Math.max(0.1,Math.min((r.width-side)/VW, r.height/VH))*(tch?(TL.cam?Math.min(1,TL.field||1):(TL.field||1)):1);
+  const pm=document.body.classList.contains('padmode'), side=tch&&!TL.over&&!pm?touchSide()*2:0;
+  const s=Math.max(0.1,Math.min((r.width-side)/VW, r.height/VH))*(tch&&!pm?(TL.cam?Math.min(1,TL.field||1):(TL.field||1)):1);
   const w=Math.floor(VW*s), h=Math.floor(VH*s);
   $('screen').style.width=w+'px'; $('screen').style.height=h+'px';
   const dpr=(typeof settings!=='undefined'&&settings.quality==='low')?1:Math.min(2,window.devicePixelRatio||1);
@@ -1358,7 +1359,7 @@ function renderLegend(force){
   else if(state==='controls'&&!capture) setState('controls');
   else if(state==='help') setState('help');
 }
-addEventListener('gamepadconnected',e=>{
+addEventListener('gamepadconnected',e=>{ if(window.MOBILE_BUILD||document.body.classList.contains('touch')) setPadMode(true);
   const list=pads(), idx=list.findIndex(g=>g.index===e.gamepad.index), pi=swapPads?1-idx:idx;
   if(pi===0||pi===1){ toastQ.push({small:'Геймпад подключён',title:`${PAD_TYPE_NAME[padType(e.gamepad)]} → ${pi===0?'Искра':'Болт'}`,medal:pi===0?'И':'Б'}); showToast(); }
   renderLegend();
@@ -4111,7 +4112,9 @@ for(const ev of ['gesturestart','gesturechange','dblclick']) document.addEventLi
 document.addEventListener('touchstart',e=>{ if(e.target.closest&&e.target.closest('#touch')) e.preventDefault(); },{passive:false});
 document.addEventListener('touchmove',e=>{ if(document.body.classList.contains('playing')&&document.body.classList.contains('touch')) e.preventDefault(); },{passive:false});
 document.addEventListener('touchend',e=>{ if(e.target.closest&&e.target.closest('#touch')) e.preventDefault(); },{passive:false});
-addEventListener('keydown',e=>{ if(e.target&&e.target.tagName==='INPUT') return; if(touchUI.on&&!e.repeat&&e.isTrusted&&e.key&&e.key.length>0&&!/^(Unidentified|Process)$/.test(e.key)) setTouch(false); },true);
+addEventListener('keydown',e=>{ if(e.target&&e.target.tagName==='INPUT') return; if(touchUI.on&&!e.repeat&&e.isTrusted&&e.key&&e.key.length>0&&!/^(Unidentified|Process)$/.test(e.key)){ if(window.MOBILE_BUILD) setPadMode(true); else setTouch(false); } },true);
+function setPadMode(on){ if(document.body.classList.contains('padmode')===on) return; document.body.classList.toggle('padmode',on); try{ fit(); }catch(e){} }
+addEventListener('touchstart',()=>setPadMode(false),{passive:true,capture:true});
 const TICON={left:'<svg viewBox="0 0 24 24"><path d="M15 4L7 12l8 8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   right:'<svg viewBox="0 0 24 24"><path d="M9 4l8 8-8 8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   jump:'<svg viewBox="0 0 24 24"><path d="M12 20V5M5 11l7-7 7 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>'};
@@ -4388,6 +4391,7 @@ function demoBanner(on){ let b=document.getElementById('demoBan'); if(!on){ if(b
   if(!b){ b=document.createElement('div'); b.id='demoBan'; b.innerHTML='<b>ДЕМО</b><span>'+(document.body.classList.contains('touch')?'Коснитесь экрана, чтобы играть':'Нажмите любую кнопку, чтобы играть')+'</span>'; $('screen').appendChild(b); } }
 function demoTick(dt){
   const anyPad=(()=>{ try{ for(const g of navigator.getGamepads?navigator.getGamepads():[]){ if(g&&(g.buttons.some(b=>b.pressed)||g.axes.some(a=>Math.abs(a)>.5))) return true; } }catch(e){} return false; })();
+  if(anyPad&&document.body.classList.contains('touch')) setPadMode(true);
   if(anyPad){ if(demo){ stopDemo(); return; } lastAct=performance.now(); }
   if(demo){ demoT+=dt; const lim=boss?32:24;
     if(state==='dying'||state==='gameover'||state==='done'||state==='shop'){ demoNext(); return; }
@@ -4418,7 +4422,7 @@ function touchClean(root){ if(!isTouchUI()) return;
 }
 { const ob=new MutationObserver(()=>{ touchClean(overlay); requestAnimationFrame(fitOverlay); }); ob.observe(overlay,{childList:true,subtree:true}); addEventListener('resize',()=>requestAnimationFrame(fitOverlay)); }
 { const f=CanvasRenderingContext2D.prototype.fillText; CanvasRenderingContext2D.prototype.fillText=function(t,...a){ if(typeof t==='string'&&isTouchUI()){ if(t==='Enter — пропустить'||t==='прыжок — пропустить') t='Коснитесь — пропустить'; } return f.call(this,t,...a); }; }
-const GAME_VER='1.00';
+const GAME_VER='1.01';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' beta'; $('screen').appendChild(v); })();
 window.__ib={proTest:()=>{proT=0;storyNext=null;setState("prologue");},endTest:()=>{endT=0;setState("ending");},net:{NET,netApply,netSnap},getLevel,startGame,dmgE:(e,d)=>damageEnemy(e,d),complete:()=>complete(),hurt:i=>hurt(players[i]),setState:x=>setState(x),startDemo:()=>startDemo(),stopDemo:()=>stopDemo(),get demo(){return demo},tr:x=>tr(x),demoAt:i=>{ lastIntro=-1; loadLevel(i); follow=true; demoT=0; setState('play'); },get combo(){return combo},openSecret,nextLevel,hitBoss:(d)=>hitBoss(d),get outro(){return outro},get state(){return {state,levelIdx,boss,players,enemies,pickups,arena,run,movers,grid,ebullets,bullets}}};
 const hot=window.claude&&window.claude.hot;
