@@ -399,6 +399,17 @@ body.b3d #bTwo{box-shadow:0 7px 0 #9a6c16,0 12px 22px rgba(0,0,0,.45),inset 0 2p
 body.b3d .overlay button.primary:hover,body.b3d .overlay button.secondary:hover,body.b3d .overlay .opt:hover,body.b3d .overlay button:focus-visible,body.b3d.kbnav .overlay button:focus,body.b3d #bOne:hover,body.b3d #bTwo:hover,body.b3d #bOnline:hover{transform:perspective(700px) rotateX(10deg) translateY(-4px) scale(1.02);filter:brightness(1.08)}
 body.b3d .overlay button.primary:active,body.b3d .overlay button.secondary:active,body.b3d .overlay .opt:active,body.b3d #bOne:active,body.b3d #bTwo:active,body.b3d #bOnline:active{transform:perspective(700px) translateY(5px);box-shadow:0 1px 0 rgba(5,10,24,.9),0 3px 8px rgba(0,0,0,.4)}
 body.b3d .overlay .opt.on{box-shadow:0 3px 0 #9a6c16,0 6px 12px rgba(0,0,0,.4);transform:perspective(700px) translateY(3px)}
+/* 3D sliders & checkboxes */
+body.b3d .overlay input[type=range]{-webkit-appearance:none;appearance:none;height:12px;border-radius:7px;background:linear-gradient(90deg,#e7b54a 0,#ffd166 var(--p,50%),transparent var(--p,50%)),linear-gradient(#0a1426,#1b2b48);box-shadow:inset 0 3px 5px rgba(0,0,0,.7),0 1px 0 rgba(255,255,255,.12);outline:none}
+body.b3d .overlay input[type=range]::-webkit-slider-runnable-track{height:12px;border-radius:7px;background:transparent}
+body.b3d .overlay input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;margin-top:-6px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff3c4,#ffd166 40%,#c08a1e 100%);box-shadow:0 4px 0 #8a5f12,0 7px 10px rgba(0,0,0,.5),inset 0 -2px 3px rgba(0,0,0,.2);cursor:grab;transition:transform .12s}
+body.b3d .overlay input[type=range]:active::-webkit-slider-thumb{transform:translateY(2px) scale(.95);box-shadow:0 2px 0 #8a5f12,0 3px 6px rgba(0,0,0,.5)}
+body.b3d .overlay input[type=range]::-moz-range-track{height:12px;border-radius:7px;background:linear-gradient(#0a1426,#1b2b48);box-shadow:inset 0 3px 5px rgba(0,0,0,.7)}
+body.b3d .overlay input[type=range]::-moz-range-thumb{width:24px;height:24px;border:0;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff3c4,#ffd166 40%,#c08a1e 100%);box-shadow:0 4px 0 #8a5f12,0 7px 10px rgba(0,0,0,.5)}
+body.b3d .tog input{-webkit-appearance:none;appearance:none;width:22px;height:22px;margin-top:0;border-radius:6px;background:linear-gradient(#22324f,#141f36);box-shadow:0 4px 0 rgba(4,8,20,.95),0 6px 10px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.15);position:relative;cursor:pointer;transition:transform .12s,box-shadow .12s,background .12s}
+body.b3d .tog input:checked{background:radial-gradient(circle at 35% 30%,#fff3c4,#ffd166 45%,#d29a24);box-shadow:0 2px 0 #8a5f12,0 3px 6px rgba(0,0,0,.45),inset 0 -2px 3px rgba(0,0,0,.2);transform:translateY(2px)}
+body.b3d .tog input:checked::after{content:"";position:absolute;left:7px;top:3px;width:6px;height:11px;border:solid #2a1a04;border-width:0 3px 3px 0;transform:rotate(45deg)}
+body.b3d .tog:hover input{filter:brightness(1.12)}
 </style>
 
 <div class="app">
@@ -4643,7 +4654,10 @@ const R3D=(()=>{
 })();
 
 R3D.on=settings.r3d!==false&&R3D.on; document.body.classList.toggle('b3d',R3D.on);
-const GAME_VER='1.12';
+function paintRanges(root){ (root||document).querySelectorAll('.overlay input[type=range]').forEach(el=>{ const p=(el.value-el.min)/((el.max-el.min)||1)*100; el.style.setProperty('--p',p+'%'); }); }
+addEventListener('input',e=>{ if(e.target&&e.target.type==='range') paintRanges(); },true);
+new MutationObserver(()=>paintRanges(overlay)).observe(overlay,{childList:true,subtree:true});
+const GAME_VER='1.13';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' beta'; $('screen').appendChild(v); })();
 window.__ib={proTest:()=>{proT=0;storyNext=null;setState("prologue");},endTest:()=>{endT=0;setState("ending");},net:{NET,netApply,netSnap},getLevel,startGame,dmgE:(e,d)=>damageEnemy(e,d),complete:()=>complete(),hurt:i=>hurt(players[i]),setState:x=>setState(x),startDemo:()=>startDemo(),stopDemo:()=>stopDemo(),get demo(){return demo},tr:x=>tr(x),demoAt:i=>{ lastIntro=-1; loadLevel(i); follow=true; demoT=0; setState('play'); },get combo(){return combo},openSecret,nextLevel,hitBoss:(d)=>hitBoss(d),get outro(){return outro},get state(){return {state,levelIdx,boss,players,enemies,pickups,arena,run,movers,grid,ebullets,bullets}}};
 const hot=window.claude&&window.claude.hot;
