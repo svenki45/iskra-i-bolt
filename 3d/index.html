@@ -3636,7 +3636,7 @@ function drawHud(){
 function draw(){
   if(!grid) return;
   if(staticDirty) renderStatic();
-  const r3=R3D.active(); ctx.setTransform(1,0,0,1,0,0); if(r3) ctx.clearRect(0,0,cv.width,cv.height); else { R3D.hide(); ctx.fillStyle='#0b1830'; ctx.fillRect(0,0,cv.width,cv.height); }
+  let r3=R3D.active(); ctx.setTransform(1,0,0,1,0,0); if(r3) ctx.clearRect(0,0,cv.width,cv.height); else { R3D.hide(); ctx.fillStyle='#0b1830'; ctx.fillRect(0,0,cv.width,cv.height); }
   GLOW=settings.glow?1:0;
   const sk=settings.shake?shake:0, sx=(Math.random()-.5)*sk, sy=(Math.random()-.5)*sk;
   let z=1, ox=0, oy=0;
@@ -3657,7 +3657,7 @@ function draw(){
     ox=Math.min(0,Math.max(VW-VW*z,VW/2-O.cx*z)); oy=Math.min(0,Math.max(VH-VH*z,VH*0.5-O.cy*z));
   }
   ctx.setTransform(scale*z,0,0,scale*z,(sx+ox)*scale,(sy+oy)*scale);
-  if(r3){ R3D.render(z,ox+sx,oy+sy); } else {
+  let r3ok=r3; if(r3){ try{ R3D.render(z,ox+sx,oy+sy); }catch(err){ R3D.fail(err); r3ok=false; } } if(!r3ok){ if(r3){ r3=false; R3D.hide(); ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle='#0b1830'; ctx.fillRect(0,0,cv.width,cv.height); ctx.setTransform(scale*z,0,0,scale*z,(sx+ox)*scale,(sy+oy)*scale); }
   ctx.drawImage(staticLayer,0,0,VW,VH);
   if(LIVE&&state!=='title'&&settings.ambient) drawLive();
   if(state!=='title') ctx.drawImage(wallLayer,0,0,VW,VH); }
@@ -4503,6 +4503,7 @@ const R3D=(()=>{
     glc.style.cssText='position:absolute;inset:0;width:100%;height:100%;display:block;z-index:0';
     cv.parentNode.insertBefore(glc,cv); cv.style.position='relative'; cv.style.zIndex='1'; cv.style.background='transparent';
     renderer=new THREE.WebGLRenderer({canvas:glc,antialias:true,alpha:false,powerPreference:'high-performance'});
+    glc.addEventListener('webglcontextlost',e=>{ e.preventDefault(); R.fail('WebGL context lost'); });
     renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
     scene=new THREE.Scene();
     cam=new THREE.PerspectiveCamera(FOV,VW/VH,10,6000);
@@ -4610,6 +4611,9 @@ const R3D=(()=>{
     renderer.render(scene,cam);
   };
   R.hide=()=>{ if(glc) glc.style.display='none'; };
+  R.fail=err=>{ R.on=false; try{ if(glc) glc.style.display='none'; }catch(e){} const msg=(err&&(err.message||err))+''; console.error('3D error',err);
+    let box=document.getElementById('err3d'); if(!box){ box=document.createElement('div'); box.id='err3d'; box.style.cssText='position:fixed;left:8px;bottom:8px;z-index:9998;max-width:70vw;background:#3a0d14ee;color:#ffd6d6;font:12px/1.35 system-ui;padding:8px 10px;border-radius:8px;border:1px solid #ff6b6b'; document.body.appendChild(box); }
+    box.textContent='3D не запустилось, показан 2D. Ошибка: '+msg.slice(0,220); const b=document.getElementById('btn3d'); if(b) b.textContent='2D (3D ошибка)'; };
   return R;
 })();
 
