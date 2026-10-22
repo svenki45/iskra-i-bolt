@@ -4384,12 +4384,13 @@ function demoTick(dt){
 }
 const actEv=e=>{ lastAct=performance.now(); if(demo){ e.preventDefault(); e.stopImmediatePropagation(); stopDemo(); } };
 addEventListener('keydown',actEv,true); addEventListener('pointerdown',actEv,true); addEventListener('mousemove',()=>{ if(!demo) lastAct=performance.now(); },true); addEventListener('wheel',()=>{ lastAct=performance.now(); },true);
-(function splash(){ if(window.__ibNoSplash) return; try{ if(sessionStorage.getItem('ib-nosplash')){ sessionStorage.removeItem('ib-nosplash'); return; } }catch(e){} const d=document.createElement('div'); d.id='splash';
-  d.innerHTML='<div class="sp1">Игра разработана</div><div class="sp2">Edward Dergachev</div><div class="sp3">при поддержке <b>Claude</b></div><div class="sp4">нажмите любую кнопку</div>';
-  document.body.appendChild(d); let done=false;
-  const close=e=>{ if(done) return; done=true; if(e){ e.preventDefault(); e.stopImmediatePropagation(); } d.classList.add('out'); setTimeout(()=>d.remove(),600); removeEventListener('keydown',close,true); d.removeEventListener('pointerdown',close); lastAct=performance.now(); };
-  addEventListener('keydown',close,true); d.addEventListener('pointerdown',close); setTimeout(()=>close(),5200); })();
-const GAME_VER='0.98';
+(function splash(){ if(window.__ibNoSplash) return; const d=document.createElement('div'); d.id='splash';
+  d.innerHTML='<div class="sp1">Игра разработана</div><div class="sp2 notr">Edward Dergachev</div><div class="sp3">при поддержке <b>Claude</b></div>';
+  document.body.appendChild(d);
+  const block=e=>{ e.preventDefault(); e.stopImmediatePropagation(); };
+  for(const ev of ['keydown','keyup','pointerdown','pointerup','click','touchstart','wheel']) addEventListener(ev,block,{capture:true,passive:false});
+  setTimeout(()=>{ for(const ev of ['keydown','keyup','pointerdown','pointerup','click','touchstart','wheel']) removeEventListener(ev,block,{capture:true}); d.classList.add('out'); lastAct=performance.now(); setTimeout(()=>d.remove(),600); },5000); })();
+const GAME_VER='0.99';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' beta'; $('screen').appendChild(v); })();
 window.__ib={proTest:()=>{proT=0;storyNext=null;setState("prologue");},endTest:()=>{endT=0;setState("ending");},net:{NET,netApply,netSnap},getLevel,startGame,dmgE:(e,d)=>damageEnemy(e,d),complete:()=>complete(),hurt:i=>hurt(players[i]),setState:x=>setState(x),startDemo:()=>startDemo(),stopDemo:()=>stopDemo(),get demo(){return demo},tr:x=>tr(x),demoAt:i=>{ lastIntro=-1; loadLevel(i); follow=true; demoT=0; setState('play'); },get combo(){return combo},openSecret,nextLevel,hitBoss:(d)=>hitBoss(d),get outro(){return outro},get state(){return {state,levelIdx,boss,players,enemies,pickups,arena,run,movers,grid,ebullets,bullets}}};
 const hot=window.claude&&window.claude.hot;
