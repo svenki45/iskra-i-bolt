@@ -347,6 +347,9 @@ body.touch.playing #verTag{display:none}
 body.padmode #touch{display:none!important}
 body.touch .top,body.touch .hint{display:none!important}
 body.touch .app{padding-block:0;gap:0}
+body.touch.cine,body.touch.cine .app,body.touch.cine #stage{background:#080a16!important}
+body.touch.cine #screen{border:0!important;box-shadow:none!important;border-radius:0!important}
+body.touch.cine #verTag,body.touch.cine #pauseBtn{display:none!important}
 </style>
 
 <div class="app">
@@ -2219,6 +2222,7 @@ function decoBase(){ return `<div class="hbg s"><b></b><b></b><b></b><b></b><b><
 function setState(s){
   const prevState=state, fk=focusKey(document.activeElement);
   if(s==='play'){ prevPad[0]={j:true,a:true}; prevPad[1]={j:true,a:true}; }
+  document.body.classList.toggle('cine',s==='prologue'||s==='ending');
   state=s; overlay.hidden=(s==='play'||s==='dying'||s==='touchedit'||s==='ending'||s==='prologue'); { const tb=document.getElementById('tedbar'); if(tb&&s!=='touchedit') tb.hidden=true; }
   overlay.classList.toggle('clear',s==='title'); if(s!=='hero'){ overlay.classList.toggle('hs',solo&&soloHero==='spark'); overlay.classList.toggle('hb',solo&&soloHero==='bolt'); overlay.classList.toggle('hd',!solo); } else overlay.classList.remove('hd'); overlay.classList.toggle('pz',s!=='title'&&s!=='play'&&s!=='dying');
   if(s==='title'){
@@ -4138,11 +4142,18 @@ function wireEdit(el){
 function editSize(d){ if(!editSel){ toastQ.push({small:'Кнопки',title:'Сначала нажмите на кнопку',icon:'first'}); showToast(); return; }
   const b=touchUI.el.querySelector(`[data-id="${editSel}"]`); if(!b) return; const q=b.getBoundingClientRect(), o=touchLayout.b[editSel]||{s:1};
   o.x=(q.left+q.width/2)/innerWidth; o.y=(q.top+q.height/2)/innerHeight; o.s=Math.max(.5,Math.min(2.2,(o.s||1)+d)); touchLayout.b[editSel]=o; saveTouchLayout(); }
+const tHeld=new Map();
+function tRelease(pid){ const h=tHeld.get(pid); if(!h) return; tHeld.delete(pid); if(![...tHeld.values()].some(o=>o.c===h.c)) down.delete(h.c); h.b.classList.remove('on'); }
+function tReleaseAll(){ for(const pid of [...tHeld.keys()]) tRelease(pid); }
+for(const ev of ['pointerup','pointercancel']) addEventListener(ev,e=>tRelease(e.pointerId),true);
+addEventListener('touchend',e=>{ if(!e.touches.length) tReleaseAll(); },true);
+addEventListener('touchcancel',()=>tReleaseAll(),true);
+addEventListener('blur',()=>tReleaseAll()); document.addEventListener('visibilitychange',()=>{ if(document.hidden) tReleaseAll(); });
 function buildTouch(force){
   if(!touchUI.el){ touchUI.el=document.createElement('div'); touchUI.el.id='touch'; touchUI.el.hidden=true; document.body.appendChild(touchUI.el);
     const r=document.createElement('div'); r.id='rotate'; r.innerHTML='<div><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ffd166" stroke-width="1.6"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M20 8a8 8 0 0 1 0 8M4 16a8 8 0 0 1 0-8"/></svg><b>Поверните телефон</b>Играть удобнее горизонтально</div>'; document.body.appendChild(r); }
   const sig=[JSON.stringify(touchLayout),solo,soloHero,NET.role,innerWidth>innerHeight,Math.round(innerWidth/50)].join();
-  if(!force&&sig===touchUI.sig) return; touchUI.sig=sig;
+  if(!force&&sig===touchUI.sig) return; touchUI.sig=sig; tReleaseAll();
   const W=innerWidth,H=innerHeight, S=touchSide(), m=8, el=touchUI.el;
   const LK=(solo||NET.role)?'one':'two';
   const btn=(kind,act,x,y,sz,label,sub)=>{ const id=LK+'|'+kind+'|'+act, o=(touchLayout.b||{})[id]; if(o){ sz=sz*(o.s||1); x=o.x*W-sz/2; y=o.y*H-sz/2; } return `<button type="button" class="tb ${kind==='spark'?'s':'b'}" data-id="${id}" data-k="${kind}" data-a="${act}" style="left:${Math.round(x)}px;top:${Math.round(y)}px;width:${Math.round(sz)}px;height:${Math.round(sz)}px">${TICON[act]||label}${sub?`<small>${sub}</small>`:''}</button>`; };
@@ -4171,11 +4182,10 @@ function buildTouch(force){
   el.innerHTML=html;
   el.querySelectorAll('[data-a]').forEach(b=>{
     const code=()=>binds[b.dataset.k].kb[b.dataset.a];
-    const press=()=>{ if(state==='touchedit') return; const c=code(); if(!c) return; if(!down.has(c)) pressed.add(c); down.add(c); b.classList.add('on'); };
-    const rel=()=>{ const c=code(); if(c) down.delete(c); b.classList.remove('on'); };
-    b.addEventListener('pointerdown',e=>{ e.preventDefault(); try{ b.releasePointerCapture(e.pointerId); }catch(_){} press(); });
-    b.addEventListener('pointerenter',e=>{ if(e.pointerType==='touch'&&e.buttons) press(); });
-    for(const ev of ['pointerup','pointercancel','pointerleave']) b.addEventListener(ev,rel);
+    const press=e=>{ if(state==='touchedit') return; const c=code(); if(!c) return; const prev=tHeld.get(e.pointerId); if(prev&&prev.c!==c) tRelease(e.pointerId); if(!down.has(c)) pressed.add(c); down.add(c); tHeld.set(e.pointerId,{c,b}); b.classList.add('on'); };
+    b.addEventListener('pointerdown',e=>{ e.preventDefault(); try{ b.releasePointerCapture(e.pointerId); }catch(_){} press(e); });
+    b.addEventListener('pointerenter',e=>{ if(e.pointerType==='touch'&&e.buttons) press(e); });
+    b.addEventListener('pointerleave',e=>{ const h=tHeld.get(e.pointerId); if(h&&h.b===b) tRelease(e.pointerId); });
     b.addEventListener('contextmenu',e=>e.preventDefault());
   });
   el.querySelector('[data-pause]').addEventListener('pointerup',e=>{ e.preventDefault(); e.stopPropagation(); if(state==='touchedit') return; if(NET.role==='guest'){ guestPause(); return; } if(state==='play'){ pauseOwner=null; setState('pause'); } });
@@ -4424,7 +4434,7 @@ function touchClean(root){ if(!isTouchUI()) return;
 }
 { const ob=new MutationObserver(()=>{ touchClean(overlay); requestAnimationFrame(fitOverlay); }); ob.observe(overlay,{childList:true,subtree:true}); addEventListener('resize',()=>requestAnimationFrame(fitOverlay)); }
 { const f=CanvasRenderingContext2D.prototype.fillText; CanvasRenderingContext2D.prototype.fillText=function(t,...a){ if(typeof t==='string'&&isTouchUI()){ if(t==='Enter — пропустить'||t==='прыжок — пропустить') t='Коснитесь — пропустить'; } return f.call(this,t,...a); }; }
-const GAME_VER='1.02';
+const GAME_VER='1.03';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' beta'; $('screen').appendChild(v); })();
 window.__ib={proTest:()=>{proT=0;storyNext=null;setState("prologue");},endTest:()=>{endT=0;setState("ending");},net:{NET,netApply,netSnap},getLevel,startGame,dmgE:(e,d)=>damageEnemy(e,d),complete:()=>complete(),hurt:i=>hurt(players[i]),setState:x=>setState(x),startDemo:()=>startDemo(),stopDemo:()=>stopDemo(),get demo(){return demo},tr:x=>tr(x),demoAt:i=>{ lastIntro=-1; loadLevel(i); follow=true; demoT=0; setState('play'); },get combo(){return combo},openSecret,nextLevel,hitBoss:(d)=>hitBoss(d),get outro(){return outro},get state(){return {state,levelIdx,boss,players,enemies,pickups,arena,run,movers,grid,ebullets,bullets}}};
 const hot=window.claude&&window.claude.hot;
