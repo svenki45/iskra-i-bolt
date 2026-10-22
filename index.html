@@ -1,18 +1,12 @@
-<!doctype html>
-<html lang="ru">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Искра и Болт</title>
+<meta
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Искра и Болт">
 <meta name="theme-color" content="#0b1830">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
-<link rel="icon" href="icon-192.png">
-
+ name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Искра и Болт · телефон</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&family=Rubik:wght@400;500;700&family=Russo+One&display=swap">
@@ -329,10 +323,12 @@ table.rep tr.hot td{color:#ff9a9a}
 .beta.sm{font-size:10px;right:-4.2em;top:-.4em}
 @keyframes stk{50%{transform:rotate(8deg) scale(1.06)}}
 #verTag{position:absolute;left:8px;bottom:5px;z-index:6;font:600 11px var(--body);color:rgba(207,216,230,.55);pointer-events:none;letter-spacing:.04em}
+.diffs{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;width:100%}
+.diffb{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:4px;padding:14px 16px;border-left:4px solid var(--dc)!important}
+.diffb b{font:800 18px var(--display)}.diffb small{font-weight:500;opacity:.8;line-height:1.35}
+@media (max-width:560px){.diffs{grid-template-columns:1fr}}
 </style>
 
-</head>
-<body>
 <div class="app">
   <div class="top">
     <h1 class="brand"><span class="s">Искра</span> и <span class="b">Болт</span></h1>
@@ -1103,13 +1099,42 @@ function addSecrets(g,pickups,enemies,R,n,weighted){
   }
 }
 const cache={};
+const DIFFS={easy:{n:'Лёгкая',d:'Больше сердец, меньше врагов и шипов. Для знакомства и детей.',c:'#7fe08a',lv:-1},normal:{n:'Обычная',d:'Как задумано.',c:'#9cc3ff',lv:0},
+  hard:{n:'Сложная',d:'Больше врагов и шипов, платформы быстрее, враги крепче.',c:'#ffb347',lv:1},nightmare:{n:'Кошмар',d:'Одно сердце, толпы врагов, шипы повсюду. Только для мастеров.',c:'#ff4d5e',lv:2}};
+const diffId=()=>(typeof run!=='undefined'&&run&&DIFFS[run.diff])?run.diff:'normal';
+const diffLv=()=>DIFFS[diffId()].lv+((typeof run!=='undefined'&&run&&run.ng)||0);
+const diffKey=()=>diffId()+(run&&run.ng?'+'+run.ng:'');
+function harden(L,n){
+  const D=diffLv(); if(D===0) return L;
+  const R=rng(n*977+D*31), g=L.map.map(r=>r.split('')), out=Object.assign({},L);
+  const safe=(x)=>x>4&&x<27;
+  if(D<0){ // easy: remove some spikes and enemies
+    for(let x=0;x<32;x++) if(g[16][x]==='^'&&R()<.45&&!(g[16][x-1]==='^'&&g[16][x+1]==='^')) g[16][x]='.';
+    out.enemies=(L.enemies||[]).filter((e,i)=>i%2===0);
+  } else {
+    // extra floor spikes on open ground (not next to doors/plates/spawn/exit)
+    let want=D*3, tries=0;
+    while(want>0&&tries++<80){ const x=5+Math.floor(R()*22); if(!safe(x)) continue;
+      const ok=g[16][x]==='.'&&g[17][x]==='#'&&g[15][x]==='.'&&[x-1,x,x+1].every(c=>!'pqrPQRUVWE12C'.includes(g[16][c])&&!'PQR'.includes(g[15][c]));
+      if(ok&&!(L.movers||[]).some(m=>Math.abs(m.ax-x)<1)){ g[16][x]='^'; want--; } }
+    // extra enemies
+    const ens=(L.enemies||[]).slice(); let add=D*2; tries=0;
+    while(add>0&&tries++<60){ const x=5+Math.floor(R()*22);
+      if(R()<.55){ if(g[16][x]==='.'&&g[15][x]==='.'&&!ens.some(e=>Math.abs(e.tx-x)<2)){ const c0=Math.max(1,x-4); ens.push({type:'crawler',tx:x,ty:16,min:c0*T,max:Math.min(31,x+4)*T}); add--; } }
+      else { const y=5+Math.floor(R()*5); if(g[y][x]==='.'){ ens.push({type:'flyer',tx:x,ty:y,min:Math.max(1,x-5)*T,max:Math.min(31,x+5)*T}); add--; } } }
+    out.enemies=ens;
+    out.movers=(L.movers||[]).map(m=>Object.assign({},m,{sp:m.sp*(1+.18*D)}));
+  }
+  out.map=g.map(r=>r.join('')); return out;
+}
 function getLevel(i){
-  const ck=solo?soloHero+i:i;
+  const ck=(solo?soloHero+i:i)+'|'+diffKey();
   if(cache[ck]) return cache[ck];
-  if(solo&&(i+1)%10!==0){ return cache[ck]=genSolo(i+1,soloHero); }
   let L;
-  if(i<TUTORIAL.length) L=Object.assign({enemies:[],pickups:[],tier:0},TUTORIAL[i]);
+  if(solo&&(i+1)%10!==0) L=genSolo(i+1,soloHero);
+  else if(i<TUTORIAL.length) L=Object.assign({enemies:[],pickups:[],tier:0},TUTORIAL[i]);
   else L=((i+1)%10===0)?genBoss(i+1):genLevel(i+1);
+  if(!L.boss&&i>=TUTORIAL.length) L=harden(L,i+1);
   return cache[ck]=L;
 }
 
@@ -1327,7 +1352,7 @@ function makePlayer(kind,tx,ty){
   const sp=kind==='spark', w=sp?24:34, h=sp?30:56;
   return {kind,w,h,x:tx*T+(T-w)/2,y:(ty+1)*T-h,vx:0,vy:0,onGround:false,ground:null,wasGround:true,
     coyote:0,jumpBuf:0,airJumps:1,dashesLeft:1,dash:0,face:1,slam:false,boosted:false,cut:false,sx:1,sy:1,inExit:false,blinkT:2+Math.random()*3,
-    hp:3+U('hearts'),shield:!!U('armor'),secondWind:!!U('secondWind'),inv:0,down:false,reviveT:0,shootCd:0,pw:{triple:0,rapid:0,power:0},bag:[],sel:0,bagPop:0};
+    hp:Math.max(1,3+U('hearts')+(diffId()==='easy'?2:diffId()==='nightmare'?-2:0)),shield:!!U('armor'),secondWind:!!U('secondWind'),inv:0,down:false,reviveT:0,shootCd:0,pw:{triple:0,rapid:0,power:0},bag:[],sel:0,bagPop:0};
 }
 function makeCrate(tx,ty){ return {kind:'crate',w:38,h:38,x:tx*T+1,y:(ty+1)*T-38,vx:0,vy:0,onGround:false,ground:null}; }
 const TRAIT_NAME={split:'делится',jumper:'прыгает',shield:'щит спереди',diver:'пикирует',bomb:'взрывается'};
@@ -1381,7 +1406,7 @@ function loadLevel(i,keepHp){
   exitRect={x:Math.min(...xs)*T,y:Math.min(...ys)*T,w:(Math.max(...xs)-Math.min(...xs)+1)*T,h:(Math.max(...ys)-Math.min(...ys)+1)*T};
   players=[makePlayer('spark',...s1), makePlayer('bolt',...(solo?s1:s2))];
   if(solo) for(const p of players) if(p.kind!==soloHero){ p.absent=true; p.dead=true; p.x=-5000; p.y=-5000; }
-  enemies=(L.enemies||[]).map(d=>makeEnemy(d,curTier));
+  { const D=diffLv(), mul=D<0?.7:1+.3*D; enemies=(L.enemies||[]).map(d=>{ const e=makeEnemy(d,curTier); e.hp=Math.max(1,Math.round(e.hp*mul)); return e; }); }
   const inv=run.inv||{}; for(const p of players) if(!p.absent){ p.bag=(inv[p.kind]||[]).slice(0,BAG_MAX); p.sel=0; }
   pickups=(L.pickups||[]).map(p=>({type:p.type,x:p.tx*T,y:p.ty*T,t:Math.random()*6,hidden:!!p.secret,secret:!!p.secret,ri:p.ri,bossN:p.bossN}));
   for(const p of pickups) if(p.type==='relic'&&((run.relics||{})[p.bossN]||[]).includes(p.ri)) p.type='heart';
@@ -1395,6 +1420,7 @@ function loadLevel(i,keepHp){
   if(carry&&!solo===!carry.solo){ for(const p of players){ const k=carry[p.kind]; if(!k||p.absent) continue; p.hp=Math.max(p.hp,k.hp); p.shield=p.shield||k.shield; for(const t in k.pw) p.pw[t]=Math.max(p.pw[t]||0,k.pw[t]); } } carry=null;
   levelDowned=false; active=0; follow=!!L.boss; outro=null;
   boss=L.boss?makeBoss(L.boss,curTier):null;
+  if(boss){ const D=diffLv(), mul=D<0?.75:1+.25*D; boss.hp=boss.max=Math.round(boss.max*mul); }
   if(boss){ const rl=(run.relics||{})[i+1]||[]; if(rl.includes(0)){ boss.hp=boss.max=Math.round(boss.max*0.8); } boss.dmgMul=rl.includes(1)?1.25:1; boss.slow=rl.includes(2)?0.85:1; boss.relics=rl.length; }
   arena=L.arena?{type:L.arena,t:0,rainCd:3,rains:[],shockCd:3.5,shock:null,side:Math.random()<.5?0:1,conv:L.arena==='gear'?95+curTier*4:0,spots:[]}:null;
   if(arena){ for(let y=3;y<=14;y++) for(let x=3;x<=28;x++) if(grid[y][x]==='.'&&grid[y+1]&&grid[y+1][x]==='#') arena.spots.push([x,y]); pickups=arena.spots.length?[0,1].map(i=>{ const s=arena.spots[Math.floor(arena.spots.length*(i?0.85:0.15))]; return {type:'heart',x:s[0]*T,y:s[1]*T,t:0}; }):[]; } exitLocked=!!boss; heartTimer=14;
@@ -2099,7 +2125,7 @@ function setState(s){
     overlay.innerHTML=`<div class="card menu">
       <h2 class="mlogo"><span class="s">Искра</span> и <span class="b">Болт</span><span class="beta sm">БЕТА</span></h2>
       <div class="mlist">
-        ${LS>=0?`<button class="primary mbig" id="bCont" type="button">Продолжить<small>слот ${LS+1} · ${MODE_NAME(slots[LS].mode)} · уровень ${Math.min(TOTAL,slots[LS].best+1)}</small></button>
+        ${LS>=0?`<button class="primary mbig" id="bCont" type="button">Продолжить<small>слот ${LS+1} · ${MODE_NAME(slots[LS].mode)} · ${(slots[LS].run&&DIFFS[slots[LS].run.diff]||DIFFS.normal).n}${slots[LS].run&&slots[LS].run.ng?' НИ+'+slots[LS].run.ng:''} · уровень ${Math.min(TOTAL,slots[LS].best+1)}</small></button>
         <button class="secondary" id="bNew" type="button">Новая игра<small>выбрать слот</small></button>
         <button class="secondary" id="bLoad" type="button">Загрузить<small>${slots.filter(Boolean).length} из ${SLOT_N} слотов</small></button>`:`<button class="primary mbig" id="bNew" type="button">Играть<small>новая игра</small></button>`}
         ${(best>0||cheat)?`<button class="secondary" id="bLv" type="button">Выбрать уровень</button>`:''}
@@ -2119,7 +2145,7 @@ function setState(s){
     $('bHelp').onclick=()=>{ helpBack='menu'; setState('help'); };
     $('bNet').onclick=()=>{ if(NET.role==='host'){ startGame(Math.min(TOTAL-1,best)); return; } setState('net'); };
     if(cheatMenu) $('bCheats').onclick=()=>setState('cheats');
-    $('bNew').onclick=()=>{ if(!slots.some(Boolean)){ newSlotTarget=0; doNewGame(0); return; } slotMode='new'; slotDel=-1; setState('slots'); };
+    $('bNew').onclick=()=>{ if(!slots.some(Boolean)){ newSlotTarget=0; setState('diffpick'); return; } slotMode='new'; slotDel=-1; setState('slots'); };
     if($('bLoad')) $('bLoad').onclick=()=>{ slotMode='load'; slotDel=-1; setState('slots'); };
     if(LS>=0) $('bCont').onclick=()=>{ applySlot(LS); startGame(Math.min(TOTAL-1,best)); };
     if(best>0||cheat) $('bLv').onclick=()=>setState('levels');
@@ -2142,7 +2168,7 @@ function setState(s){
     setTimeout(()=>{ try{ $(soloHero==='bolt'?'bHB':'bHS').focus({preventScroll:true}); }catch(e){} },0);
   } else if(s==='loading'){
     const J=loadJob||{i:levelIdx,name:'',tip:'',isBoss:false};
-    overlay.innerHTML=`<div class="card load"><span class="eyebrow">Глава ${chapterOf(J.i)+1} · ${CHAPTERS[chapterOf(J.i)]}</span><span class="eyebrow" style="opacity:.7">${J.isBoss?'Уровень '+(J.i+1)+' · БОСС':'Уровень '+(J.i+1)+' из '+TOTAL}${isDarkLevel(J.i+1)&&!J.isBoss?' · 🌑 тьма':''}</span>
+    overlay.innerHTML=`<div class="card load"><span class="eyebrow">Глава ${chapterOf(J.i)+1} · ${CHAPTERS[chapterOf(J.i)]}</span><span class="eyebrow" style="opacity:.7">${J.isBoss?'Уровень '+(J.i+1)+' · БОСС':'Уровень '+(J.i+1)+' из '+TOTAL}${isDarkLevel(J.i+1)&&!J.isBoss?' · 🌑 тьма':''} · ${DIFFS[diffId()].n}${run.ng?' НИ+'+run.ng:''}</span>
       <div class="ldgear">${gearSvg(J.isBoss?'#ff6b6b':'#e7b54a')}</div>
       <h2 class="${J.isBoss?'ldboss':''}">${J.name}</h2>
       <div class="ldtrack"><div class="ldbar" id="ldBar"></div></div>
@@ -2183,9 +2209,16 @@ function setState(s){
   } else if(s==='netleave'){
     overlay.innerHTML=`<div class="card"><span class="eyebrow">Онлайн</span><h2>Пауза</h2><div class="btns col"><button class="primary" id="bStay" type="button">Продолжить · Esc</button>${touchUI.on?'<button class="secondary" id="bTedit2" type="button">Кнопки и размер экрана</button>':''}<button class="secondary" id="bLeave" type="button">Выйти в меню</button></div></div>`;
     $('bStay').onclick=()=>guestResume(); $('bLeave').onclick=()=>netLeave(); if($('bTedit2')) $('bTedit2').onclick=()=>{ editBack='netleave'; setState('touchedit'); };
+  } else if(s==='diffpick'){
+    overlay.innerHTML=`<div class="card wide"><span class="eyebrow">Новая игра</span><h2>Сложность</h2>
+      <div class="diffs">${Object.entries(DIFFS).map(([k,d])=>`<button type="button" class="${k==='normal'?'primary':'secondary'} diffb" data-diff="${k}" style="--dc:${d.c}"><b style="color:${k==='normal'?'inherit':d.c}">${d.n}</b><small>${d.d}</small></button>`).join('')}</div>
+      <p class="padst">Сложность влияет на шипы, количество и силу врагов, скорость платформ, сердца и здоровье боссов. Поменять её можно только новой игрой.</p>
+      <div class="btns"><button class="secondary" id="bDiffBack" type="button">Назад · Esc</button></div></div>`;
+    overlay.querySelectorAll('[data-diff]').forEach(b=>b.onclick=()=>{ pendingDiff=b.dataset.diff; if(slots[newSlotTarget]) setState('confirmNew'); else doNewGame(newSlotTarget); });
+    $('bDiffBack').onclick=()=>setState(slots.some(Boolean)?'slots':'menu');
   } else if(s==='slots'){
     const card=(x,i)=>{ const col=x?(x.mode==='spark'?'#ff8a3d':x.mode==='bolt'?'#62c7c1':'#ffd166'):'#5f7393';
-      const info=x?`<div class="slmode" style="color:${col}">${MODE_NAME(x.mode)}</div><div class="sllvl">Уровень ${Math.min(TOTAL,x.best+1)} <span>· ${getLevelName(x)}</span></div>
+      const info=x?`<div class="slmode" style="color:${col}">${MODE_NAME(x.mode)}</div><div class="sllvl">${x.run&&x.run.diff&&DIFFS[x.run.diff]?`<span style="color:${DIFFS[x.run.diff].c};font-weight:700">${DIFFS[x.run.diff].n}${x.run.ng?' · НИ+'+x.run.ng:''}</span> · `:''}Уровень ${Math.min(TOTAL,x.best+1)} <span>· ${getLevelName(x)}</span></div>
         <div class="slmeta">Очки ${((x.run&&x.run.score)||0).toLocaleString('ru-RU')} · Достижения ${Object.keys(x.ach||{}).length}/${ACH.length}</div><div class="slmeta">Сохранено ${fmtDate(x.saved)}${i===activeSlot?' · <b>текущий</b>':''}</div>`
         :'<div class="slempty">Пусто</div>';
       let btns='';
@@ -2198,7 +2231,7 @@ function setState(s){
       <div class="btns"><button class="secondary" id="bSlBack" type="button">Назад · Esc</button></div></div>`;
     overlay.querySelectorAll('[data-load]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.load; applySlot(i); sfx('pick'); startGame(Math.min(TOTAL-1,best)); });
     overlay.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.del; if(slotDel!==i){ slotDel=i; sfx('nav'); setState('slots'); return; } slots[i]=null; if(activeSlot===i){ activeSlot=-1; store.set('iskra-bolt-slot',-1); } store.set('iskra-bolt-slots',slots); slotDel=-1; sfx('off'); if(!slots.some(Boolean)) setState('menu'); else setState('slots'); });
-    overlay.querySelectorAll('[data-new]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.new; newSlotTarget=i; if(slots[i]) setState('confirmNew'); else doNewGame(i); });
+    overlay.querySelectorAll('[data-new]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.new; newSlotTarget=i; setState('diffpick'); });
     $('bSlBack').onclick=()=>setState('menu');
   } else if(s==='report'){
     const rows=Object.entries(LVS).map(([k,o])=>({k,...o,avg:o.c?Math.round(o.t/o.c):0})).sort((a,b)=>b.d-a.d);
@@ -2428,8 +2461,9 @@ function setState(s){
     overlay.innerHTML=`<div class="card"><span class="eyebrow">Все 100 уровней собраны</span><h2><span class="s">Искра</span> и <span class="b">Болт</span> победили механизм</h2>
       <p style="max-width:46ch">Сердце мастерской остановилось. Станки затихли, и впервые за долгое время в мастерской стало по-настоящему тихо. Искра светит над верстаком, Болт снова на своём месте — и теперь никто не перепрошьёт их друзей.</p>
       <p>Общее время <span class="big">${fmt(totalTime)}</span> · падений <span class="big">${deaths}</span> · шестерёнок <span class="big">${gears}</span></p>
-      <div class="btns"><button class="primary" id="bAgain" type="button">Сыграть снова · Enter</button></div></div>`;
-    $('bAgain').onclick=()=>startGame(0);
+      <p class="padst">Новая игра+ : всё сначала, но все улучшения из Лавки, очки и кошелёк остаются, а уровни становятся сложнее (сейчас НИ+${(run.ng||0)}).</p>
+      <div class="btns"><button class="primary" id="bNGP" type="button">Новая игра + · Enter</button><button class="secondary" id="bAgain" type="button">В главное меню</button></div></div>`;
+    $('bNGP').onclick=()=>startNGPlus(); $('bAgain').onclick=()=>setState('menu');
   }
   if(overlay.classList.contains('pz')&&!overlay.querySelector('.pzdeco')) overlay.insertAdjacentHTML('afterbegin',`<div class="pzdeco" aria-hidden="true">${decoBase()}</div>`);
   if(!overlay.hidden){ let b=(prevState===s&&fk)?overlay.querySelector(fk):null; if(!b||b.disabled) b=overlay.querySelector('.primary'); if(b) setTimeout(()=>{ try{b.focus({preventScroll:true});}catch(e){} },0); }
@@ -2565,14 +2599,22 @@ const STORY=[['Старая мастерская','Ночью в заброше�
   ['Вместе','Искра лёгкая и светит в темноте. Болт тяжёлый и сильный. Поодиночке им не пройти и одного цеха. Вместе — можно дойти до самого Сердца мастерской.']];
 var LVS=(()=>{ try{ return JSON.parse(localStorage.getItem('iskra-bolt-lvlstats')||'{}'); }catch(e){ return {}; } })();
 function lvlStat(i,k,v){ const key=(solo?soloHero:'2')+':'+(i+1); const o=LVS[key]||(LVS[key]={d:0,c:0,t:0}); o[k]+=v; try{ localStorage.setItem('iskra-bolt-lvlstats',JSON.stringify(LVS)); }catch(e){} }
+var pendingDiff=null;
 let storyI=0, storyNext=null;
+function startNGPlus(){
+  run.ng=(run.ng||0)+1; run.relics={}; run.inv={}; run.offer=[]; run.reward=null; saveRun();
+  best=0; try{ localStorage.setItem('iskra-bolt-sheet'+modeSuffix(),'0'); }catch(e){} for(const k in cache) delete cache[k];
+  snapSlot(); sfx('boss'); deaths=0; totalTime=0; gears=0;
+  toastQ.push({small:'Новая игра +',title:'НИ+'+run.ng+': прокачка сохранена, враги злее',icon:'first'}); showToast();
+  startGame(0,true);
+}
 function doNewGame(slotIdx){
   if(slotIdx==null) slotIdx=newSlotTarget>=0?newSlotTarget:Math.max(0,slots.findIndex(x=>!x));
   slots[slotIdx]=null; activeSlot=slotIdx; store.set('iskra-bolt-slot',slotIdx);
   achGot={}; store.set('iskra-bolt-ach',achGot); stats={gears:0,kills:0,stomps:0,bosses:[],pw:[]}; saveStats();
   best=0; try{ localStorage.setItem('iskra-bolt-sheet'+modeSuffix(),'0'); }catch(e){}
   for(const k in cache) delete cache[k];
-  run={score:0,wallet:0,up:{},offer:[],refresh:0,reward:null,inv:{}};
+  run={score:0,wallet:0,up:{},offer:[],refresh:0,reward:null,inv:{},diff:pendingDiff||'normal',ng:0};
   slots[slotIdx]={mode:solo?soloHero:'2',best:0,run,ach:{},stats,saved:Date.now(),created:Date.now(),lvl:0}; store.set('iskra-bolt-slots',slots);
   if(anyCheat()) unlock('cheater'); storyNext=()=>startGame(0); proT=0; setState('prologue');
 }
@@ -2598,7 +2640,7 @@ function loadTick(){
   if(raw>=1){ setTimeout(()=>{ if(state!=='loading'||loadJob!==J) return; loadJob=null; loadLevel(J.i); setState('play'); },220); return; }
   requestAnimationFrame(loadTick);
 }
-function startGame(i){ lastIntro=-1; audioInit(); runClean=(i===0); if(i===0){ run={score:0,wallet:0,up:{},offer:[],refresh:0,reward:null,inv:{}}; saveRun(); } const se=document.getElementById('score'); if(se) se.textContent=run.score.toLocaleString('ru-RU'); if(i===0){deaths=0;totalTime=0;gears=0;$('deaths').textContent=0;$('gears').textContent=0;} loadingTo(i); }
+function startGame(i,keep){ lastIntro=-1; audioInit(); runClean=(i===0); if(i===0&&!keep){ const df=run&&run.diff; run={score:0,wallet:0,up:{},offer:[],refresh:0,reward:null,inv:{},diff:pendingDiff||df||'normal',ng:0}; pendingDiff=null; saveRun(); } const se=document.getElementById('score'); if(se) se.textContent=run.score.toLocaleString('ru-RU'); if(i===0){deaths=0;totalTime=0;gears=0;$('deaths').textContent=0;$('gears').textContent=0;} loadingTo(i); }
 function nextLevel(){ lastIntro=-1; carry={solo}; run.inv=run.inv||{}; for(const p of players) if(!p.absent) run.inv[p.kind]=p.bag.slice(); saveRun(); for(const p of players) if(!p.absent) carry[p.kind]={hp:p.hp,shield:p.shield,pw:Object.assign({},p.pw)}; loadingTo(levelIdx+1); }
 function handleMeta(){
   if(NET.role==='guest'&&(state==='play'||state==='netwait')&&pressed.has('Escape')){ guestPause(); pressed.clear(); return; }
@@ -2609,6 +2651,7 @@ function handleMeta(){
   if(state==='menu'&&pressed.has('Escape')){ setState('title'); return; }
   if(state==='hero'&&pressed.has('Escape')){ setState(heroBack); return; }
   if((state==='cheats'||state==='slots')&&pressed.has('Escape')){ setState('menu'); return; }
+  if(state==='diffpick'&&pressed.has('Escape')){ setState(slots.some(Boolean)?'slots':'menu'); return; }
   if(state==='report'&&pressed.has('Escape')){ setState('settings'); return; }
   if(state==='story'&&(pressed.has('Escape'))){ const f=storyNext; storyNext=null; f&&f(); return; }
   if(state==='confirmNew'&&pressed.has('Escape')){ setState('slots'); return; }
@@ -2635,7 +2678,7 @@ function handleMeta(){
   }
   const ae=document.activeElement, onBtn=ae&&(ae.tagName==='BUTTON'||ae.tagName==='INPUT');
   if(pressed.has('Enter')&&!onBtn){
-    if(state==='menu') startGame(best>0&&best<TOTAL?best:0); else if(state==='done'||(state==='shop'&&shopFrom==='boss')) nextLevel(); else if(state==='gameover') retryLevel(); else if(state==='win') startGame(0);
+    if(state==='menu') startGame(best>0&&best<TOTAL?best:0); else if(state==='done'||(state==='shop'&&shopFrom==='boss')) nextLevel(); else if(state==='gameover') retryLevel(); else if(state==='win') startNGPlus();
   }
 }
 
@@ -3349,7 +3392,7 @@ function drawHud(){
     drawBag(p,x0,dir); ctx.font="700 11px Unbounded, 'Arial Black', sans-serif"; ctx.textBaseline='middle';
     ctx.fillStyle=c; ctx.textAlign=dir>0?'left':'right'; const name=p.kind==='spark'?'ИСКРА':'БОЛТ';
     ctx.fillText(name,x,T/2); x+=dir*(ctx.measureText(name).width+12);
-    for(let i=0;i<Math.max(3+U('hearts'),p.hp);i++){ ctx.fillStyle=i<p.hp?'#ff6b81':'rgba(255,107,129,.2)'; heart(x+dir*8,T/2+1,7); x+=dir*20; }
+    for(let i=0;i<Math.max(Math.max(1,3+U('hearts')+(diffId()==='easy'?2:diffId()==='nightmare'?-2:0)),p.hp);i++){ ctx.fillStyle=i<p.hp?'#ff6b81':'rgba(255,107,129,.2)'; heart(x+dir*8,T/2+1,7); x+=dir*20; }
     if(p.shield){ ctx.fillStyle='#9cc3ff'; ctx.beginPath(); ctx.arc(x+dir*8,T/2,6,0,Math.PI*2); ctx.fill(); x+=dir*20; }
     for(const k of ['triple','rapid','power']){
       if(p.pw[k]<=0) continue;
@@ -4141,7 +4184,7 @@ function netGuestInput(){
   if(NET.conn&&NET.conn.open){ try{ NET.conn.send({t:'in',lv:levelIdx,p:me?[Math.round(me.x*10)/10,Math.round(me.y*10)/10,Math.round(me.vx),Math.round(me.vy),me.face]:null,i:{dir:i.dir,jump:i.jump,ab:i.ab,fire:i.fire,jp:a.jp,ap:a.ap,use:a.use,nx:a.nx}}); }catch(e){} NET.acc={}; }
   return i;
 }
-const GAME_VER='0.92';
+const GAME_VER='0.93';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' beta'; $('screen').appendChild(v); })();
 window.__ib={proTest:()=>{proT=0;storyNext=null;setState("prologue");},endTest:()=>{endT=0;setState("ending");},net:{NET,netApply,netSnap},getLevel,startGame,dmgE:(e,d)=>damageEnemy(e,d),openSecret,nextLevel,hitBoss:(d)=>hitBoss(d),get outro(){return outro},get state(){return {state,levelIdx,boss,players,enemies,pickups,arena,run,movers,grid,ebullets,bullets}}};
 const hot=window.claude&&window.claude.hot;
