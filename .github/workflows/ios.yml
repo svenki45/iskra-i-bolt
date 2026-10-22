@@ -31,7 +31,7 @@ jobs:
           /usr/libexec/PlistBuddy -c "Add :UIRequiresFullScreen bool true" $P || /usr/libexec/PlistBuddy -c "Set :UIRequiresFullScreen true" $P
           /usr/libexec/PlistBuddy -c "Add :UIStatusBarHidden bool true" $P || /usr/libexec/PlistBuddy -c "Set :UIStatusBarHidden true" $P
           /usr/libexec/PlistBuddy -c "Add :UIViewControllerBasedStatusBarAppearance bool false" $P || /usr/libexec/PlistBuddy -c "Set :UIViewControllerBasedStatusBarAppearance false" $P
-          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.11" $P || true
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.12" $P || true
           ICON=$(ls ios/App/App/Assets.xcassets/AppIcon.appiconset/*.png | head -1)
           cp res/icon-1024.png "$ICON"
       - name: Build unsigned IPA
@@ -47,4 +47,4 @@ jobs:
         env: { GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}' }
         run: |
           gh release delete ipa -y --cleanup-tag || true
-          gh release create ipa iskra-i-bolt.ipa --title "Искра и Болт — IPA для iOS (Sideloadly)" --notes "Неподписанная сборка v1.11. Установка через Sideloadly с вашим Apple ID."
+          gh release create ipa iskra-i-bolt.ipa --title "Искра и Болт — IPA для iOS (Sideloadly)" --notes "Неподписанная сборка v1.12. Установка через Sideloadly с вашим Apple ID."

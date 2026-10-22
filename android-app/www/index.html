@@ -384,9 +384,14 @@ body.touch .hero>.paddiag{grid-column:1!important;grid-row:2/span 12}
 
 body.touch .ach svg,body.touch .ach .medal{transform:scale(.85)}
 #screen{position:relative}
-body.r3 .overlay .pzdeco{opacity:.3}
-body.r3 .overlay.pz{background:linear-gradient(160deg,rgba(10,22,46,.55),rgba(18,14,44,.62))!important}
-body.r3 .overlay{backdrop-filter:blur(2.5px) saturate(1.15)}
+/* 3D menu buttons (when "3D environment" is on) */
+body.b3d .overlay button.primary,body.b3d .overlay button.secondary,body.b3d .overlay .opt,body.b3d .overlay .mbtn,body.b3d #bOne,body.b3d #bTwo,body.b3d #bOnline{transform:perspective(700px) translateY(0);transition:transform .14s ease,box-shadow .14s ease,filter .14s;will-change:transform}
+body.b3d .overlay button.primary{box-shadow:0 7px 0 #9a6c16,0 12px 22px rgba(0,0,0,.45),inset 0 2px 0 rgba(255,255,255,.45),inset 0 -3px 0 rgba(0,0,0,.12)}
+body.b3d .overlay button.secondary,body.b3d .overlay .opt,body.b3d #bOne,body.b3d #bOnline{box-shadow:0 6px 0 rgba(5,10,24,.9),0 11px 20px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.18)}
+body.b3d #bTwo{box-shadow:0 7px 0 #9a6c16,0 12px 22px rgba(0,0,0,.45),inset 0 2px 0 rgba(255,255,255,.45)}
+body.b3d .overlay button.primary:hover,body.b3d .overlay button.secondary:hover,body.b3d .overlay .opt:hover,body.b3d .overlay button:focus-visible,body.b3d.kbnav .overlay button:focus,body.b3d #bOne:hover,body.b3d #bTwo:hover,body.b3d #bOnline:hover{transform:perspective(700px) rotateX(10deg) translateY(-4px) scale(1.02);filter:brightness(1.08)}
+body.b3d .overlay button.primary:active,body.b3d .overlay button.secondary:active,body.b3d .overlay .opt:active,body.b3d #bOne:active,body.b3d #bTwo:active,body.b3d #bOnline:active{transform:perspective(700px) translateY(5px);box-shadow:0 1px 0 rgba(5,10,24,.9),0 3px 8px rgba(0,0,0,.4)}
+body.b3d .overlay .opt.on{box-shadow:0 3px 0 #9a6c16,0 6px 12px rgba(0,0,0,.4);transform:perspective(700px) translateY(3px)}
 </style>
 
 <div class="app">
@@ -2529,7 +2534,7 @@ function setState(s){
       </div>
       ${touchUI.on?'<div class="btns"><button class="secondary" id="bTedit3" type="button">Кнопки и размер экрана</button></div>':''}<div class="btns"><button class="secondary" id="bReport" type="button">Отчёт для тестов</button></div><div class="btns"><button class="secondary" id="bDef" type="button">Сбросить</button><button class="primary" id="bBack" type="button">Готово · Esc</button></div></div>`;
     for(const id of ['master','music','sfx','particles']){ const el=$(id); el.oninput=()=>{ settings[id]=el.value/100; $(id+'O').textContent=el.value+'%'; if(id==='particles') settings.quality='custom'; saveSettings(); applyVolumes(); if(id==='sfx'||id==='master') sfx('gear'); }; }
-    for(const id of ['mute','glow','ambient','trails','vignette','shake','flash','retro','r3d']){ const el=$(id); el.onchange=()=>{ settings[id]=el.checked; if(id==='r3d'){ R3D.on=el.checked; const eb=document.getElementById('err3d'); if(eb) eb.remove(); } if(!['mute','shake','flash','retro','r3d'].includes(id)) settings.quality='custom'; saveSettings(); applyVolumes(); const sc=overlay.scrollTop; setState('settings'); overlay.scrollTop=sc; }; }
+    for(const id of ['mute','glow','ambient','trails','vignette','shake','flash','retro','r3d']){ const el=$(id); el.onchange=()=>{ settings[id]=el.checked; if(id==='r3d'){ R3D.on=el.checked; document.body.classList.toggle('b3d',el.checked); const eb=document.getElementById('err3d'); if(eb) eb.remove(); } if(!['mute','shake','flash','retro','r3d'].includes(id)) settings.quality='custom'; saveSettings(); applyVolumes(); const sc=overlay.scrollTop; setState('settings'); overlay.scrollTop=sc; }; }
     overlay.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{ settings.quality=b.dataset.q; Object.assign(settings,PRESETS[b.dataset.q]); saveSettings(); fit(); const sc=overlay.scrollTop; setState('settings'); overlay.scrollTop=sc; });
     overlay.querySelectorAll('[data-lang]').forEach(b=>b.onclick=()=>{ if(b.dataset.lang!==LANG) setLang(b.dataset.lang); });
     overlay.querySelectorAll('[data-song]').forEach(b=>b.onclick=()=>{ audioInit(); previewSong=b.dataset.song; const sc=overlay.scrollTop; setState('settings'); overlay.scrollTop=sc; });
@@ -4624,14 +4629,14 @@ const R3D=(()=>{
       else if(ge) console.warn('GL error',ge); }catch(e){} }
   };
   R.hide=()=>{ if(glc) glc.style.display='none'; document.body.classList.remove('r3'); };
-  R.fail=err=>{ R.on=false; try{ if(glc) glc.style.display='none'; }catch(e){} const msg=(err&&(err.message||err))+''; console.error('3D error',err);
+  R.fail=err=>{ R.on=false; document.body.classList.remove('b3d'); try{ if(glc) glc.style.display='none'; }catch(e){} const msg=(err&&(err.message||err))+''; console.error('3D error',err);
     let box=document.getElementById('err3d'); if(!box){ box=document.createElement('div'); box.id='err3d'; box.style.cssText='position:fixed;left:8px;bottom:8px;z-index:9998;max-width:70vw;background:#3a0d14ee;color:#ffd6d6;font:12px/1.35 system-ui;padding:8px 10px;border-radius:8px;border:1px solid #ff6b6b'; document.body.appendChild(box); }
     box.textContent='3D не запустилось, показан 2D. Ошибка: '+msg.slice(0,220);  };
   return R;
 })();
 
-R3D.on=settings.r3d!==false&&R3D.on;
-const GAME_VER='1.11';
+R3D.on=settings.r3d!==false&&R3D.on; document.body.classList.toggle('b3d',R3D.on);
+const GAME_VER='1.12';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' beta'; $('screen').appendChild(v); })();
 window.__ib={proTest:()=>{proT=0;storyNext=null;setState("prologue");},endTest:()=>{endT=0;setState("ending");},net:{NET,netApply,netSnap},getLevel,startGame,dmgE:(e,d)=>damageEnemy(e,d),complete:()=>complete(),hurt:i=>hurt(players[i]),setState:x=>setState(x),startDemo:()=>startDemo(),stopDemo:()=>stopDemo(),get demo(){return demo},tr:x=>tr(x),demoAt:i=>{ lastIntro=-1; loadLevel(i); follow=true; demoT=0; setState('play'); },get combo(){return combo},openSecret,nextLevel,hitBoss:(d)=>hitBoss(d),get outro(){return outro},get state(){return {state,levelIdx,boss,players,enemies,pickups,arena,run,movers,grid,ebullets,bullets}}};
 const hot=window.claude&&window.claude.hot;
