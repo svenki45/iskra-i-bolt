@@ -311,6 +311,15 @@ body.touch #bOnline{padding:6px 14px;font-size:13px}
 #bOnline small{display:inline;margin-left:8px;font-weight:500;opacity:.75}
 body.touch.playing{touch-action:none}
 body.touch.playing .stage{justify-content:center}
+#touch .tb.sel{border-color:#ffd166!important;box-shadow:0 0 0 3px rgba(255,209,102,.5)}
+body.tedit #touch .tb{animation:wob 1.2s ease-in-out infinite}
+@keyframes wob{50%{transform:rotate(2deg)}}
+#tedbar{position:fixed;top:max(6px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:60;background:rgba(8,18,38,.94);border:1px solid rgba(255,209,102,.5);border-radius:14px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;align-items:center;font:500 12px var(--body);color:#eaf2ff;max-width:92vw}
+#tedbar[hidden]{display:none}
+#tedbar div{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;align-items:center}
+#tedbar button{font:600 12px var(--body);padding:6px 10px;border-radius:9px;border:1px solid rgba(190,215,255,.4);background:rgba(20,36,66,.9);color:#eaf2ff}
+#tedbar button.on,#tedbar button.ok{background:#e7b54a;color:#0b1830;border-color:#e7b54a}
+#tedbar .v{min-width:3em;text-align:center;font-weight:700}
 </style>
 
 </head>
@@ -351,8 +360,9 @@ let scale=1;
 
 /* ================= layout ================= */
 function fit(){
-  const r=$('stage').getBoundingClientRect(); const side=(document.body.classList.contains('touch')&&document.body.classList.contains('playing'))?touchSide()*2:0;
-  const s=Math.max(0.1,Math.min((r.width-side)/VW, r.height/VH));
+  const r=$('stage').getBoundingClientRect(); const tch=document.body.classList.contains('touch')&&document.body.classList.contains('playing'), TL=(typeof touchLayout!=='undefined')?touchLayout:{};
+  const side=tch&&!TL.over?touchSide()*2:0;
+  const s=Math.max(0.1,Math.min((r.width-side)/VW, r.height/VH))*(tch?(TL.field||1):1);
   const w=Math.floor(VW*s), h=Math.floor(VH*s);
   $('screen').style.width=w+'px'; $('screen').style.height=h+'px';
   const dpr=(typeof settings!=='undefined'&&settings.quality==='low')?1:Math.min(2,window.devicePixelRatio||1);
@@ -2008,7 +2018,7 @@ function decoBase(){ return `<div class="hbg s"><b></b><b></b><b></b><b></b><b><
 function setState(s){
   const prevState=state, fk=focusKey(document.activeElement);
   if(s==='play'){ prevPad[0]={j:true,a:true}; prevPad[1]={j:true,a:true}; }
-  state=s; overlay.hidden=(s==='play'||s==='dying');
+  state=s; overlay.hidden=(s==='play'||s==='dying'||s==='touchedit'); { const tb=document.getElementById('tedbar'); if(tb&&s!=='touchedit') tb.hidden=true; }
   overlay.classList.toggle('clear',s==='title'); if(s!=='hero'){ overlay.classList.toggle('hs',solo&&soloHero==='spark'); overlay.classList.toggle('hb',solo&&soloHero==='bolt'); overlay.classList.toggle('hd',!solo); } else overlay.classList.remove('hd'); overlay.classList.toggle('pz',s!=='title'&&s!=='play'&&s!=='dying');
   if(s==='title'){
     const word=(w,cls,d0)=>[...w].map((ch,i)=>`<span class="lt ${cls}" style="animation-delay:${(d0+i*0.07).toFixed(2)}s">${ch}</span>`).join('');
@@ -2091,9 +2101,25 @@ function setState(s){
     $('bNetBack').onclick=()=>{ if(NET.waiting){ try{ NET.mq&&NET.mq.close(); }catch(e){} NET.mq=null; NET.waiting=false; } NET.status=''; setState('menu'); };
   } else if(s==='netwait'){
     overlay.innerHTML=`<div class="card"><span class="eyebrow">Онлайн · комната ${NET.code}</span><h2>Вы — Болт</h2><div class="ldgear">${gearSvg('#62c7c1')}</div><p id="netHostSt">Ждём хоста…</p><p class="padst">Управление: любые клавиши героя (стрелки или WASD) или геймпад. Esc — выйти.</p></div>`;
+  } else if(s==='touchedit'){
+    overlay.hidden=true; let tb=document.getElementById('tedbar'); if(!tb){ tb=document.createElement('div'); tb.id='tedbar'; document.body.appendChild(tb); }
+    const pct=Math.round((touchLayout.field||1)*100);
+    tb.innerHTML=`<b>Настройка</b><span>Тяните кнопки пальцем. Выбранная — жёлтая.</span>
+      <div><button data-t="s-">Кнопка −</button><button data-t="s+">Кнопка +</button></div>
+      <div><button data-t="f-">Поле −</button><span class="v">${pct}%</span><button data-t="f+">Поле +</button><button data-t="ov" class="${touchLayout.over?'on':''}">Кнопки поверх поля</button></div>
+      <div><button data-t="rs">Сбросить</button><button data-t="ok" class="ok">Готово</button></div>`;
+    tb.hidden=false;
+    tb.querySelectorAll('[data-t]').forEach(x=>x.onclick=()=>{ const t=x.dataset.t;
+      if(t==='s-') editSize(-.15); else if(t==='s+') editSize(.15);
+      else if(t==='f-'){ touchLayout.field=Math.max(.6,(touchLayout.field||1)-.05); saveTouchLayout(); setState('touchedit'); }
+      else if(t==='f+'){ touchLayout.field=Math.min(1,(touchLayout.field||1)+.05); saveTouchLayout(); setState('touchedit'); }
+      else if(t==='ov'){ touchLayout.over=!touchLayout.over; saveTouchLayout(); setState('touchedit'); }
+      else if(t==='rs'){ touchLayout={b:{},field:1,over:false}; editSel=null; saveTouchLayout(); setState('touchedit'); }
+      else if(t==='ok'){ tb.hidden=true; editSel=null; buildTouch(true); setState(editBack); } });
+    setTimeout(()=>{ buildTouch(true); fit(); },0); return;
   } else if(s==='netleave'){
-    overlay.innerHTML=`<div class="card"><span class="eyebrow">Онлайн</span><h2>Выйти из игры?</h2><div class="btns col"><button class="primary" id="bStay" type="button">Остаться · Esc</button><button class="secondary" id="bLeave" type="button">Выйти в меню</button></div></div>`;
-    $('bStay').onclick=()=>setState(NET.hostState==='play'?'play':'netwait'); $('bLeave').onclick=()=>netLeave();
+    overlay.innerHTML=`<div class="card"><span class="eyebrow">Онлайн</span><h2>Выйти из игры?</h2><div class="btns col"><button class="primary" id="bStay" type="button">Остаться · Esc</button>${touchUI.on?'<button class="secondary" id="bTedit2" type="button">Кнопки и размер экрана</button>':''}<button class="secondary" id="bLeave" type="button">Выйти в меню</button></div></div>`;
+    $('bStay').onclick=()=>setState(NET.hostState==='play'?'play':'netwait'); $('bLeave').onclick=()=>netLeave(); if($('bTedit2')) $('bTedit2').onclick=()=>{ editBack='netleave'; setState('touchedit'); };
   } else if(s==='slots'){
     const card=(x,i)=>{ const col=x?(x.mode==='spark'?'#ff8a3d':x.mode==='bolt'?'#62c7c1':'#ffd166'):'#5f7393';
       const info=x?`<div class="slmode" style="color:${col}">${MODE_NAME(x.mode)}</div><div class="sllvl">Уровень ${Math.min(TOTAL,x.best+1)} <span>· ${getLevelName(x)}</span></div>
@@ -2283,7 +2309,8 @@ function setState(s){
       <div class="rest b" ${solo&&soloHero!=='bolt'?'hidden':''}><canvas id="pvB" width="160" height="160"></canvas><span>z</span><span>z</span><span>Z</span></div></div>`;
     overlay.innerHTML=deco+`<div class="card"><span class="eyebrow">${own==null?'Пауза':'Пауза · поставил'+(own===1?'':'а')+' '+PNAME[own]}</span><h2>Перерыв</h2>
       ${own==null?'':`<p class="padst" id="pauseNote" style="color:${own?'#62c7c1':'#ff8a3d'}">Снять паузу может только ${PNAME[own]}: ${PKEY[own]} или Start на своём геймпаде.</p>`}
-      <div class="btns col">${own==null?'<button class="primary" id="bRes" type="button">Продолжить · Esc</button>':''}<button class="secondary" id="bRe" type="button">Уровень заново</button><button class="secondary" id="bHelpP" type="button">Помощь</button><button class="secondary" id="bShopP" type="button">Лавка</button><button class="secondary" id="bSet2" type="button">Настройки</button><button class="secondary" id="bCtl2" type="button">Управление</button><button class="secondary" id="bMenu" type="button">В меню</button></div></div>`;
+      <div class="btns col">${own==null?'<button class="primary" id="bRes" type="button">Продолжить · Esc</button>':''}<button class="secondary" id="bRe" type="button">Уровень заново</button>${touchUI.on?'<button class="secondary" id="bTedit" type="button">Кнопки и размер экрана</button>':''}<button class="secondary" id="bHelpP" type="button">Помощь</button><button class="secondary" id="bShopP" type="button">Лавка</button><button class="secondary" id="bSet2" type="button">Настройки</button><button class="secondary" id="bCtl2" type="button">Управление</button><button class="secondary" id="bMenu" type="button">В меню</button></div></div>`;
+    if($('bTedit')) $('bTedit').onclick=()=>{ editBack='pause'; setState('touchedit'); };
     if($('bRes')) $('bRes').onclick=()=>{ pauseOwner=null; setState('play'); }; $('bCtl2').onclick=()=>{ ctlBack='pause'; setState('controls'); }; $('bSet2').onclick=()=>{ ctlBack='pause'; setState('settings'); }; $('bShopP').onclick=()=>{ shopFrom='pause'; setState('shop'); }; $('bHelpP').onclick=()=>{ helpBack='pause'; setState('help'); }; $('bRe').onclick=()=>{ loadingTo(levelIdx,true); }; $('bMenu').onclick=()=>{loadLevel(levelIdx);setState('menu');};
   } else if(s==='done'){
     const L=getLevel(levelIdx), nextBoss=(levelIdx+2)%10===0;
@@ -3673,13 +3700,31 @@ const TICON={left:'<svg viewBox="0 0 24 24"><path d="M15 4L7 12l8 8" fill="none"
   right:'<svg viewBox="0 0 24 24"><path d="M9 4l8 8-8 8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   jump:'<svg viewBox="0 0 24 24"><path d="M12 20V5M5 11l7-7 7 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>'};
 function touchSide(){ return Math.round(Math.min(210,Math.max(118,innerWidth*0.165))); }
+var touchLayout=(()=>{ try{ return Object.assign({b:{},field:1,over:false},JSON.parse(localStorage.getItem('iskra-bolt-touchlayout')||'{}')); }catch(e){ return {b:{},field:1,over:false}; } })();
+function saveTouchLayout(){ try{ localStorage.setItem('iskra-bolt-touchlayout',JSON.stringify(touchLayout)); }catch(e){} buildTouch(true); fit(); }
+let editSel=null, editBack='pause';
+function wireEdit(el){
+  el.querySelectorAll('[data-id]').forEach(b=>{
+    if(b.dataset.id===editSel) b.classList.add('sel');
+    b.addEventListener('pointerdown',e=>{ e.preventDefault(); editSel=b.dataset.id; el.querySelectorAll('.sel').forEach(x=>x.classList.remove('sel')); b.classList.add('sel');
+      const r=b.getBoundingClientRect(), ox=e.clientX-r.left, oy=e.clientY-r.top; try{ b.setPointerCapture(e.pointerId); }catch(_){}
+      const mv=ev=>{ b.style.left=(ev.clientX-ox)+'px'; b.style.top=(ev.clientY-oy)+'px'; };
+      const up=()=>{ b.removeEventListener('pointermove',mv); b.removeEventListener('pointerup',up); const q=b.getBoundingClientRect(), o=touchLayout.b[b.dataset.id]||{s:1};
+        o.x=(q.left+q.width/2)/innerWidth; o.y=(q.top+q.height/2)/innerHeight; touchLayout.b[b.dataset.id]=o; saveTouchLayout(); };
+      b.addEventListener('pointermove',mv); b.addEventListener('pointerup',up); });
+  });
+}
+function editSize(d){ if(!editSel){ toastQ.push({small:'Кнопки',title:'Сначала нажмите на кнопку',icon:'first'}); showToast(); return; }
+  const b=touchUI.el.querySelector(`[data-id="${editSel}"]`); if(!b) return; const q=b.getBoundingClientRect(), o=touchLayout.b[editSel]||{s:1};
+  o.x=(q.left+q.width/2)/innerWidth; o.y=(q.top+q.height/2)/innerHeight; o.s=Math.max(.5,Math.min(2.2,(o.s||1)+d)); touchLayout.b[editSel]=o; saveTouchLayout(); }
 function buildTouch(force){
   if(!touchUI.el){ touchUI.el=document.createElement('div'); touchUI.el.id='touch'; touchUI.el.hidden=true; document.body.appendChild(touchUI.el);
     const r=document.createElement('div'); r.id='rotate'; r.innerHTML='<div><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ffd166" stroke-width="1.6"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M20 8a8 8 0 0 1 0 8M4 16a8 8 0 0 1 0-8"/></svg><b>Поверните телефон</b>Играть удобнее горизонтально</div>'; document.body.appendChild(r); }
-  const sig=[solo,soloHero,NET.role,innerWidth>innerHeight,Math.round(innerWidth/50)].join();
+  const sig=[JSON.stringify(touchLayout),solo,soloHero,NET.role,innerWidth>innerHeight,Math.round(innerWidth/50)].join();
   if(!force&&sig===touchUI.sig) return; touchUI.sig=sig;
   const W=innerWidth,H=innerHeight, S=touchSide(), m=8, el=touchUI.el;
-  const btn=(kind,act,x,y,sz,label,sub)=>`<button type="button" class="tb ${kind==='spark'?'s':'b'}" data-k="${kind}" data-a="${act}" style="left:${Math.round(x)}px;top:${Math.round(y)}px;width:${Math.round(sz)}px;height:${Math.round(sz)}px">${TICON[act]||label}${sub?`<small>${sub}</small>`:''}</button>`;
+  const LK=(solo||NET.role)?'one':'two';
+  const btn=(kind,act,x,y,sz,label,sub)=>{ const id=LK+'|'+kind+'|'+act, o=(touchLayout.b||{})[id]; if(o){ sz=sz*(o.s||1); x=o.x*W-sz/2; y=o.y*H-sz/2; } return `<button type="button" class="tb ${kind==='spark'?'s':'b'}" data-id="${id}" data-k="${kind}" data-a="${act}" style="left:${Math.round(x)}px;top:${Math.round(y)}px;width:${Math.round(sz)}px;height:${Math.round(sz)}px">${TICON[act]||label}${sub?`<small>${sub}</small>`:''}</button>`; };
   let html='';
   const abN=k=>k==='spark'?'рывок':'удар';
   // buttons live only in the side columns next to the playfield, never on top of it
@@ -3705,14 +3750,15 @@ function buildTouch(force){
   el.innerHTML=html;
   el.querySelectorAll('[data-a]').forEach(b=>{
     const code=()=>binds[b.dataset.k].kb[b.dataset.a];
-    const press=()=>{ const c=code(); if(!c) return; if(!down.has(c)) pressed.add(c); down.add(c); b.classList.add('on'); };
+    const press=()=>{ if(state==='touchedit') return; const c=code(); if(!c) return; if(!down.has(c)) pressed.add(c); down.add(c); b.classList.add('on'); };
     const rel=()=>{ const c=code(); if(c) down.delete(c); b.classList.remove('on'); };
     b.addEventListener('pointerdown',e=>{ e.preventDefault(); try{ b.releasePointerCapture(e.pointerId); }catch(_){} press(); });
     b.addEventListener('pointerenter',e=>{ if(e.pointerType==='touch'&&e.buttons) press(); });
     for(const ev of ['pointerup','pointercancel','pointerleave']) b.addEventListener(ev,rel);
     b.addEventListener('contextmenu',e=>e.preventDefault());
   });
-  el.querySelector('[data-pause]').addEventListener('pointerdown',e=>{ e.preventDefault(); if(NET.role==='guest'){ setState('netleave'); return; } if(state==='play'){ pauseOwner=null; setState('pause'); } });
+  el.querySelector('[data-pause]').addEventListener('click',e=>{ e.preventDefault(); e.stopPropagation(); if(state==='touchedit') return; if(NET.role==='guest'){ setState('netleave'); return; } if(state==='play'){ pauseOwner=null; setState('pause'); } });
+  if(state==='touchedit') wireEdit(el);
 }
 const pauseBtn=(()=>{ const b=document.createElement('button'); b.type='button'; b.id='pauseBtn'; b.title='Пауза (Esc)'; b.setAttribute('aria-label','Пауза');
   b.innerHTML='<svg viewBox="0 0 24 24" width="18" height="18"><rect x="6" y="5" width="4" height="14" rx="1.2" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1.2" fill="currentColor"/></svg>';
@@ -3722,10 +3768,10 @@ setInterval(()=>{
   pauseBtn.hidden=!(state==='play'&&!touchUI.on&&!intro);
   if(!touchUI.el) buildTouch(true);
   const playing=state==='play'||state==='dying';
-  document.body.classList.toggle('playing',playing); document.body.classList.toggle('titling',state==='title'); if(touchUI.lastPlay!==playing){ touchUI.lastPlay=playing; try{ fit(); }catch(e){} }
+  document.body.classList.toggle('playing',playing||state==='touchedit'); document.body.classList.toggle('tedit',state==='touchedit'); document.body.classList.toggle('titling',state==='title'); if(touchUI.lastPlay!==playing){ touchUI.lastPlay=playing; try{ fit(); }catch(e){} }
   document.body.classList.toggle('portrait',innerHeight>innerWidth);
   if(touchUI.on){ buildTouch(false); }
-  touchUI.el.hidden=!(touchUI.on&&playing);
+  touchUI.el.hidden=!(touchUI.on&&(playing||state==='touchedit'));
   if(!touchUI.el.hidden===false) touchUI.el.querySelectorAll('.on').forEach(b=>{ b.classList.remove('on'); });
 },150);
 if(isTouchDev()||window.MOBILE_BUILD) setTimeout(()=>setTouch(true),0);
@@ -3852,7 +3898,7 @@ function netApply(d){
   const se=document.getElementById('score'); if(se) se.textContent=(d.SC||0).toLocaleString('ru-RU');
   if(d.TX) for(const t of d.TX){ if(!texts.some(x=>x.t===t.t&&Math.abs(x.life-t.life)<.5)) texts.push(t); }
   const live=d.st==='play'||d.st==='dying';
-  if(live&&state!=='play'&&state!=='pause') setState('play');
+  if(live&&!['play','pause','netleave','touchedit'].includes(state)) setState('play');
   if(!live&&state==='play') setState('netwait');
   if(state==='netwait') { const el=document.getElementById('netHostSt'); if(el) el.textContent=NET_ST[d.st]||'Хост в меню'; }
 }
