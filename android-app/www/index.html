@@ -222,7 +222,7 @@ body.touch.playing .hint{display:none}
 #touch .tb svg{width:46%;height:46%}
 #rotate{position:fixed;inset:0;z-index:60;background:rgba(6,14,30,.94);display:none;place-items:center;text-align:center;padding:24px;font:600 17px var(--body);color:#eaf2ff}
 #rotate b{display:block;font:900 22px var(--display);margin:14px 0 6px;color:#ffd166}
-body.touch.portrait.playing #rotate{display:grid}
+body.touch.portrait #rotate{display:grid}
 .btns.col{flex-direction:column;flex-wrap:nowrap;align-items:stretch;width:100%;max-width:340px;margin-inline:auto}
 .btns.col>button{width:100%}
 @media (max-height:520px){.btns.col{display:grid;grid-template-columns:1fr 1fr;max-width:480px;gap:8px}.btns.col>button.primary{grid-column:1/-1}.btns.col>button{padding-block:9px}}
@@ -350,6 +350,39 @@ body.touch .app{padding-block:0;gap:0}
 body.touch.cine,body.touch.cine .app,body.touch.cine #stage{background:#080a16!important}
 body.touch.cine #screen{border:0!important;box-shadow:none!important;border-radius:0!important}
 body.touch.cine #verTag,body.touch.cine #pauseBtn{display:none!important}
+body.touch .overlay .pzdeco{position:fixed!important;inset:0!important;height:auto!important}
+body.touch.titling,body.touch.titling .app,body.touch.titling #stage{background:#090d18!important}
+body.touch.titling #screen{border:0!important;box-shadow:none!important;border-radius:0!important}
+html,body{overscroll-behavior:none}
+body.touch{overflow:hidden;position:fixed;inset:0}
+body.touch .overlay{overflow-x:hidden}
+body.touch .card.wide{max-width:none}
+body.touch .card{gap:8px}
+body.touch .card>h2{font-size:clamp(20px,4.2vh,30px)!important;margin:0!important;line-height:1.1}
+body.touch .card>.eyebrow{margin:0}
+body.touch .card .shop{gap:8px}
+body.touch .card .hero{padding:10px 12px}
+body.touch .hero:has(>canvas){display:grid!important;grid-template-columns:96px 1fr;column-gap:12px;align-content:start;text-align:left}
+body.touch .hero:has(>canvas)>*{grid-column:2}
+body.touch .hero:has(>canvas)>h3{grid-column:1/-1}
+body.touch .hero>canvas{grid-column:1!important;grid-row:2/span 12;width:96px!important;height:96px!important;margin:0!important}
+body.touch .tog small{display:none}
+body.touch .card .hero>p.padst{display:none}
+body.touch .hero>h3{margin:0 0 4px}
+body.touch .crow{grid-template-columns:1.3fr 1fr!important}
+body.touch .crow>*:nth-child(2){display:none!important}
+body.touch .paddiag svg{max-width:180px}
+body.touch .achs{max-height:none;overflow:visible;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px}
+body.touch .ach{padding:6px 8px}
+body.touch .ach p{font-size:11.5px;margin:0}
+body.touch .ach h4{font-size:13px;margin:0 0 2px}
+body.touch .shop>.hero[hidden]{display:none!important}
+body.touch .hero:has(>.paddiag){display:grid!important;grid-template-columns:190px 1fr;column-gap:14px;align-content:start}
+body.touch .hero:has(>.paddiag)>*{grid-column:2}
+body.touch .hero:has(>.paddiag)>h3{grid-column:1/-1}
+body.touch .hero>.paddiag{grid-column:1!important;grid-row:2/span 12}
+
+body.touch .ach svg,body.touch .ach .medal{transform:scale(.85)}
 </style>
 
 <div class="app">
@@ -2417,7 +2450,7 @@ function setState(s){
     const got=Object.keys(achGot).length;
     overlay.innerHTML=`<div class="card wide"><span class="eyebrow">Открыто ${got} из ${ACH.length}</span><h2>Достижения</h2>
       <div class="achs">${ACH.map((a,i)=>`<div class="ach ${achGot[a.id]?'got':''}">${achIcon(a.id,!!achGot[a.id])}<div><h4>${a.n}</h4><p>${a.d}</p></div></div>`).join('')}</div>
-      <p style="font-size:13px">Всего: шестерёнок ${stats.gears} · врагов ${stats.kills} · разных боссов ${stats.bosses.length} из 4</p>
+      <p style="font-size:13px;margin:0">Всего: шестерёнок ${stats.gears} · врагов ${stats.kills} · разных боссов ${stats.bosses.length} из 4</p>
       <div class="btns"><button class="primary" id="bBack" type="button">Назад · Esc</button></div></div>`;
     $('bBack').onclick=()=>setState('menu');
   } else if(s==='custom'){
@@ -4421,20 +4454,30 @@ addEventListener('keydown',actEv,true); addEventListener('pointerdown',actEv,tru
   setTimeout(()=>{ for(const ev of ['keydown','keyup','pointerdown','pointerup','click','touchstart','wheel']) removeEventListener(ev,block,{capture:true}); d.classList.add('out'); lastAct=performance.now(); setTimeout(()=>d.remove(),600); },5000); })();
 /* ===== touch polish: fit menus to screen, drop keyboard hints ===== */
 const isTouchUI=()=>document.body.classList.contains('touch');
-function fitOverlay(){ if(!overlay) return; const c=overlay.querySelector(':scope > .card'); if(!c) return; c.style.zoom='';
+function fitOverlay(){ if(!overlay) return; const c=overlay.querySelector(':scope > .card'); if(!c) return; c.style.transform=''; c.style.marginBottom=''; c.style.zoom='';
   if(!isTouchUI()||overlay.hidden) return;
-  const cs=getComputedStyle(overlay), avH=overlay.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom)-6, avW=overlay.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight)-6, h=c.offsetHeight, w=c.offsetWidth; if(!h||!w) return;
-  const r=Math.min(1,avH/h,avW/w); if(r<.99) c.style.zoom=Math.max(.45,r).toFixed(3); }
+  const cs=getComputedStyle(overlay), avH=Math.min(overlay.clientHeight,innerHeight)-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom)-6, avW=Math.min(overlay.clientWidth,innerWidth)-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight)-6, h=c.offsetHeight, w=c.offsetWidth; if(!h||!w) return;
+  const r=Math.min(1,avH/h,avW/w); if(r<.99){ const k=Math.max(.4,r); c.style.transformOrigin='top center'; c.style.transform='scale('+k.toFixed(3)+')'; c.style.marginBottom=(-h*(1-k)).toFixed(1)+'px'; } }
 const KEYHINT=/\s*·\s*(Enter|Esc|Tab|Пробел|Space)(?=\s*$)/g;
-function touchClean(root){ if(!isTouchUI()) return;
+const tabMem={};
+function customTabs(root){ if(!root.querySelectorAll) return; root.querySelectorAll('.shop').forEach(sh=>{ const hs=[...sh.children].filter(c=>c.classList.contains('hero')); if(hs.length!==2||sh.previousElementSibling&&sh.previousElementSibling.classList.contains('ctabs')) return;
+  const names=hs.map(h=>{ const t=h.querySelector('h3'); return t?(t.firstChild&&t.firstChild.nodeType===3?t.firstChild.data:t.textContent).trim():''; }); if(names.some(n=>!n)) return;
+  const key=names.join('|'); let cur=tabMem[key]||0;
+  const t=document.createElement('div'); t.className='opts ctabs'; t.innerHTML=names.map(n=>`<button type="button" class="opt">${n}</button>`).join(''); sh.before(t); sh.style.gridTemplateColumns='1fr';
+  const apply=()=>{ hs.forEach((h,i)=>h.hidden=i!==cur); [...t.children].forEach((b,i)=>b.classList.toggle('on',i===cur)); requestAnimationFrame(fitOverlay); };
+  [...t.children].forEach((b,i)=>b.onclick=()=>{ cur=tabMem[key]=i; apply(); }); apply(); }); }
+function touchClean(root){ if(!isTouchUI()) return; customTabs(root);
   const w=document.createTreeWalker(root,4); let n; const fix=[];
   while(n=w.nextNode()) if(KEYHINT.test(n.data)){ KEYHINT.lastIndex=0; fix.push(n); }
   for(const t of fix) t.data=t.data.replace(KEYHINT,'');
   root.querySelectorAll&&root.querySelectorAll('.padst,.keys,.hint').forEach(p=>{ if(/WASD|Стрелк|клавиш|Enter|Esc\b|\[ \]/.test(p.textContent)&&!p.closest('.helpbody')) p.style.display='none'; });
 }
-{ const ob=new MutationObserver(()=>{ touchClean(overlay); requestAnimationFrame(fitOverlay); }); ob.observe(overlay,{childList:true,subtree:true}); addEventListener('resize',()=>requestAnimationFrame(fitOverlay)); }
+const refit=()=>{ requestAnimationFrame(fitOverlay); setTimeout(fitOverlay,250); setTimeout(fitOverlay,900); };
+try{ document.fonts&&document.fonts.ready.then(refit); document.fonts&&document.fonts.addEventListener&&document.fonts.addEventListener('loadingdone',refit); }catch(e){}
+addEventListener('orientationchange',()=>setTimeout(refit,300));
+{ const ob=new MutationObserver(()=>{ touchClean(overlay); refit(); }); ob.observe(overlay,{childList:true,subtree:true}); addEventListener('resize',()=>requestAnimationFrame(fitOverlay)); }
 { const f=CanvasRenderingContext2D.prototype.fillText; CanvasRenderingContext2D.prototype.fillText=function(t,...a){ if(typeof t==='string'&&isTouchUI()){ if(t==='Enter — пропустить'||t==='прыжок — пропустить') t='Коснитесь — пропустить'; } return f.call(this,t,...a); }; }
-const GAME_VER='1.03';
+const GAME_VER='1.04';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' beta'; $('screen').appendChild(v); })();
 window.__ib={proTest:()=>{proT=0;storyNext=null;setState("prologue");},endTest:()=>{endT=0;setState("ending");},net:{NET,netApply,netSnap},getLevel,startGame,dmgE:(e,d)=>damageEnemy(e,d),complete:()=>complete(),hurt:i=>hurt(players[i]),setState:x=>setState(x),startDemo:()=>startDemo(),stopDemo:()=>stopDemo(),get demo(){return demo},tr:x=>tr(x),demoAt:i=>{ lastIntro=-1; loadLevel(i); follow=true; demoT=0; setState('play'); },get combo(){return combo},openSecret,nextLevel,hitBoss:(d)=>hitBoss(d),get outro(){return outro},get state(){return {state,levelIdx,boss,players,enemies,pickups,arena,run,movers,grid,ebullets,bullets}}};
 const hot=window.claude&&window.claude.hot;
