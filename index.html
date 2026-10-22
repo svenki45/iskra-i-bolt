@@ -3214,6 +3214,7 @@ function drawRelicHud(){
 }
 function drawHud(){
   drawRelicHud();
+  if(NET.role){ ctx.save(); ctx.font="600 11px Rubik, system-ui, sans-serif"; ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.fillStyle=NET.direct?'#7fe08a':'#ffd166'; ctx.fillText(NET.direct?'⚡ прямое соединение':'☁ через сервер',VW-T-6,VH-T*1.35); ctx.restore(); }
   const rows=[[players[0],'#ff8a3d',T,1],[players[1],'#62c7c1',VW-T,-1]];
   ctx.font="700 11px Unbounded, 'Arial Black', sans-serif"; ctx.textBaseline='middle';
   for(const [p,c,x0,dir] of (intro?[]:rows.filter(r=>!r[0].absent))){
@@ -3748,30 +3749,52 @@ function mqttClient(onMsg,onUp,onErr){
     pub:(t,o)=>{ try{ if(ws&&ws.readyState===1) ws.send(mqttPkt(0x30,[...mqttStr(t),...te.encode(JSON.stringify(o))])); }catch(e){} },
     close:()=>{ dead=true; clearInterval(ping); try{ ws.send(new Uint8Array([0xE0,0])); ws.close(); }catch(e){} } };
 }
+// --- direct P2P upgrade (lowest lag); MQTT stays as signalling + fallback ---
+const ICE=[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun.cloudflare.com:3478'}];
+function rtcGathered(pc){ return new Promise(res=>{ if(pc.iceGatheringState==='complete') return res(); const t=setTimeout(res,2500); pc.addEventListener('icegatheringstatechange',()=>{ if(pc.iceGatheringState==='complete'){ clearTimeout(t); res(); } }); }); }
+function rtcWire(ch){ NET.dcs=NET.dcs||{}; ch.onopen=()=>{ NET.dcs[ch.label]=ch; if(ch.label!=='g') return; NET.dc=ch; NET.direct=true; toastQ.push({small:'Онлайн',title:'⚡ Прямое соединение — без задержек',icon:'first'}); showToast(); };
+  ch.onmessage=e=>{ let d; try{ d=JSON.parse(e.data); }catch(_){ return; } NET.onMsg&&NET.onMsg(null,d); };
+  ch.onclose=()=>{ if(NET.dcs) delete NET.dcs[ch.label]; if(NET.dc===ch){ NET.dc=null; NET.direct=false; } }; }
+async function rtcStart(isHost,pub){
+  if(typeof RTCPeerConnection==='undefined') return;
+  try{ const pc=new RTCPeerConnection({iceServers:ICE}); NET.pc=pc;
+    if(isHost){ rtcWire(pc.createDataChannel('g',{ordered:false,maxRetransmits:0})); rtcWire(pc.createDataChannel('r',{ordered:true})); await pc.setLocalDescription(await pc.createOffer()); await rtcGathered(pc); pub({t:'rtc',sdp:pc.localDescription}); }
+  }catch(e){}
+}
+async function rtcOnSig(d){
+  try{ if(d.sdp.type==='offer'){ if(typeof RTCPeerConnection==='undefined') return; const pc=new RTCPeerConnection({iceServers:ICE}); NET.pc=pc; pc.ondatachannel=e=>rtcWire(e.channel);
+      await pc.setRemoteDescription(d.sdp); await pc.setLocalDescription(await pc.createAnswer()); await rtcGathered(pc); NET.rtcPub&&NET.rtcPub({t:'rtc',sdp:pc.localDescription}); }
+    else if(d.sdp.type==='answer'&&NET.pc) await NET.pc.setRemoteDescription(d.sdp); }catch(e){} }
+function rtcSend(o){ const c=NET.dcs&&NET.dcs[o.t==='s'?'g':'r']; if(c&&c.readyState==='open'){ try{ const s=JSON.stringify(o); if(s.length<60000){ c.send(s); return true; } }catch(e){} } return false; }
+function rtcClose(){ try{ for(const k in NET.dcs||{}) NET.dcs[k].close(); }catch(e){} NET.dcs={}; try{ NET.pc&&NET.pc.close(); }catch(e){} NET.dc=null; NET.pc=null; NET.direct=false; }
 function netFail(msg){ NET.status='⚠ '+msg; try{ NET.mq&&NET.mq.close(); }catch(e){} NET.mq=null; NET.conn=null; NET.role=null; NET.waiting=false; clearInterval(NET.hello); clearInterval(NET.watch); if(['net','netwait','play','dying'].includes(state)) setState('net'); }
 function netCode(){ const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let c=''; for(let i=0;i<5;i++) c+=A[Math.floor(Math.random()*A.length)]; return c; }
 function netWatch(){ NET.lastRx=performance.now(); clearInterval(NET.watch); NET.watch=setInterval(()=>{ if(NET.role&&performance.now()-NET.lastRx>9000) netLost(NET.role==='host'?'Друг пропал из сети':'Хост пропал из сети'); },1000); }
 function netHost(){
   NET.code=netCode(); const T='iskrabolt/'+NET.code; setState('net');
-  NET.mq=mqttClient((topic,d)=>{
+  const onH=(topic,d)=>{
+      if(d.t==='rtc'){ rtcOnSig(d); return; }
       if(d.v!==NET_VER){ if(d.t==='hello') NET.mq.pub(T+'/h',{t:'oldver',v:NET_VER}); return; }
       if(d.t==='hello'&&!NET.role){ NET.mq.pub(T+'/h',{t:'welcome',v:NET_VER}); NET.role='host'; NET.waiting=false; NET.lastG='';
-        NET.conn={open:true,send:o=>{ o.v=NET_VER; NET.mq.pub(T+'/h',o); },close:()=>{}}; netWatch();
+        NET.conn={open:true,send:o=>{ o.v=NET_VER; if(!rtcSend(o)) NET.mq.pub(T+'/h',o); },close:()=>{ rtcClose(); }}; netWatch(); NET.onMsg=onH; rtcStart(true,o=>NET.mq.pub(T+'/h',o));
         sfx('pick'); setMode(false); toastQ.push({small:'Онлайн',title:'Друг подключился — он играет за Болта',icon:'first'}); showToast(); startGame(Math.min(TOTAL-1,best)); }
       else if(d.t==='in'&&NET.role==='host'){ NET.lastRx=performance.now(); if(d.p&&d.lv===levelIdx) NET.rpos=d.p; const r=NET.rin, i=d.i; r.dir=i.dir; r.jump=i.jump; r.ab=i.ab; r.fire=i.fire; r.jp=r.jp||i.jp; r.ap=r.ap||i.ap; r.use=r.use||i.use; r.nx=r.nx||i.nx; }
-      else if(d.t==='bye'&&NET.role==='host') netLost('Друг вышел из игры'); },
+      else if(d.t==='bye'&&NET.role==='host') netLost('Друг вышел из игры'); };
+  NET.mq=mqttClient(onH,
     ()=>{ NET.mq.sub(T+'/g'); NET.waiting=true; NET.status='Комната создана. Скажите другу код и ждите подключения.'; if(state==='net') setState('net'); },
     e=>NET.role?netLost(e):netFail(e));
 }
 function netJoin(code){
   code=(code||'').trim().toUpperCase(); if(code.length<4){ NET.status='Введите код комнаты из 5 символов.'; setState('net'); return; }
   const T='iskrabolt/'+code; setState('net');
-  NET.mq=mqttClient((topic,d)=>{
+  const onG=(topic,d)=>{
+      if(d.t==='rtc'){ rtcOnSig(d); return; }
       if(d.t==='oldver') return netFail('У друга другая версия игры. Обновите игру на обоих устройствах.');
       if(d.v!==NET_VER) return;
       if(d.t==='welcome'&&!NET.role){ clearInterval(NET.hello); NET.role='guest'; NET.code=code; NET.hostState='';
-        NET.conn={open:true,send:o=>{ o.v=NET_VER; NET.mq.pub(T+'/g',o); },close:()=>{ NET.mq.pub(T+'/g',{t:'bye',v:NET_VER}); }}; netWatch(); setMode(false); sfx('pick'); setState('netwait'); }
-      else if(d.t==='s'&&NET.role==='guest'){ NET.lastRx=performance.now(); netApply(d); } },
+        NET.conn={open:true,send:o=>{ o.v=NET_VER; if(!rtcSend(o)) NET.mq.pub(T+'/g',o); },close:()=>{ NET.mq.pub(T+'/g',{t:'bye',v:NET_VER}); rtcClose(); }}; netWatch(); NET.onMsg=onG; NET.rtcPub=o=>NET.mq.pub(T+'/g',o); setMode(false); sfx('pick'); setState('netwait'); }
+      else if(d.t==='s'&&NET.role==='guest'){ NET.lastRx=performance.now(); netApply(d); } };
+  NET.mq=mqttClient(onG,
     ()=>{ NET.mq.sub(T+'/h'); NET.status='Ищем комнату '+code+'…'; if(state==='net') setState('net');
       let tries=0; clearInterval(NET.hello); NET.hello=setInterval(()=>{ if(NET.role){ clearInterval(NET.hello); return; } if(++tries>14){ clearInterval(NET.hello); netFail('Комната '+code+' не отвечает. Проверьте код: комната должна быть создана и открыта на втором устройстве.'); return; } NET.mq.pub(T+'/g',{t:'hello',v:NET_VER}); },800); },
     e=>NET.role?netLost(e):netFail(e));
@@ -3784,7 +3807,7 @@ function netLeave(){ netLost('Вы вышли из онлайн-игры'); setS
 const NO_SET=(k,v)=>v instanceof Set?undefined:(k==='hit'?undefined:v);
 function netSend(dt){
   if(NET.role!=='host'||!NET.conn||!NET.conn.open) return;
-  NET.snapT-=dt; if(NET.snapT>0) return; NET.snapT=1/20;
+  NET.snapT-=dt; if(NET.snapT>0) return; NET.snapT=NET.direct?1/30:1/20;
   try{ NET.conn.send(netSnap()); }catch(e){}
 }
 function netSnap(){
@@ -3836,7 +3859,7 @@ function netSmooth(dt){
 function netGuestInput(){
   const i=soloInput(); const a=NET.acc; const me=NET.me;
   a.jp=a.jp||i.jp; a.ap=a.ap||i.ap; a.use=a.use||i.use; a.nx=a.nx||i.nx;
-  NET.inT=(NET.inT||0)+1; if(NET.inT%2) return i;
+  NET.inT=(NET.inT||0)+1; if(!NET.direct&&NET.inT%2) return i;
   if(NET.conn&&NET.conn.open){ try{ NET.conn.send({t:'in',lv:levelIdx,p:me?[Math.round(me.x*10)/10,Math.round(me.y*10)/10,Math.round(me.vx),Math.round(me.vy),me.face]:null,i:{dir:i.dir,jump:i.jump,ab:i.ab,fire:i.fire,jp:a.jp,ap:a.ap,use:a.use,nx:a.nx}}); }catch(e){} NET.acc={}; }
   return i;
 }
