@@ -3668,12 +3668,12 @@ function draw(){
   drawCracks(); if(arena) drawArena(); drawExit(); drawDoors(); drawPlates(); if(!r3) drawMovers(); drawMech();
   for(const pk of pickups) if(!pk.hidden) drawPickup(pk);
   if(!r3) for(const c of crates) drawCrate(c);
-  if(!r3) for(const en of enemies) drawEnemy(en);
-  if(boss&&!boss.gone&&!r3) drawBoss(boss);
+  for(const en of enemies) drawEnemy(en);
+  if(boss&&!boss.gone) drawBoss(boss);
   if(outro) drawOutroWorld();
-  if(settings.glow&&!r3) drawLights();
+  if(settings.glow) drawLights();
   drawDark();
-  if(!r3){ drawBolt(players[1]); drawSpark(players[0]); }
+  drawBolt(players[1]); drawSpark(players[0]);
   if(false){ const p=players[active], bob=Math.sin(clock*6)*3, x=p.x+p.w/2, y=p.y-(p.kind==='spark'?30:14)+bob;
     ctx.fillStyle=p.kind==='spark'?'#ff8a3d':'#62c7c1'; ctx.beginPath(); ctx.moveTo(x-7,y-10); ctx.lineTo(x+7,y-10); ctx.lineTo(x,y-2); ctx.closePath(); ctx.fill();
     const o=players[1-active]; if(follow&&!o.down){ ctx.globalAlpha=.7; ctx.fillStyle='#9cc3ff'; ctx.font="700 9px Unbounded, sans-serif"; ctx.textAlign='center'; ctx.fillText('ЗА МНОЙ',o.x+o.w/2,o.y-(o.kind==='spark'?26:10)); ctx.globalAlpha=1; } }
@@ -4519,7 +4519,7 @@ const R3D=(()=>{
     const back=new THREE.Mesh(new THREE.PlaneGeometry(VW*k*1.02,VH*k*1.02),backMat); back.position.set(VW/2,-VH/2,-DEPTH-1); back.receiveShadow=false; scene.add(back);
     // shadow catcher on the back wall
     const sh=new THREE.Mesh(new THREE.PlaneGeometry(VW*k,VH*k),new THREE.ShadowMaterial({opacity:.35})); sh.position.set(VW/2,-VH/2,-DEPTH+0.5); sh.receiveShadow=true; scene.add(sh);
-    sparkG=makeSpark(); boltG=makeBolt(); scene.add(sparkG); scene.add(boltG);
+    sparkG=makeSpark(); boltG=makeBolt(); scene.add(sparkG); scene.add(boltG); shadowOnly(sparkG); shadowOnly(boltG);
     R.ready=true;
   }
   // ---------- tiles ----------
@@ -4545,7 +4545,8 @@ const R3D=(()=>{
       for(const [x,y] of sp) for(let a=0;a<3;a++) for(let b=0;b<2;b++){ M.makeTranslation(x*T+T/6+a*T/3,-(y*T+T-T*0.29),-T*0.25-b*T*0.75); im.setMatrixAt(i++,M); }
       im.castShadow=true; tileGroup.add(im); }
   }
-  // ---------- characters ----------
+  // ---------- characters (drawn in 2D; 3D proxies only cast shadows) ----------
+  function shadowOnly(g){ g.traverse(o=>{ if(o.material){ o.material=o.material.clone(); o.material.colorWrite=false; o.material.depthWrite=false; o.castShadow=true; } }); }
   function eyes(g,y,gap,r,z){ const w=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.3}), p=new THREE.MeshStandardMaterial({color:0x14121c,roughness:.2});
     for(const s of [-1,1]){ const e=new THREE.Mesh(new THREE.SphereGeometry(r,16,12),w); e.position.set(s*gap,y,z); g.add(e); const pu=new THREE.Mesh(new THREE.SphereGeometry(r*.55,12,10),p); pu.position.set(s*gap,y,z+r*.6); pu.name='pupil'; g.add(pu); } }
   function makeSpark(){ const g=new THREE.Group(), inner=new THREE.Group(); g.add(inner); g.userData.inner=inner;
@@ -4576,15 +4577,14 @@ const R3D=(()=>{
   }
   // ---------- enemies / boss / crates / movers ----------
   const ENC={crawler:0xff6b6b,flyer:0xc79bff,turret:0x9cc3ff,jumper:0x7fe08a};
-  function enMesh(){ const g=new THREE.Group(); const m=new THREE.MeshStandardMaterial({color:0xff6b6b,roughness:.5,metalness:.15}); const b=new THREE.Mesh(new THREE.SphereGeometry(1,20,14),m); b.castShadow=true; b.name='b'; g.add(b);
-    const w=new THREE.MeshStandardMaterial({color:0xffffff}); for(const s of [-1,1]){ const e=new THREE.Mesh(new THREE.SphereGeometry(.2,10,8),w); e.position.set(s*.35,.15,.85); g.add(e); } g.userData.m=m; scene.add(g); return g; }
+  function enMesh(){ const g=new THREE.Group(); const m=new THREE.MeshStandardMaterial({color:0xff6b6b,roughness:.5,metalness:.15}); const b=new THREE.Mesh(new THREE.SphereGeometry(1,20,14),m); b.castShadow=true; b.name='b'; g.add(b); g.userData.m=m; scene.add(g); shadowOnly(g); g.userData.m=b.material; return g; }
   function syncPool(arr,list,make,place){ while(arr.length<list.length) arr.push(make()); arr.forEach((g,i)=>{ const o=list[i]; if(!o){ g.visible=false; return; } g.visible=true; place(g,o); }); }
   function makeBoss(type){ const g=new THREE.Group(); const C={toad:0x6fae5b,eye:0xffb347,gear:0xe0a84a,queen:0xd65a8a,core:0xff4d5e}[type]||0xff4d5e;
     const m=new THREE.MeshStandardMaterial({color:C,roughness:.4,metalness:type==='gear'||type==='core'?.6:.15}); g.userData.m=m;
     let body; if(type==='gear'){ body=new THREE.Mesh(new THREE.TorusGeometry(.62,.3,10,14),m); const sh=new THREE.Shape(); } else if(type==='eye'){ body=new THREE.Mesh(new THREE.SphereGeometry(.6,28,20),m); } else if(type==='core'){ body=new THREE.Mesh(new THREE.IcosahedronGeometry(.6,1),m); } else { body=new THREE.Mesh(new THREE.SphereGeometry(.6,28,20),m); body.scale.set(1,.8,.9); }
     body.castShadow=true; body.name='b'; g.add(body);
     const w=new THREE.MeshStandardMaterial({color:0xffffff,emissive:0x333333}); const n=type==='eye'?1:2; for(let i=0;i<n;i++){ const e=new THREE.Mesh(new THREE.SphereGeometry(type==='eye'?.26:.12,14,10),w); e.position.set(n===1?0:(i?.2:-.2),.12,.55); g.add(e); const p=new THREE.Mesh(new THREE.SphereGeometry(type==='eye'?.12:.06,10,8),new THREE.MeshStandardMaterial({color:0x111111})); p.position.set(e.position.x,.12,type==='eye'?.78:.66); g.add(p); }
-    scene.add(g); return g; }
+    scene.add(g); shadowOnly(g); g.userData.m=body.material; return g; }
   // ---------- per frame ----------
   R.active=()=>R.on&&grid&&state!=='title'&&state!=='ending'&&state!=='prologue';
   R.render=(z,ox,oy)=>{
