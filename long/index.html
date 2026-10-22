@@ -1286,10 +1286,10 @@ function harden(L,n){
   out.map=g.map(r=>r.join('')); return out;
 }
 /* ---- long levels: several generated screens glued side by side, with checkpoint flags ---- */
-const LONG_SCREENS=3, isLong=i=>i>=5&&i<=8;   // test: chapter 1, levels 6–9
-function longLevel(i){ const n=i+1, parts=[]; for(let k=0;k<LONG_SCREENS;k++) parts.push(harden(solo?genSolo(n,soloHero,k):genLevel(n,k),n));
+const LONG_SCREENS=3, isLong=i=>i<=8;   // test: chapter 1, levels 1–9 (10 is the boss arena)
+function longLevel(i){ const n=i+1, parts=[], tut=!solo&&i<TUTORIAL.length; for(let k=0;k<LONG_SCREENS;k++) parts.push(tut&&k===0?Object.assign({enemies:[],pickups:[],movers:[],tier:0},TUTORIAL[i]):harden(solo?genSolo(n,soloHero,k):genLevel(n,k),n));
   const rows=[...Array(ROWS)].map(()=>[]), out={enemies:[],pickups:[],movers:[],winds:[],tier:parts[0].tier,name:parts[0].name,newMech:parts[0].newMech,long:LONG_SCREENS,checkpoints:[]};
-  out.hint=parts[0].hint.replace(/На уровне: [^.]*\./,'Длинный уровень: '+LONG_SCREENS+' экрана, флажки сохраняют путь.');
+  { const note='Длинный уровень: '+LONG_SCREENS+' экрана, флажки сохраняют путь.'; const h0=parts[0].hint||''; out.hint=/На уровне: [^.]*\./.test(h0)?h0.replace(/На уровне: [^.]*\./,note):h0+' '+note; }
   parts.forEach((L,k)=>{ const g=L.map.map(r=>r.split('')), x0=k?1:0, x1=k<parts.length-1?31:32, off=rows[0].length, dx=off-x0;
     if(k) out.checkpoints.push(off*T+T);
     for(let y=0;y<ROWS;y++) for(let x=x0;x<x1;x++){ let c=g[y][x]; if(k&&(c==='1'||c==='2')) c='.'; if(k<parts.length-1&&c==='E') c='.'; rows[y].push(c); }
@@ -1302,7 +1302,7 @@ function getLevel(i){
   const ck=(solo?soloHero+i:i)+'|'+diffKey();
   if(cache[ck]) return cache[ck];
   let L;
-  if(isLong(i)&&(i+1)%10!==0&&i>=TUTORIAL.length) L=longLevel(i);
+  if(isLong(i)&&(i+1)%10!==0) L=longLevel(i);
   else if(solo&&(i+1)%10!==0) L=genSolo(i+1,soloHero);
   else if(i<TUTORIAL.length) L=Object.assign({enemies:[],pickups:[],tier:0},TUTORIAL[i]);
   else L=((i+1)%10===0)?genBoss(i+1):genLevel(i+1);
