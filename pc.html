@@ -375,10 +375,15 @@ function fit(){
 }
 addEventListener('resize',fit);
 try{ new ResizeObserver(()=>fit()).observe($('stage')); }catch(e){}
-$('fsBtn').addEventListener('click',()=>{
-  const el=document.documentElement;
-  try{ if(document.fullscreenElement) document.exitFullscreen(); else if(el.requestFullscreen) el.requestFullscreen().catch(()=>{}); }catch(e){}
-});
+let fsAuto=true;
+function goFs(){ const el=document.documentElement; if(document.fullscreenElement||!el.requestFullscreen) return;
+  el.requestFullscreen({navigationUI:'hide'}).then(()=>{ try{ navigator.keyboard&&navigator.keyboard.lock&&navigator.keyboard.lock(['Escape']); }catch(e){} }).catch(()=>{}); }
+function fsLabel(){ const b=$('fsBtn'); if(b) b.textContent=document.fullscreenElement?'Выйти из полного экрана':'На весь экран'; }
+$('fsBtn').addEventListener('click',e=>{ e.stopPropagation();
+  try{ if(document.fullscreenElement){ fsAuto=false; try{ navigator.keyboard&&navigator.keyboard.unlock&&navigator.keyboard.unlock(); }catch(_){} document.exitFullscreen(); } else { fsAuto=true; goFs(); } }catch(e){} });
+// open fullscreen right away: browsers allow it only after the first click/key, so we grab that first gesture
+for(const ev of ['pointerdown','keydown']) addEventListener(ev,e=>{ if(fsAuto&&!document.fullscreenElement&&!(e.target&&e.target.id==='fsBtn')&&!/iPhone|iPad|iPod/.test(navigator.userAgent)) goFs(); },true);
+document.addEventListener('fullscreenchange',fsLabel);
 document.addEventListener('fullscreenchange',()=>setTimeout(fit,50));
 
 /* ================= audio ================= */
