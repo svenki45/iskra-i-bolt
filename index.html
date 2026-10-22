@@ -2082,6 +2082,7 @@ function setState(s){
       <div class="pick" style="margin-top:6px"><label for="netIn">Код друга</label><input id="netIn" type="text" maxlength="5" autocomplete="off" placeholder="ABCDE" style="text-transform:uppercase;letter-spacing:.2em;width:9ch"><button class="secondary" id="bJoin" type="button">Войти</button></div>
       <p class="padst">Друг создаёт комнату и диктует код из 5 символов. Вы вводите его и играете за Болта. Нужен интернет у обоих.</p>`}
       ${NET.status?`<p class="padst" id="netSt">${NET.status}</p>`:''}
+      <p class="padst" style="opacity:.5;font-size:11px">Версия онлайна: ${NET_VER}</p>
       <div class="btns"><button class="secondary" id="bNetBack" type="button">${hosting?'Отменить':'Назад'} · Esc</button></div></div>`;
     if($('bHost')) $('bHost').onclick=()=>{ NET.status=''; netHost(); };
     if($('bJoin')){ const go2=()=>netJoin($('netIn').value); $('bJoin').onclick=go2; $('netIn').addEventListener('keydown',e=>{ if(e.key==='Enter') go2(); }); }
@@ -3813,4 +3814,4 @@ const hot=window.claude&&window.claude.hot;
 if(hot&&hot.snapshot) hot.snapshot(()=>({levelIdx,deaths,totalTime,gears,state:(state==='play'||state==='dying')?'play':'menu'}));
 if(hot&&hot.ready) hot.ready(start); else start((hot&&hot.data)||{});
 })();
-</script><script>if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});</script></body></html>
+</script><script>if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{});</script></body></html>
