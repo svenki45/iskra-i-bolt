@@ -345,6 +345,8 @@ body.touch:not(.playing) #overlay{padding-top:max(14px,env(safe-area-inset-top))
 body.touch .mfoot{display:none}
 body.touch.playing #verTag{display:none}
 body.padmode #touch{display:none!important}
+body.touch .top,body.touch .hint{display:none!important}
+body.touch .app{padding-block:0;gap:0}
 </style>
 
 <div class="app">
@@ -4412,7 +4414,7 @@ const isTouchUI=()=>document.body.classList.contains('touch');
 function fitOverlay(){ if(!overlay) return; const c=overlay.querySelector(':scope > .card'); if(!c) return; c.style.zoom='';
   if(!isTouchUI()||overlay.hidden) return;
   const cs=getComputedStyle(overlay), avH=overlay.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom)-6, avW=overlay.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight)-6, h=c.offsetHeight, w=c.offsetWidth; if(!h||!w) return;
-  const r=Math.min(1,avH/h,avW/w); if(r<.99) c.style.zoom=Math.max(.52,r).toFixed(3); }
+  const r=Math.min(1,avH/h,avW/w); if(r<.99) c.style.zoom=Math.max(.45,r).toFixed(3); }
 const KEYHINT=/\s*·\s*(Enter|Esc|Tab|Пробел|Space)(?=\s*$)/g;
 function touchClean(root){ if(!isTouchUI()) return;
   const w=document.createTreeWalker(root,4); let n; const fix=[];
@@ -4422,7 +4424,7 @@ function touchClean(root){ if(!isTouchUI()) return;
 }
 { const ob=new MutationObserver(()=>{ touchClean(overlay); requestAnimationFrame(fitOverlay); }); ob.observe(overlay,{childList:true,subtree:true}); addEventListener('resize',()=>requestAnimationFrame(fitOverlay)); }
 { const f=CanvasRenderingContext2D.prototype.fillText; CanvasRenderingContext2D.prototype.fillText=function(t,...a){ if(typeof t==='string'&&isTouchUI()){ if(t==='Enter — пропустить'||t==='прыжок — пропустить') t='Коснитесь — пропустить'; } return f.call(this,t,...a); }; }
-const GAME_VER='1.01';
+const GAME_VER='1.02';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' beta'; $('screen').appendChild(v); })();
 window.__ib={proTest:()=>{proT=0;storyNext=null;setState("prologue");},endTest:()=>{endT=0;setState("ending");},net:{NET,netApply,netSnap},getLevel,startGame,dmgE:(e,d)=>damageEnemy(e,d),complete:()=>complete(),hurt:i=>hurt(players[i]),setState:x=>setState(x),startDemo:()=>startDemo(),stopDemo:()=>stopDemo(),get demo(){return demo},tr:x=>tr(x),demoAt:i=>{ lastIntro=-1; loadLevel(i); follow=true; demoT=0; setState('play'); },get combo(){return combo},openSecret,nextLevel,hitBoss:(d)=>hitBoss(d),get outro(){return outro},get state(){return {state,levelIdx,boss,players,enemies,pickups,arena,run,movers,grid,ebullets,bullets}}};
 const hot=window.claude&&window.claude.hot;

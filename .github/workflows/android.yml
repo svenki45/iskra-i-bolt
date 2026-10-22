@@ -36,4 +36,4 @@ jobs:
         env: { GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}' }
         run: |
           gh release delete apk -y --cleanup-tag || true
-          gh release create apk iskra-i-bolt.apk --title "Искра и Болт — APK для Android" --notes "Тестовая сборка v1.01 (debug). Установка: скачать iskra-i-bolt.apk и открыть на телефоне или перетащить в эмулятор."
+          gh release create apk iskra-i-bolt.apk --title "Искра и Болт — APK для Android" --notes "Тестовая сборка v1.02 (debug). Установка: скачать iskra-i-bolt.apk и открыть на телефоне или перетащить в эмулятор."
