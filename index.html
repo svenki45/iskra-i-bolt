@@ -2574,6 +2574,8 @@ function step(dt){
     if(riding){ moveX(s,b.x-bx); if(b.y<by) moveY(s,b.y-by); }
     if(!s.absent) physics(s,h);
   }
+  if(NET.role==='host'&&NET.rpos&&b&&!b.absent&&!b.down){ const r=NET.rpos;
+    if(Math.hypot(r[0]-b.x,r[1]-b.y)<260){ b.x=r[0]; b.y=r[1]; b.vx=r[2]; b.vy=r[3]; b.face=r[4]; } }
   for(const p of players) p.wasGround=p.onGround;
   updateEnemies(dt); updateBoss(dt); updateArena(dt); updateBullets(dt); updatePickups(dt);
   if(state==='play') updateWorld(dt);
@@ -2599,7 +2601,9 @@ function frame(now){
   const dt=Math.min(0.05,Math.max(0,(now-last)/1000)); last=now;
   pollPadNav(dt);
   handleMeta();
-  if(state==='play'){ if(NET.role==='guest'){ netGuestInput(); netSmooth(dt); for(const p of players||[]) if(p.inv>0) p.inv-=dt; } else step(dt); }
+  if(state==='play'){ if(NET.role==='guest'){ const gi=netGuestInput(); const me=NET.me;
+      if(me&&!me.down&&!me.dead&&!intro&&!outro){ control(me,gi,dt); const N=Math.max(1,Math.ceil(dt*240)), h=dt/N; for(let k=0;k<N;k++){ updateMovers(0); physics(me,h); } me.wasGround=me.onGround; me.tx=me.x; me.ty=me.y; }
+      netSmooth(dt); for(const p of players||[]) if(p.inv>0) p.inv-=dt; } else step(dt); }
   else if(state==='dying'){ runClean=false; deathTimer-=dt; if(deathTimer<=0){ setState('gameover'); tone(98,49,1.8,'sawtooth',.07); tone(147,73,1.8,'triangle',.06); tone(65,40,2.2,'sine',.12); } }
   else if(state==='gameover'&&go){
     go.t-=dt; const el=document.getElementById('goNum'), ring=document.getElementById('goRing');
@@ -3754,7 +3758,7 @@ function netHost(){
       if(d.t==='hello'&&!NET.role){ NET.mq.pub(T+'/h',{t:'welcome',v:NET_VER}); NET.role='host'; NET.waiting=false; NET.lastG='';
         NET.conn={open:true,send:o=>{ o.v=NET_VER; NET.mq.pub(T+'/h',o); },close:()=>{}}; netWatch();
         sfx('pick'); setMode(false); toastQ.push({small:'Онлайн',title:'Друг подключился — он играет за Болта',icon:'first'}); showToast(); startGame(Math.min(TOTAL-1,best)); }
-      else if(d.t==='in'&&NET.role==='host'){ NET.lastRx=performance.now(); const r=NET.rin, i=d.i; r.dir=i.dir; r.jump=i.jump; r.ab=i.ab; r.fire=i.fire; r.jp=r.jp||i.jp; r.ap=r.ap||i.ap; r.use=r.use||i.use; r.nx=r.nx||i.nx; }
+      else if(d.t==='in'&&NET.role==='host'){ NET.lastRx=performance.now(); if(d.p&&d.lv===levelIdx) NET.rpos=d.p; const r=NET.rin, i=d.i; r.dir=i.dir; r.jump=i.jump; r.ab=i.ab; r.fire=i.fire; r.jp=r.jp||i.jp; r.ap=r.ap||i.ap; r.use=r.use||i.use; r.nx=r.nx||i.nx; }
       else if(d.t==='bye'&&NET.role==='host') netLost('Друг вышел из игры'); },
     ()=>{ NET.mq.sub(T+'/g'); NET.waiting=true; NET.status='Комната создана. Скажите другу код и ждите подключения.'; if(state==='net') setState('net'); },
     e=>NET.role?netLost(e):netFail(e));
@@ -3795,7 +3799,13 @@ function netApply(d){
   if(d.lv!==levelIdx||!grid){ loadLevel(d.lv); }
   if(d.g){ grid=d.g.split('|').map(r=>r.split('')); staticDirty=true; }
   const keep=(arr,old)=>{ (arr||[]).forEach((e,i)=>{ const o=old&&old[i]; e.tx=e.x; e.ty=e.y; if(o&&o.type===e.type&&o.kind===e.kind&&Math.hypot(o.x-e.x,o.y-e.y)<160){ e.x=o.x; e.y=o.y; } }); return arr||[]; };
+  const myOld=NET.me;
   players=keep(d.P,players); enemies=keep(d.E,enemies); crates=keep(d.C,crates);
+  if(players[1]){ const S=players[1];
+    if(myOld&&myOld.lv===d.lv&&!S.down&&!S.dead&&Math.hypot(S.tx-myOld.x,S.ty-myOld.y)<220){
+      for(const k of ['hp','shield','pw','bag','sel','down','dead','inv','secondWind','reviveT','pwPop','bagPop','absent']) myOld[k]=S[k];
+      players[1]=myOld; }
+    else { S.x=S.tx; S.y=S.ty; S.lv=d.lv; NET.me=S; } }
   if(d.BO){ const o=boss; d.BO.tx=d.BO.x; d.BO.ty=d.BO.y; if(o&&o.type===d.BO.type&&Math.hypot(o.x-d.BO.x,o.y-d.BO.y)<200){ d.BO.x=o.x; d.BO.y=o.y; } }
   bullets=(d.B||[]).map(b=>Object.assign(b,{hit:new Set()})); ebullets=d.EB||[]; pickups=d.PK||[]; boss=d.BO;
   if(d.M&&movers) d.M.forEach((m,i)=>{ if(movers[i]){ movers[i].tx=m[0]; movers[i].ty=m[1]; movers[i].timer=m[2]; } });
@@ -3812,7 +3822,7 @@ function netApply(d){
 const NET_ST={menu:'Хост в главном меню',pause:'Хост поставил паузу',done:'Уровень пройден! Хост смотрит итоги',shop:'Хост в Лавке',gameover:'Падение… хост решает, что дальше',loading:'Загружается уровень…',slots:'Хост выбирает сохранение',levels:'Хост выбирает уровень',custom:'Хост меняет внешний вид',settings:'Хост в настройках'};
 function netSmooth(dt){
   const k=Math.min(1,dt*14);
-  const sm=e=>{ if(!e||e.tx==null) return; // predict forward with velocity, then ease toward the server position
+  const sm=e=>{ if(!e||e.tx==null||e===NET.me) return; // predict forward with velocity, then ease toward the server position
     if(e.vx) e.tx+=e.vx*dt*0.6; if(e.vy&&!e.onGround) e.ty+=e.vy*dt*0.3;
     e.x+=(e.tx-e.x)*k; e.y+=(e.ty-e.y)*k; };
   for(const p of players||[]) sm(p); for(const en of enemies||[]) sm(en); for(const c of crates||[]) sm(c); sm(boss);
@@ -3824,10 +3834,11 @@ function netSmooth(dt){
   if(boss) boss.t=(boss.t||0)+dt;
 }
 function netGuestInput(){
-  const i=soloInput(); const a=NET.acc;
+  const i=soloInput(); const a=NET.acc; const me=NET.me;
   a.jp=a.jp||i.jp; a.ap=a.ap||i.ap; a.use=a.use||i.use; a.nx=a.nx||i.nx;
-  NET.inT=(NET.inT||0)+1; if(NET.inT%2) return;
-  if(NET.conn&&NET.conn.open){ try{ NET.conn.send({t:'in',i:{dir:i.dir,jump:i.jump,ab:i.ab,fire:i.fire,jp:a.jp,ap:a.ap,use:a.use,nx:a.nx}}); }catch(e){} NET.acc={}; }
+  NET.inT=(NET.inT||0)+1; if(NET.inT%2) return i;
+  if(NET.conn&&NET.conn.open){ try{ NET.conn.send({t:'in',lv:levelIdx,p:me?[Math.round(me.x*10)/10,Math.round(me.y*10)/10,Math.round(me.vx),Math.round(me.vy),me.face]:null,i:{dir:i.dir,jump:i.jump,ab:i.ab,fire:i.fire,jp:a.jp,ap:a.ap,use:a.use,nx:a.nx}}); }catch(e){} NET.acc={}; }
+  return i;
 }
 window.__ib={net:{NET,netApply,netSnap},getLevel,startGame,dmgE:(e,d)=>damageEnemy(e,d),openSecret,nextLevel,hitBoss:(d)=>hitBoss(d),get outro(){return outro},get state(){return {state,levelIdx,boss,players,enemies,pickups,arena,run,movers,grid,ebullets,bullets}}};
 const hot=window.claude&&window.claude.hot;
