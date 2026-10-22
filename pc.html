@@ -2064,7 +2064,7 @@ function decoBase(){ return `<div class="hbg s"><b></b><b></b><b></b><b></b><b><
 function setState(s){
   const prevState=state, fk=focusKey(document.activeElement);
   if(s==='play'){ prevPad[0]={j:true,a:true}; prevPad[1]={j:true,a:true}; }
-  state=s; overlay.hidden=(s==='play'||s==='dying'||s==='touchedit'||s==='ending'); { const tb=document.getElementById('tedbar'); if(tb&&s!=='touchedit') tb.hidden=true; }
+  state=s; overlay.hidden=(s==='play'||s==='dying'||s==='touchedit'||s==='ending'||s==='prologue'); { const tb=document.getElementById('tedbar'); if(tb&&s!=='touchedit') tb.hidden=true; }
   overlay.classList.toggle('clear',s==='title'); if(s!=='hero'){ overlay.classList.toggle('hs',solo&&soloHero==='spark'); overlay.classList.toggle('hb',solo&&soloHero==='bolt'); overlay.classList.toggle('hd',!solo); } else overlay.classList.remove('hd'); overlay.classList.toggle('pz',s!=='title'&&s!=='play'&&s!=='dying');
   if(s==='title'){
     const word=(w,cls,d0)=>[...w].map((ch,i)=>`<span class="lt ${cls}" style="animation-delay:${(d0+i*0.07).toFixed(2)}s">${ch}</span>`).join('');
@@ -2242,10 +2242,11 @@ function setState(s){
     overlay.innerHTML=`<div class="card wide help"><span class="eyebrow">Помощь</span><h2>Как играть</h2>
       <div class="tabs" role="tablist">${tabs.map(([k,n])=>`<button type="button" role="tab" class="opt ${helpTab===k?'on':''}" data-tab="${k}" aria-selected="${helpTab===k}">${n}</button>`).join('')}</div>
       <div class="helpbody">${helpHTML(helpTab)}</div>
-      <div class="btns">${helpTab==='ctl'?`<button class="secondary" id="bRebind" type="button">Переназначить кнопки</button>`:''}<button class="primary" id="bHelpBack" type="button">Назад · Esc</button></div></div>`;
+      <div class="btns">${helpTab==='ctl'?`<button class="secondary" id="bRebind" type="button">Переназначить кнопки</button>`:''}<button class="secondary" id="bPro" type="button">Посмотреть пролог</button><button class="primary" id="bHelpBack" type="button">Назад · Esc</button></div></div>`;
     overlay.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{ helpTab=b.dataset.tab; setState('help'); });
     if($('bRebind')) $('bRebind').onclick=()=>{ ctlBack='help'; setState('controls'); };
     $('bHelpBack').onclick=()=>setState(helpBack);
+    $('bPro').onclick=()=>{ const back=helpBack; storyNext=()=>setState(back==='pause'?'pause':'menu'); proT=0; setState('prologue'); };
   } else if(s==='ach'){
     const got=Object.keys(achGot).length;
     overlay.innerHTML=`<div class="card wide"><span class="eyebrow">Открыто ${got} из ${ACH.length}</span><h2>Достижения</h2>
@@ -2557,7 +2558,7 @@ function doNewGame(slotIdx){
   for(const k in cache) delete cache[k];
   run={score:0,wallet:0,up:{},offer:[],refresh:0,reward:null,inv:{}};
   slots[slotIdx]={mode:solo?soloHero:'2',best:0,run,ach:{},stats,saved:Date.now(),created:Date.now(),lvl:0}; store.set('iskra-bolt-slots',slots);
-  if(anyCheat()) unlock('cheater'); storyI=0; storyNext=()=>startGame(0); setState('story');
+  if(anyCheat()) unlock('cheater'); storyNext=()=>startGame(0); proT=0; setState('prologue');
 }
 let loadJob=null;
 const LOAD_STEPS=['Чертим схему уровня','Раскладываем платформы','Заводим шестерёнки','Расставляем врагов','Прячем секреты','Смазываем двери','Проверяем кнопки'];
@@ -3396,6 +3397,7 @@ function draw(){
   if(state!=='title') ctx.drawImage(wallLayer,0,0,VW,VH);
   if(state==='title'){ drawTitleScene(); return; }
   if(state==='ending'){ drawEnding(); return; }
+  if(state==='prologue'){ drawPrologue(); return; }
   if(settings.ambient) drawAmbient();
   drawCracks(); if(arena) drawArena(); drawExit(); drawDoors(); drawPlates(); drawMovers();
   for(const pk of pickups) if(!pk.hidden) drawPickup(pk);
@@ -3538,6 +3540,56 @@ function titleXY(e){ const r=cv.getBoundingClientRect(); if(!r.width) return nul
 addEventListener('pointermove',e=>{ if(state==='title') titleMouse=titleXY(e); });
 addEventListener('pointerdown',e=>{ if(state==='title'&&!(e.target.closest&&e.target.closest('button'))) titleClick=titleXY(e); });
 /* ================= ending cinematic ================= */
+let proT=0, proLast=0, proBolt=false;
+const PRO_LEN=30;
+function drawPrologue(){
+  const now=performance.now(), dt=Math.min(.05,(now-(proLast||now))/1000); proLast=now; proT+=dt;
+  if(pressed.has('Enter')||pressed.has('Space')||pressed.has('Escape')) proT=Math.max(proT,PRO_LEN);
+  const t=proT, c=ctx, W=VW, H=VH, ease=k=>k<0?0:k>1?1:k*k*(3-2*k), FY=H*.82;
+  const awake=ease((t-6.2)/1.2), red=awake*(t<15?1:.8);
+  c.fillStyle=`rgb(${8+20*red|0},${10|0},${22-6*red|0})`; c.fillRect(0,0,W,H);
+  // rain + lightning (scene 1-2)
+  if(t<9){ c.strokeStyle='rgba(160,190,230,.25)'; c.lineWidth=1; c.beginPath(); for(let i=0;i<70;i++){ const x=(i*97+t*900)%W, y=(i*53+t*1400)%H; c.moveTo(x,y); c.lineTo(x-6,y+18); } c.stroke(); }
+  if(t>5.6&&t<6.4){ c.fillStyle=`rgba(230,240,255,${(Math.sin(t*60)*.5+.5)*.7})`; c.fillRect(0,0,W,H); c.strokeStyle='#eaf2ff'; c.lineWidth=4; c.shadowColor='#bfe2ff'; c.shadowBlur=30*GLOW; c.beginPath(); let x=W/2+40,y=0; c.moveTo(x,y); while(y<H*.42){ x+=(Math.random()-.5)*60; y+=30; c.lineTo(x,y); } c.stroke(); c.shadowBlur=0; if(!proBolt){ proBolt=true; shake=20; sfx('boss'); } }
+  if(t<5.6) proBolt=false;
+  // workshop interior: floor + machines
+  c.fillStyle='#05060c'; c.fillRect(0,FY,W,H-FY);
+  c.fillStyle='#0c1020'; for(const [x,w,h] of [[60,120,170],[230,90,120],[W-260,140,190],[W-110,80,130]]) c.fillRect(x,FY-h,w,h);
+  // the Main Mechanism
+  const mx=W/2, my=H*.42, R=120+awake*20;
+  c.save(); c.translate(mx,my); c.rotate(t*.15*awake);
+  c.fillStyle=`rgb(${30+40*awake|0},${30|0},${40|0})`; c.beginPath(); for(let i=0;i<=32;i++){ const a=i/32*Math.PI*2, r=i%2?R:R*1.15; c.lineTo(Math.cos(a)*r,Math.sin(a)*r); } c.fill(); c.restore();
+  c.fillStyle='#090b14'; c.beginPath(); c.arc(mx,my,R*.62,0,Math.PI*2); c.fill();
+  if(awake>0){ const e=.6+.4*Math.sin(t*6); c.fillStyle=`rgba(255,40,50,${awake*e})`; c.shadowColor='#ff2030'; c.shadowBlur=40*GLOW*awake; c.beginPath(); c.arc(mx-34,my-6,16,0,Math.PI*2); c.arc(mx+34,my-6,16,0,Math.PI*2); c.fill(); c.shadowBlur=0; }
+  // red waves converting tools into guards (scene 3)
+  if(t>9.5&&t<16){ const k=(t-9.5); for(let i=0;i<3;i++){ const r=((k*160+i*140)%520); c.strokeStyle=`rgba(255,50,60,${.5*(1-r/520)})`; c.lineWidth=4; c.beginPath(); c.arc(mx,my,r,0,Math.PI*2); c.stroke(); } }
+  const guards=[['#5dc35a','toad',W*.18,FY-30],['#e7b54a','gear',W*.33,FY-40],['#9aa8b6','eye',W*.67,H*.25],['#c2553f','queen',W*.82,FY-24]];
+  guards.forEach(([col,type,x,y],i)=>{ const k=ease((t-10.5-i*.7)/1); if(k<=0||t>16.5) return; c.save(); c.globalAlpha=k; c.translate(x,y);
+    c.fillStyle=col; if(type==='toad'){ c.beginPath(); c.ellipse(0,0,46,30,0,Math.PI,0); c.fill(); } else if(type==='gear'){ c.beginPath(); for(let j=0;j<=16;j++){ const a=j/16*Math.PI*2+t, r=j%2?30:38; c.lineTo(Math.cos(a)*r,Math.sin(a)*r); } c.fill(); }
+    else if(type==='eye'){ c.beginPath(); c.arc(0,0,32,0,Math.PI*2); c.fill(); c.fillStyle='#eaf2ff'; c.beginPath(); c.arc(0,0,18,0,Math.PI*2); c.fill(); } else { c.beginPath(); c.ellipse(0,0,58,22,0,Math.PI,0); c.fill(); }
+    c.fillStyle='#ff3040'; c.fillRect(-12,-14,7,5); c.fillRect(6,-14,7,5); c.restore(); });
+  // two survivors (scene 4-5)
+  if(t>16){ const k=ease((t-16)/1.5);
+    const sy=t<17.5?H*.28+(FY-30-H*.28)*ease((t-16)/1.4):FY-30, bx=t<18.5?W*.85-(W*.85-W*.47)*ease((t-17)/1.6):W*.47;
+    if(t>16&&t<17.5&&Math.random()<.5) addP({x:W*.42,y:sy+15,vx:(Math.random()-.5)*60,vy:-30,life:.4,max:.4,c:'#ffd166',s:3,g:0});
+    if(settings.glow){ c.save(); c.globalCompositeOperation='lighter'; glowAt(W*.42+12,sy+4,140,'#ffb347',.3*k); c.restore(); }
+    drawSpark({kind:'spark',w:24,h:30,x:W*.42,y:sy,sx:1,sy:1,face:1,blinkT:1,inv:0,down:false,shield:false,dead:false,vx:0});
+    if(t>17) drawBolt({kind:'bolt',w:34,h:56,x:bx,y:FY-56,sx:1,sy:1,face:-1,blinkT:1,inv:0,down:false,shield:false,dead:false,slam:false,vx:t<18.5?-100:0}); }
+  for(const q of particles){ c.globalAlpha=Math.max(0,q.life/q.max); c.fillStyle=q.c; c.fillRect(q.x-q.s/2,q.y-q.s/2,q.s,q.s); } c.globalAlpha=1;
+  const cap=(txt,t0,t1,size,col,y)=>{ const a=Math.min(ease((t-t0)/.6),1-ease((t-t1+.6)/.6)); if(a<=0) return; c.save(); c.globalAlpha=a; c.textAlign='center'; c.textBaseline='middle'; c.font=`800 ${size}px Unbounded, 'Arial Black', sans-serif`; c.lineWidth=8; c.strokeStyle='rgba(0,0,0,.7)'; c.strokeText(txt,W/2,y||H*.1); c.fillStyle=col; c.fillText(txt,W/2,y||H*.1); c.restore(); };
+  cap('Старая мастерская давно закрыта. Мастер ушёл и не вернулся.',0.4,5.4,24,'#cfd8e6');
+  cap('Но однажды ночью в крышу ударила молния…',5,7.6,26,'#eaf2ff');
+  cap('…и Главный Механизм проснулся.',7.4,10,30,'#ff4d5e');
+  cap('Он перепрошил станки и инструменты и сделал из них своих стражей.',10,16,22,'#ffb3b3');
+  cap('Уцелели только двое: искорка из сварочного аппарата…',16,19,22,'#ffb347');
+  cap('…и упрямый болт с конвейера.',18.6,21.4,24,'#7fe8e0');
+  cap('Впереди 100 цехов, 10 стражей и Сердце мастерской.',21.4,25,22,'#eaf2ff');
+  cap('Остановить Механизм можно только вместе.',24.6,27.4,28,'#ffd166');
+  if(t>27){ const k=ease((t-27)/.8); c.fillStyle=`rgba(0,0,0,${k*.7})`; c.fillRect(0,0,W,H); c.save(); c.globalAlpha=k; c.textAlign='center'; c.textBaseline='middle'; c.font="900 86px Unbounded, 'Arial Black', sans-serif";
+    c.fillStyle='#ff8a3d'; c.fillText('ИСКРА',W/2-170,H/2); c.fillStyle='#eaf2ff'; c.font="900 44px Unbounded, sans-serif"; c.fillText('и',W/2+30,H/2+8); c.fillStyle='#62c7c1'; c.font="900 86px Unbounded, 'Arial Black', sans-serif"; c.fillText('БОЛТ',W/2+210,H/2); c.restore(); }
+  if(t>1&&t<PRO_LEN){ c.save(); c.globalAlpha=.5; c.font="500 13px Rubik, sans-serif"; c.fillStyle='#cfd8e6'; c.textAlign='right'; c.fillText('Enter — пропустить',W-20,H-16); c.restore(); }
+  if(t>=PRO_LEN){ particles=[]; const f=storyNext; storyNext=null; if(f) f(); else setState('menu'); }
+}
 let endT=0, endLast=0, endBoom=false;
 const END_LEN=24;
 function drawEnding(){
@@ -4069,9 +4121,9 @@ function netGuestInput(){
   if(NET.conn&&NET.conn.open){ try{ NET.conn.send({t:'in',lv:levelIdx,p:me?[Math.round(me.x*10)/10,Math.round(me.y*10)/10,Math.round(me.vx),Math.round(me.vy),me.face]:null,i:{dir:i.dir,jump:i.jump,ab:i.ab,fire:i.fire,jp:a.jp,ap:a.ap,use:a.use,nx:a.nx}}); }catch(e){} NET.acc={}; }
   return i;
 }
-const GAME_VER='0.90';
+const GAME_VER='0.91';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' beta'; $('screen').appendChild(v); })();
-window.__ib={endTest:()=>{endT=0;setState("ending");},net:{NET,netApply,netSnap},getLevel,startGame,dmgE:(e,d)=>damageEnemy(e,d),openSecret,nextLevel,hitBoss:(d)=>hitBoss(d),get outro(){return outro},get state(){return {state,levelIdx,boss,players,enemies,pickups,arena,run,movers,grid,ebullets,bullets}}};
+window.__ib={proTest:()=>{proT=0;storyNext=null;setState("prologue");},endTest:()=>{endT=0;setState("ending");},net:{NET,netApply,netSnap},getLevel,startGame,dmgE:(e,d)=>damageEnemy(e,d),openSecret,nextLevel,hitBoss:(d)=>hitBoss(d),get outro(){return outro},get state(){return {state,levelIdx,boss,players,enemies,pickups,arena,run,movers,grid,ebullets,bullets}}};
 const hot=window.claude&&window.claude.hot;
 if(hot&&hot.snapshot) hot.snapshot(()=>({levelIdx,deaths,totalTime,gears,state:(state==='play'||state==='dying')?'play':'menu'}));
 if(hot&&hot.ready) hot.ready(start); else start((hot&&hot.data)||{});
