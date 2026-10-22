@@ -3717,7 +3717,8 @@ if(isTouchDev()||window.MOBILE_BUILD) setTimeout(()=>setTouch(true),0);
 /* ================= online co-op (PeerJS, host-authoritative) ================= */
 const NET={role:null,peer:null,conn:null,code:'',status:'',rin:{dir:0,jump:false,jp:false,ab:false,ap:false,fire:false,use:false,nx:false},acc:{},snapT:0,lastG:'',hostState:'',ping:0};
 // --- tiny WebRTC client using the free PeerJS signalling server (no external libraries) ---
-const ICE=[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},{urls:'stun:stun.cloudflare.com:3478'}];
+const ICE=[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun.cloudflare.com:3478'},{urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}];
+const NET_VER=2;
 function netSig(id,onMsg,onOpen,onErr){
   let ws; try{ ws=new WebSocket('wss://0.peerjs.com/peerjs?key=peerjs&id='+encodeURIComponent(id)+'&token='+Math.random().toString(36).slice(2)+'&version=1.5.4'); }catch(e){ onErr('Сигнальный сервер недоступен'); return null; }
   const hb=setInterval(()=>{ try{ if(ws.readyState===1) ws.send(JSON.stringify({type:'HEARTBEAT'})); }catch(e){} },5000);
@@ -3742,10 +3743,10 @@ function netHost(){
   if(!rtcOk()) return;
   NET.code=netCode(); NET.status='Создаём комнату…'; setState('net');
   NET.sig=netSig('iskrabolt-'+NET.code.toLowerCase(), async m=>{
-      if(m.type==='OFFER'&&!NET.conn){ const pc=new RTCPeerConnection({iceServers:ICE});
+      if(m.type==='OFFER'&&!NET.conn){ if((m.payload.v||1)!==NET_VER) return; const pc=new RTCPeerConnection({iceServers:ICE});
         pc.ondatachannel=e=>{ const c=wrapChannel(e.channel,pc); NET.conn=c; hostWire(c); };
         await pc.setRemoteDescription(m.payload.sdp); await pc.setLocalDescription(await pc.createAnswer()); await gathered(pc);
-        NET.sig.send('ANSWER',m.src,{sdp:pc.localDescription}); NET.status='Друг подключается…'; if(state==='net') setState('net'); } },
+        NET.sig.send('ANSWER',m.src,{sdp:pc.localDescription,v:NET_VER}); NET.status='Друг подключается…'; if(state==='net') setState('net'); } },
     ()=>{ NET.status='Комната создана. Скажите другу код и ждите подключения.'; NET.waiting=true; if(state==='net') setState('net'); },
     e=>{ if(e==='id-taken'){ NET.sig&&NET.sig.close(); netHost(); } else netFail(e); });
 }
@@ -3756,15 +3757,15 @@ function netJoin(code){
   const me='iskrabolt-g-'+Math.random().toString(36).slice(2,10);
   let pc=null;
   NET.sig=netSig(me, async m=>{
-      if(m.type==='ANSWER'&&pc){ await pc.setRemoteDescription(m.payload.sdp); NET.status='Соединяемся…'; if(state==='net') setState('net'); }
+      if(m.type==='ANSWER'&&pc){ NET.gotAnswer=true; if((m.payload.v||1)!==NET_VER) return netFail('У друга другая версия игры. Обновите игру на обоих устройствах.'); await pc.setRemoteDescription(m.payload.sdp); NET.status='Комната ответила, соединяемся напрямую…'; if(state==='net') setState('net'); }
       else if(m.type==='EXPIRE'||m.type==='LEAVE') netFail('Комната '+code+' не найдена или закрыта. Проверьте код.'); },
     async ()=>{ pc=new RTCPeerConnection({iceServers:ICE}); const ch=pc.createDataChannel('game',{ordered:true}); const c=wrapChannel(ch,pc); NET.conn=c;
       c.on('open',()=>{ NET.role='guest'; NET.code=code; NET.hostState=''; setMode(false); sfx('pick'); try{ NET.sig&&NET.sig.close(); }catch(e){} setState('netwait'); });
       c.on('data',d=>{ if(d&&d.t==='s') netApply(d); });
       c.on('close',()=>netLost('Хост закрыл игру')); c.on('error',()=>netLost('Не удалось соединиться напрямую (строгая сеть или роутер)'));
       await pc.setLocalDescription(await pc.createOffer()); await gathered(pc);
-      NET.sig.send('OFFER','iskrabolt-'+code.toLowerCase(),{sdp:pc.localDescription});
-      setTimeout(()=>{ if(!NET.role&&state==='net'&&NET.conn===c) netFail('Нет ответа от комнаты '+code+'. Проверьте код и интернет.'); },15000); },
+      NET.sig.send('OFFER','iskrabolt-'+code.toLowerCase(),{sdp:pc.localDescription,v:NET_VER});
+      NET.gotAnswer=false; setTimeout(()=>{ if(!NET.role&&state==='net'&&NET.conn===c) netFail(NET.gotAnswer?'Комната найдена, но прямое соединение не устанавливается (роутер или мобильная сеть). Попробуйте обоим одну Wi-Fi сеть.':'Комната '+code+' не отвечает. Убедитесь, что на ПК открыта последняя версия игры и комната создана.'); },25000); },
     e=>netFail(e));
 }
 function netLost(msg){ const was=NET.role; try{ NET.conn&&NET.conn.close(); }catch(e){} try{ NET.sig&&NET.sig.close(); }catch(e){} NET.conn=null; NET.sig=null; NET.role=null; NET.waiting=false;
