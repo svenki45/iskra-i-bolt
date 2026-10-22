@@ -497,7 +497,7 @@ TUTORIAL[0].hint += ' Кнопки стрельбы и всего остальн
 const TOTAL=100;
 const T=40, ROWS=18, VW=32*T, VH=ROWS*T, G=2200, FLOOR_Y=17*T;
 let COLS=32, WW=VW;  // COLS/WW = width of the current level (long levels are wider than one screen)
-const KEYC={P:'#e7b54a',Q:'#c79bff',R:'#7fe08a'};
+const KEYC=new Proxy({P:'#e7b54a',Q:'#c79bff',R:'#7fe08a'},{get:(o,k)=>o[k]||o[String(k)[0]]});
 const BRIDGE={U:'P',V:'Q',W:'R'};
 const cv=document.getElementById('cv'); let ctx=cv.getContext('2d'); const mainCtx=ctx;
 const $=id=>document.getElementById(id);
@@ -1056,6 +1056,38 @@ function pickChunks(ORDER,n,R){
 const MECH_LABEL={ice:'ледяной пол',portal:'портал сквозь стену',crumble:'ломкий мост',wind:'восходящий ветер'};
 const CHUNK_LABEL={...MECH_LABEL,A:'дверь с двумя кнопками',B:'подброс на уступ',C:'ящик на кнопку',D:'узкая щель',E:'мост над шипами',F:'враги',M:'летающая платформа над шипами',N:'платформа от кнопки напарника',L:'лифт на уступ'};
 const PICK_TABLE=[['heart',22],['shield',14],['triple',14],['rapid',14],['power',12],['gear',24]];
+/* ---- thinking puzzles (long levels 1–9) ---- */
+const PZ_NEW=[null,'cdrop','detour','tdoor','order','trap','lever','key'];
+const PZ_LABEL={cdrop:'ящик с уступа',detour:'обходной путь',tdoor:'дверь на время',order:'порядок кнопок',trap:'ловушка',lever:'рычаг: красные и синие',key:'ключ и сундук'};
+const PZ_INFO={cdrop:'Столкните ящик с уступа на кнопку — он будет держать дверь.',detour:'Кнопка высоко: найдите путь по уступам.',tdoor:'Дверь закроется через пару секунд после кнопки — бегите!',order:'Нажмите цветные кнопки в порядке, нарисованном на стене.',trap:'Войдёте — дверь захлопнется. Ищите выход!',lever:'Рычаг меняет местами красные и синие платформы.',key:'Ключ открывает замок. В сундуке может быть что-то ещё.'};
+function pzForced(n,k,solo,hero){ const R=rng(n*911+k*37+(hero==='spark'?3:hero==='bolt'?5:0)), pick=a=>a[Math.floor(R()*a.length)];
+  const bad=t=>solo&&hero==='spark'&&t==='cdrop';
+  let known=PZ_NEW.slice(1,Math.min(n,7)+1).filter(t=>!bad(t)); if(!known.length) known=['order'];
+  let nw=n<=7?PZ_NEW[n]:pick(known); if(bad(nw)) nw='order';
+  return k===2?[pick(known),nw,pick(known)]:[nw,pick(known),nw]; }
+function pzChunk(t,c0,set,R,n,o){
+  const gx=c0+7, K=o.K, k=o.k, next=c0+8;
+  const wall=(x,y0,y1)=>{ for(let y=y0;y<=y1;y++) set(x,y,'#'); };
+  const gateDoor=()=>{ wall(gx,1,13); for(let y=14;y<=16;y++) set(gx,y,K); };
+  if(t==='cdrop'){ set(c0+1,16,'#'); for(let x=c0+2;x<=c0+4;x++) set(x,14,'#'); set(c0+3,13,'C'); set(c0+5,16,k); set(c0+6,16,k); gateDoor();
+    if(n>=3) o.enemies.push({type:'crawler',tx:c0+6,ty:16,min:(c0+5)*T,max:(c0+7)*T}); return true; }
+  if(t==='detour'){ set(c0+1,15,'#'); set(c0+2,15,'#'); set(c0+3,13,'#'); set(c0+4,13,'#'); set(c0+5,11,'#'); set(c0+6,11,'#'); set(c0+6,10,k); gateDoor(); if(!o.solo) set(next,16,k);
+    for(let x=c0+3;x<=c0+5;x++) set(x,16,'^'); o.pickups.push({type:'gear',tx:c0+5,ty:10}); return true; }
+  if(t==='tdoor'){ set(c0+1,16,k); gateDoor(); set(c0+3,16,'^'); if(n>=4) set(c0+5,16,'^'); o.pz.push({type:'timed',cells:{door:[[gx,15]]}});
+    if(n>=3) o.enemies.push({type:'crawler',tx:c0+4,ty:16,min:(c0+2)*T,max:(c0+7)*T}); return true; }
+  if(t==='order'){ const ord=['abc','acb','bac','bca','cab','cba'][Math.floor(R()*6)]; wall(gx,1,13); for(let y=14;y<=16;y++) set(gx,y,'G');
+    set(c0+1,16,'a'); set(c0+3,16,'b'); set(c0+5,16,'c');
+    o.pz.push({type:'order',order:ord,cells:{a:[[c0+1,16]],b:[[c0+3,16]],c:[[c0+5,16]],gate:[[gx,14],[gx,15],[gx,16]]}});
+    if(n>=2) o.enemies.push({type:'crawler',tx:c0+4,ty:16,min:(c0+1)*T,max:(c0+7)*T}); return true; }
+  if(t==='trap'){ wall(c0+1,1,13); for(let y=14;y<=16;y++) set(c0+1,y,'g'); wall(gx,1,13); for(let y=14;y<=16;y++) set(gx,y,'x');
+    o.pz.push({type:'trap',trigX:(c0+4)*T,cells:{back:[[c0+1,14],[c0+1,15],[c0+1,16]]}});
+    o.enemies.push({type:'crawler',tx:c0+5,ty:16,min:(c0+2)*T,max:(c0+7)*T}); o.pickups.push({type:'gear',tx:c0+4,ty:13}); return true; }
+  if(t==='lever'){ set(c0,16,'h'); set(c0+1,15,'['); set(c0+2,13,'['); set(c0+3,12,'#'); set(c0+4,12,'#'); set(c0+4,11,'h'); set(c0+5,10,']'); set(c0+6,8,']');
+    wall(gx,9,16); for(let x=c0+2;x<=c0+6;x++) set(x,16,'^'); o.pickups.push({type:'gear',tx:c0+6,ty:7}); return true; }
+  if(t==='key'){ set(c0+1,15,'#'); set(c0+1,14,'k'); for(let x=c0+2;x<=c0+5;x++){ set(x,13,'#'); set(x,10,'#'); } set(c0+2,11,'X'); set(c0+2,12,'X'); wall(c0+5,11,12);
+    set(c0+3,12,'k'); o.pickups.push({type:o.weighted?o.weighted():'heart',tx:c0+4,ty:12}); wall(gx,1,13); for(let y=14;y<=16;y++) set(gx,y,'X'); return true; }
+  return false;
+}
 function mechChunk(t,c0,set,R,n,winds,pickups,enemies){
   const gx=c0+7, min=c0*T, max=(c0+8)*T;
   if(t==='ice'){ for(let x=c0;x<=c0+6;x++) set(x,17,'I'); set(c0+4,16,'^'); if(n>30) set(c0+2,16,'^'); for(let y=1;y<=9;y++) set(gx,y,'#'); if(R()<.6) pickups.push({type:'gear',tx:c0+4,ty:13}); return true; }
@@ -1064,12 +1096,12 @@ function mechChunk(t,c0,set,R,n,winds,pickups,enemies){
   if(t==='wind'){ for(let x=c0+4;x<=gx;x++) set(x,8,'#'); for(let y=9;y<=16;y++) set(gx,y,'#'); winds.push({x:(c0+1)*T,y:3*T,w:3*T,h:14*T}); if(n>28) for(let x=c0+4;x<=c0+6;x++) set(x,16,'^'); pickups.push({type:'gear',tx:c0+2,ty:4}); return true; }
   return false;
 }
-function genLevel(n,salt=0){
+function genLevel(n,salt=0,forced=null){
   const R=rng(n*7919+13+salt*7777), pick=a=>a[Math.floor(R()*a.length)], tier=Math.floor(n/10);
   const g=blank(), set=(x,y,c)=>{ g[y][x]=c; };
   const enemies=[], pickups=[], movers=[], winds=[], msp=70+Math.min(60,n*1.2);
   const weighted=()=>{ let tot=PICK_TABLE.reduce((s,a)=>s+a[1],0), r=R()*tot; for(const [k,w] of PICK_TABLE){ if((r-=w)<0) return k; } return 'gear'; };
-  const chunks=pickChunks(COOP_ORDER,n,R);
+  const chunks=forced||pickChunks(COOP_ORDER,n,R), pz=[];
   set(1,16,'1'); set(2,16,'2');
   const keys=['P','Q','R'], bridgeCh={P:'U',Q:'V',R:'W'};
   const gateDoor=(gx,K)=>{ for(let y=1;y<=13;y++) set(gx,y,'#'); for(let y=14;y<=16;y++) set(gx,y,K); };
@@ -1077,7 +1109,8 @@ function genLevel(n,salt=0){
   const pillar=gx=>{ for(let y=1;y<=9;y++) set(gx,y,'#'); };
   chunks.forEach((t,i)=>{
     const c0=4+i*8, gx=c0+7, K=keys[i], k=K.toLowerCase(), next=c0+8;
-    if(mechChunk(t,c0,set,R,n,winds,pickups,enemies)){}
+    if(pzChunk(t,c0,set,R,n,{K,k,pz,enemies,pickups,weighted,solo:false})){}
+    else if(mechChunk(t,c0,set,R,n,winds,pickups,enemies)){}
     else if(t==='A'){
       const px=c0+3+Math.floor(R()*3);
       if(n>12&&R()<0.4){ set(px,16,'#'); set(px,15,k); } else set(px,16,k);
@@ -1138,9 +1171,9 @@ function genLevel(n,salt=0){
   addSecrets(g,pickups,enemies,R,n,weighted);
   set(28,16,g[16][28]==='.'?'.':g[16][28]);
   for(let y=15;y<=16;y++) for(let x=29;x<=30;x++) set(x,y,'E');
-  const uniq=[...new Set(chunks)].map(c=>CHUNK_LABEL[c]);
+  const uniq=[...new Set(chunks)].map(c=>CHUNK_LABEL[c]||PZ_LABEL[c]);
   const deb=COOP_ORDER.find(o=>o[1]===n);
-  return {newMech:deb?[CHUNK_LABEL[deb[0]],NEW_INFO[deb[0]]]:null, name:NAMES[(n*13+3)%NAMES.length], hint:(deb?'Новое: '+NEW_INFO[deb[0]]+' ':'')+'На уровне: '+uniq.join(', ')+'.', map:g.map(r=>r.join('')), enemies, pickups, movers, winds, tier};
+  return {newMech:deb?[CHUNK_LABEL[deb[0]],NEW_INFO[deb[0]]]:null, name:NAMES[(n*13+3)%NAMES.length], hint:(deb?'Новое: '+NEW_INFO[deb[0]]+' ':'')+'На уровне: '+uniq.join(', ')+'.', map:g.map(r=>r.join('')), enemies, pickups, movers, winds, pz, tier};
 }
 const BOSS_TYPES=['toad','eye','gear','queen'];
 const BOSS_NAMES={toad:'Пресс-Жаба',eye:'Око-Сварщик',gear:'Бешеная Шестерня',queen:'Королева Жуков',core:'Главный Механизм'};
@@ -1186,20 +1219,21 @@ function genBoss(n){
   return {name:BOSS_NAMES[type]+MK[v], arena:type, hint:`Босс!${v>1?' Доработанная версия: '+CHANGELOG[type][v].map(s=>s.slice(2)).join(', ')+'.':''} Арена «${A.name}». ${A.rule} ${BOSS_HINT[type]}`, map:g.map(r=>r.join('')), enemies:[], pickups:[], boss:type, tier};
 }
 const SOLO_LABEL={...MECH_LABEL,mover:'летающая платформа над шипами',lift:'лифт через стену',pmover:'платформа с таймером',gap:'узкая щель',spikes:'шипы',ledge:'уступ с кнопкой',climb:'подъём по платформам',foes:'враги',timer:'дверь с таймером',crate:'ящик на кнопку',slam:'пролом в подвал',wall:'треснувшая стена',hop:'короткие шипы'};
-function genSolo(n,hero,salt=0){
+function genSolo(n,hero,salt=0,forced=null){
   const R=rng(n*4813+(hero==='spark'?7:91)+salt*7777), tier=Math.floor(n/10);
   const g=blank(), set=(x,y,c)=>{ g[y][x]=c; };
   const enemies=[], pickups=[], movers=[], winds=[], msp=70+Math.min(60,n*1.2);
   const weighted=()=>{ let tot=PICK_TABLE.reduce((s,a)=>s+a[1],0), r=R()*tot; for(const [k,w] of PICK_TABLE){ if((r-=w)<0) return k; } return 'gear'; };
   const pool0=hero==='spark'?['gap','spikes','ledge','climb','foes','timer','gap','spikes','ledge','climb']:['crate','slam','wall','hop','foes','timer','crate','slam','wall','hop'];
-  const easy=n<=3, chunks=pickChunks(hero==='spark'?SPARK_ORDER:BOLT_ORDER,n,R);
+  const easy=n<=3, chunks=forced||pickChunks(hero==='spark'?SPARK_ORDER:BOLT_ORDER,n,R), pz=[];
   set(2,16,'1');
   const keys=['P','Q','R'];
   const door=(gx,K)=>{ for(let y=1;y<=13;y++) set(gx,y,'#'); for(let y=14;y<=16;y++) set(gx,y,K); };
   const pillar=gx=>{ for(let y=1;y<=9;y++) set(gx,y,'#'); };
   chunks.forEach((t,i)=>{
     const c0=4+i*8, gx=c0+7, K=keys[i], k=K.toLowerCase(), min=c0*T, max=(c0+8)*T;
-    if(mechChunk(t,c0,set,R,n,winds,pickups,enemies)){}
+    if(pzChunk(t,c0,set,R,n,{K,k,pz,enemies,pickups,weighted,solo:true})){}
+    else if(mechChunk(t,c0,set,R,n,winds,pickups,enemies)){}
     else if(t==='gap'){ for(let y=1;y<=15;y++) set(gx,y,'#'); if(!easy&&R()<.5) set(c0+3,16,'^'); if(R()<.6){ for(let x=c0+2;x<=c0+4;x++) set(x,13,'#'); pickups.push({type:'gear',tx:c0+3,ty:12}); } }
     else if(t==='spikes'){ const w=easy?3:Math.min(5,3+Math.floor(n/8)); for(let x=c0+1;x<c0+1+w;x++) set(x,16,'^'); pillar(gx); if(R()<.5) pickups.push({type:'gear',tx:c0+3,ty:12}); }
     else if(t==='ledge'){ for(let x=c0+3;x<=c0+6;x++) set(x,11,'#'); set(c0+5,10,k); door(gx,K); if(R()<.7) pickups.push({type:'gear',tx:c0+4,ty:10}); set(c0+1,14,'#'); }
@@ -1223,10 +1257,10 @@ function genSolo(n,hero,salt=0){
   for(let j=0;j<gc;j++){ const x=4+Math.floor(R()*24); if(g[13][x]==='.'&&g[12][x]==='.'&&g[14][x]==='.') pickups.push({type:'gear',tx:x,ty:13}); }
   addSecrets(g,pickups,enemies,R,n,weighted);
   for(let y=15;y<=16;y++) for(let x=29;x<=30;x++) set(x,y,'E');
-  const uniq=[...new Set(chunks)].map(c=>SOLO_LABEL[c]);
+  const uniq=[...new Set(chunks)].map(c=>SOLO_LABEL[c]||PZ_LABEL[c]);
   const intro=n===1?(hero==='spark'?'Искра одна: прыжок в воздухе ещё раз, рывок вперёд, в узкие щели пролезает только она. ':'Болт один: толкает ящики, удар сверху в прыжке ломает треснувший пол, гайки бьют сильно. '):'';
   const deb=(hero==='spark'?SPARK_ORDER:BOLT_ORDER).find(o=>o[1]===n);
-  return {newMech:deb?[SOLO_LABEL[deb[0]],NEW_INFO[deb[0]]]:null, name:NAMES[(n*11+(hero==='spark'?1:5))%NAMES.length], hint:(deb?'Новое: '+NEW_INFO[deb[0]]+' ':'')+intro+'На уровне: '+uniq.join(', ')+'. Дверь с кнопкой открывается на несколько секунд.', map:g.map(r=>r.join('')), enemies, pickups, movers, winds, tier};
+  return {newMech:deb?[SOLO_LABEL[deb[0]],NEW_INFO[deb[0]]]:null, name:NAMES[(n*11+(hero==='spark'?1:5))%NAMES.length], hint:(deb?'Новое: '+NEW_INFO[deb[0]]+' ':'')+intro+'На уровне: '+uniq.join(', ')+'. Дверь с кнопкой открывается на несколько секунд.', map:g.map(r=>r.join('')), enemies, pickups, movers, winds, pz, tier};
 }
 const FIX_SECRET=['triple','heart','rapid','shield','power'];
 const RELICS={toad:['Ржавая пружина','Треснувший поршень','Жабья смазка'],eye:['Мутная линза','Сгоревший предохранитель','Тёмный фильтр'],gear:['Сточенный зубец','Песок в подшипник','Погнутая ось'],queen:['Феромон-приманка','Сломанное жало','Тухлое желе'],core:['Схема механизма','Ключ от щитка','Последний болт']};
@@ -1287,8 +1321,8 @@ function harden(L,n){
 }
 /* ---- long levels: several generated screens glued side by side, with checkpoint flags ---- */
 const LONG_SCREENS=3, isLong=i=>i<=8;   // test: chapter 1, levels 1–9 (10 is the boss arena)
-function longLevel(i){ const n=i+1, parts=[], tut=!solo&&i<TUTORIAL.length; for(let k=0;k<LONG_SCREENS;k++) parts.push(tut&&k===0?Object.assign({enemies:[],pickups:[],movers:[],tier:0},TUTORIAL[i]):harden(solo?genSolo(n,soloHero,k):genLevel(n,k),n));
-  const rows=[...Array(ROWS)].map(()=>[]), out={enemies:[],pickups:[],movers:[],winds:[],tier:parts[0].tier,name:parts[0].name,newMech:parts[0].newMech,long:LONG_SCREENS,checkpoints:[]};
+function longLevel(i){ const n=i+1, parts=[], tut=!solo&&i<TUTORIAL.length; for(let k=0;k<LONG_SCREENS;k++){ const f=pzForced(n,k,solo,soloHero); parts.push(tut&&k===0?Object.assign({enemies:[],pickups:[],movers:[],tier:0},TUTORIAL[i]):harden(solo?genSolo(n,soloHero,k,f):genLevel(n,k,f),n)); }
+  const rows=[...Array(ROWS)].map(()=>[]), out={pz:[],enemies:[],pickups:[],movers:[],winds:[],tier:parts[0].tier,name:parts[0].name,newMech:parts[0].newMech,long:LONG_SCREENS,checkpoints:[]};
   { const note='Длинный уровень: '+LONG_SCREENS+' экрана, флажки сохраняют путь.'; const h0=parts[0].hint||''; out.hint=/На уровне: [^.]*\./.test(h0)?h0.replace(/На уровне: [^.]*\./,note):h0+' '+note; }
   parts.forEach((L,k)=>{ const g=L.map.map(r=>r.split('')), x0=k?1:0, x1=k<parts.length-1?31:32, off=rows[0].length, dx=off-x0;
     if(k) out.checkpoints.push(off*T+T);
@@ -1296,7 +1330,15 @@ function longLevel(i){ const n=i+1, parts=[], tut=!solo&&i<TUTORIAL.length; for(
     for(const e of L.enemies||[]) out.enemies.push(Object.assign({},e,{tx:e.tx+dx,min:e.min!=null?e.min+dx*T:e.min,max:e.max!=null?e.max+dx*T:e.max}));
     for(const p of L.pickups||[]) out.pickups.push(Object.assign({},p,{tx:p.tx+dx}));
     for(const m of L.movers||[]) out.movers.push(Object.assign({},m,{ax:m.ax+dx,bx:m.bx+dx}));
-    for(const w of L.winds||[]) out.winds.push(Object.assign({},w,{x:w.x+dx*T})); });
+    for(const w of L.winds||[]) out.winds.push(Object.assign({},w,{x:w.x+dx*T}));
+    for(const z of L.pz||[]){ const c=JSON.parse(JSON.stringify(z)); for(const k2 in c.cells) c.cells[k2]=c.cells[k2].map(([x,y])=>[x+dx,y]); if(c.trigX!=null) c.trigX+=dx*T; out.pz.push(c); } });
+  { const pn=PZ_NEW[n]&&!(solo&&soloHero==='spark'&&PZ_NEW[n]==='cdrop')?PZ_NEW[n]:null; if(pn) out.newMech=[PZ_LABEL[pn],PZ_INFO[pn]]; }
+  // enemies from the very first levels, more as the chapter goes on
+  { const R2=rng(n*577+(solo?soloHero.length:0)), cols=rows[0].length, free=x=>rows[16][x]==='.'&&rows[15][x]==='.'&&rows[17][x]==='#'&&!out.enemies.some(e=>Math.abs(e.tx-x)<3);
+    for(let s=0;s<LONG_SCREENS;s++){ const a=s?31+(s-1)*30+2:9, b=s?31+s*30-3:28; let want=1+(n>=3?1:0)+(n>=6?1:0), tries=0;
+      while(want>0&&tries++<40){ const x=a+Math.floor(R2()*(b-a)); if(!free(x)) continue; out.enemies.push({type:'crawler',tx:x,ty:16,min:Math.max(1,x-3)*T,max:Math.min(cols-1,x+4)*T,trait:n>=7&&want===1?'shield':null}); want--; }
+      if(n>=5){ const x=a+Math.floor(R2()*(b-a)); out.enemies.push({type:'flyer',tx:x,ty:7+Math.floor(R2()*3),min:Math.max(1,x-4)*T,max:Math.min(cols-1,x+4)*T,trait:null}); } }
+    if(n>=8){ for(let x=40;x<80;x++) if(free(x)){ out.enemies.push({type:'turret',tx:x,ty:16}); break; } } }
   out.map=rows.map(r=>r.join('')); return out; }
 function getLevel(i){
   const ck=(solo?soloHero+i:i)+'|'+diffKey();
@@ -1326,6 +1368,8 @@ const ACH=[
   {id:'revive',n:'Не бросай своих',d:'Поднимите упавшего напарника.'},
   {id:'portal',n:'Сквозь стены',d:'Пройдите через портал.'},
   {id:'wind',n:'Попутный ветер',d:'Взлетите на восходящем потоке.'},
+  {id:'order',n:'По порядку',d:'Откройте дверь кнопками в правильном порядке.'},
+  {id:'key',n:'Ключник',d:'Откройте замок ключом.'},
   {id:'combo5',n:'Мясорубка',d:'Сделайте комбо ×5.'},
   {id:'charge',n:'Под напряжением',d:'Искра рывком заряжает Болта.',coop:true},
   {id:'stomp10',n:'Прыг-скок',d:'Раздавите 10 врагов прыжком сверху.'},
@@ -1511,7 +1555,8 @@ function drawDark(){
     ctx.beginPath(); ctx.moveTo(l.x,l.y-10); ctx.lineTo(l.x,l.y-4); ctx.stroke(); if(l.lit&&GLOW){ ctx.globalAlpha=.45; ctx.fillStyle='#ffd166'; ctx.beginPath(); ctx.arc(l.x,l.y+2,13,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1; ctx.fillStyle='#fff3cf'; } ctx.beginPath(); ctx.arc(l.x,l.y+2,7,0,Math.PI*2); ctx.fill(); ctx.restore(); }
 }
 let grid, doors, doorAt, plates, exitRect, exitLocked=false, players, crates, enemies=[], boss=null, bullets=[], ebullets=[], pickups=[], particles=[], texts=[];
-let checkpoints=[], cpSave=null;
+let checkpoints=[], cpSave=null, leverOn=false, pzList=[];
+const scrSuf=x=>COLS>32?(x<31?'':x<61?'1':'2'):'';
 let staticGen=0, gridVer=0, tileCache=null;
 function tilesOf(){ if(!tileCache||tileCache.v!==gridVer||tileCache.g!==grid){ const m={}; for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){ const c=grid[y][x]; if(c!=='.'&&c!=='#') (m[c]||(m[c]=[])).push(x,y); } tileCache={v:gridVer,g:grid,m}; } return tileCache.m; }
 const INTRO_P=3.3; let arena=null, rings=[], hitstop=0, intro=null, lastIntro=-1, staticLayer=document.createElement('canvas'), wallLayer=document.createElement('canvas'), LIVE=null, staticDirty=true, heartTimer=0, curTier=0, GLOW=1, flashA=0, flashC='#fff', titleT=0, motes=[], bgGears=[], vignetteC=null;
@@ -1574,10 +1619,10 @@ function loadLevel(i,keepHp){
     const c=grid[y][x];
     if(c==='1'){s1=[x,y];grid[y][x]='.';}
     else if(c==='2'){s2=[x,y];grid[y][x]='.';}
-    else if('pqr'.includes(c)){plates.push({key:c.toUpperCase(),x,y,on:false});grid[y][x]='.';}
+    else if('pqr'.includes(c)){plates.push({key:c.toUpperCase()+scrSuf(x),x,y,on:false});grid[y][x]='.';}
     else if('PQRUVW'.includes(c)){
-      const bridge=!!BRIDGE[c], key=BRIDGE[c]||c;
-      const d=doors[c]||(doors[c]={key,bridge,cells:[],vis:bridge?0:1,solid:!bridge});
+      const bridge=!!BRIDGE[c], key=(BRIDGE[c]||c)+scrSuf(x), id=c+scrSuf(x);
+      const d=doors[id]||(doors[id]={key,bridge,cells:[],vis:bridge?0:1,solid:!bridge});
       d.cells.push([x,y]); doorAt[y][x]=d; grid[y][x]='.';
     }
     else if(c==='E'){ex.push([x,y]);grid[y][x]='.';}
@@ -1586,6 +1631,9 @@ function loadLevel(i,keepHp){
   portals=[]; crumb={}; winds=(L.winds||[]).slice();
   for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++) if(grid[y][x]==='O'||grid[y][x]==='o') portals.push({x,y,c:grid[y][x]});
   for(const P of portals){ P.to=P.c==='O'?portals.filter(q=>q.c==='o'&&q.x>P.x).sort((a,b)=>a.x-b.x)[0]:portals.filter(q=>q.c==='O'&&q.x<P.x).sort((a,b)=>b.x-a.x)[0]; }
+  leverOn=false; pzList=(L.pz||[]).map(z=>Object.assign(JSON.parse(JSON.stringify(z)),{prog:0,press:{},lit:{},done:false}));
+  for(const z of pzList) if(z.type==='timed') for(const [x,y] of z.cells.door){ const d=doorAt[y]&&doorAt[y][x]; if(d) d.timed=true; }
+  for(const m of movers) if(m.key) m.key+=scrSuf(Math.floor(m.ax/T));
   checkpoints=(L.checkpoints||[]).map(x=>({x,on:false})); if(cpSave&&cpSave.lvl!==i) cpSave=null;
   const xs=ex.map(e=>e[0]), ys=ex.map(e=>e[1]);
   exitRect={x:Math.min(...xs)*T,y:Math.min(...ys)*T,w:(Math.max(...xs)-Math.min(...xs)+1)*T,h:(Math.max(...ys)-Math.min(...ys)+1)*T};
@@ -1644,7 +1692,7 @@ function openSecret(tx,ty){
 const overlap=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
 function solid(tx,ty){
   if(tx<0||tx>=COLS||ty<0||ty>=ROWS) return true;
-  const c=grid[ty][tx]; if(c==='#'||c==='S'||c==='x'||c==='Z'||c==='Y'||c==='I'||c==='K') return true;
+  const c=grid[ty][tx]; if(c==='#'||c==='S'||c==='x'||c==='Z'||c==='Y'||c==='I'||c==='K'||c==='G'||c==='X') return true; if(c==='[') return !leverOn; if(c===']') return leverOn;
   const d=doorAt[ty][tx]; return !!(d&&d.solid);
 }
 const solidPx=(x,y)=>solid(Math.floor(x/T),Math.floor(y/T));
@@ -2184,8 +2232,8 @@ function updateWorld(dt){
   }
   for(const k in doors){
     const d=doors[k], pressedNow=plates.some(p=>p.key===d.key&&p.on);
-    if(solo&&!d.bridge){ if(pressedNow) d.timer=curTimer; else if(d.timer>0){ const before=Math.ceil(d.timer); d.timer=Math.max(0,d.timer-dt); if(Math.ceil(d.timer)!==before&&d.timer>0) tone(1200,1200,.04,'square',.03); } }
-    const held=pressedNow||(solo&&d.timer>0), want=d.bridge?pressedNow:!held;
+    if((solo||d.timed)&&!d.bridge){ if(pressedNow) d.timer=curTimer; else if(d.timer>0){ const before=Math.ceil(d.timer); d.timer=Math.max(0,d.timer-dt); if(Math.ceil(d.timer)!==before&&d.timer>0) tone(1200,1200,.04,'square',.03); } }
+    const held=pressedNow||((solo||d.timed)&&d.timer>0), want=d.bridge?pressedNow:!held;
     if(!want) d.solid=false;
     else if(!d.solid){
       const busy=players.concat(crates).some(e=>d.cells.some(([x,y])=>overlap(e,{x:x*T,y:y*T,w:T,h:T})));
@@ -2969,6 +3017,43 @@ function updateMech(dt){
     if(q.ph===0){ grid[q.ty][q.tx]='~'; gridVer++; q.ph=1; q.t=[2,3,4,5][mechD()+1]; burst(q.tx*T+T/2,q.ty*T+T/2,10,['#a0703c','#5a3a1c'],180,.5); for(const p of players) if(p.ground==null&&p.onGround&&Math.floor((p.y+p.h+2)/T)===q.ty) p.onGround=false; }
     else { const r={x:q.tx*T,y:q.ty*T,w:T,h:T}; if(players.some(p=>!p.absent&&overlap(p,r))||crates.some(c=>overlap(c,r))){ q.t=.3; continue; } grid[q.ty][q.tx]='K'; gridVer++; delete crumb[k]; } }
 }
+function updatePz(dt){
+  const live=players.filter(p=>!p.absent&&!p.dead);
+  for(const z of pzList){
+    if(z.type==='order'&&!z.done){ for(const ch of 'abc'){ const [x,y]=z.cells[ch][0], r={x:x*T+4,y:y*T+T-12,w:T-8,h:12}; const on=live.some(p=>overlap(p,r))||crates.some(c=>overlap(c,r));
+        if(on&&!z.press[ch]){ if(z.lit[ch]){} else if(z.order[z.prog]===ch){ z.lit[ch]=true; z.prog++; sfx('on'); burst(x*T+T/2,y*T+T-6,10,'#ffd166',160,.4);
+            if(z.prog===3){ z.done=true; for(const [gx,gy] of z.cells.gate){ grid[gy][gx]='.'; burst(gx*T+T/2,gy*T+T/2,10,['#cfd8e6','#ffd166'],200,.5); } gridVer++; sfx('boost'); texts.push({x:x*T,y:y*T-40,t:'ОТКРЫТО!',life:1.4,c:'#7fe08a',pop:true}); unlock('order'); } }
+          else { z.prog=0; z.lit={}; sfx('hurt'); shake=Math.max(shake,4); texts.push({x:x*T+T/2,y:y*T-30,t:'НЕ ТОТ ПОРЯДОК',life:1.2,c:'#ff6b6b'}); } }
+        z.press[ch]=on; } }
+    if(z.type==='trap'&&!z.done&&live.length&&live.every(p=>p.x>z.trigX)){ z.done=true; for(const [x,y] of z.cells.back) grid[y][x]='G'; gridVer++; shake=Math.max(shake,8); sfx('crack'); flash('#ff3b4e',.2);
+      texts.push({x:z.trigX,y:VH*.35,t:'ЛОВУШКА!',life:1.6,c:'#ff6b6b',pop:true}); }
+  }
+  for(const p of live){ const x0=Math.floor((p.x-3)/T), x1=Math.floor((p.x+p.w+3)/T), y0=Math.floor((p.y-3)/T), y1=Math.floor((p.y+p.h+2)/T); let lv=false;
+    for(let ty=y0;ty<=y1;ty++) for(let tx=x0;tx<=x1;tx++){ const c=grid[ty]&&grid[ty][tx];
+      if(c==='k'&&overlap(p,{x:tx*T+6,y:ty*T+6,w:T-12,h:T-12})){ grid[ty][tx]='.'; gridVer++; p.keys=(p.keys||0)+1; sfx('gear'); texts.push({x:tx*T+T/2,y:ty*T-10,t:'КЛЮЧ!',life:1,c:'#ffd166',pop:true}); }
+      else if(c==='h'&&overlap(p,{x:tx*T+8,y:ty*T,w:T-16,h:T})) lv=true;
+      else if(c==='X'&&(p.keys||0)>0){ const st=[[tx,ty]]; while(st.length){ const [x,y]=st.pop(); if(!grid[y]||grid[y][x]!=='X') continue; grid[y][x]='.'; burst(x*T+T/2,y*T+T/2,8,['#e7b54a','#fff3c4'],180,.4); st.push([x+1,y],[x-1,y],[x,y+1],[x,y-1]); }
+        gridVer++; p.keys--; sfx('boost'); texts.push({x:tx*T+T/2,y:ty*T-20,t:'ОТКРЫТО!',life:1.2,c:'#ffd166',pop:true}); unlock('key'); } }
+    if(lv&&!p.lvTouch) toggleLever(); p.lvTouch=lv; }
+}
+function toggleLever(){ const nx=!leverOn, ch=nx?']':'[';
+  const blocked=players.concat(crates).some(e=>!e.absent&&!e.dead&&(()=>{ for(let ty=Math.floor(e.y/T);ty<=Math.floor((e.y+e.h-.01)/T);ty++) for(let tx=Math.floor(e.x/T);tx<=Math.floor((e.x+e.w-.01)/T);tx++) if(grid[ty]&&grid[ty][tx]===ch) return true; return false; })());
+  if(blocked){ sfx('hurt'); return; } leverOn=nx; gridVer++; sfx('on'); flash(nx?'#6aa8ff':'#ff6b6b',.12); }
+function drawPz(){
+  const TM=tilesOf(), r3a=R3D.active(), t=clock, each=(ch,f)=>{ const a=TM[ch]; if(a) for(let i=0;i<a.length;i+=2){ const x=a[i], y=a[i+1]; if(grid[y][x]===ch) f(x*T,y*T,x,y); } };
+  const PC={a:'#ff6b6b',b:'#7fe08a',c:'#6aa8ff'};
+  for(const z of pzList) if(z.type==='order'){ for(const ch of 'abc'){ const [x,y]=z.cells[ch][0], X=x*T, Y=y*T, on=z.lit[ch]||z.done; ctx.fillStyle=PC[ch]; ctx.globalAlpha=on?1:.75; ctx.fillRect(X+4,Y+T-(on?5:9),T-8,on?5:9); ctx.globalAlpha=1; if(on&&GLOW){ ctx.globalAlpha=.25; ctx.beginPath(); ctx.arc(X+T/2,Y+T-4,18,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1; } }
+    if(!z.done){ const [gx,gy]=z.cells.gate[0], X=gx*T-44, Y=gy*T-80; ctx.fillStyle='rgba(10,16,30,.92)'; ctx.strokeStyle='#cfd8e6'; ctx.lineWidth=2; ctx.beginPath(); ctx.roundRect?ctx.roundRect(X,Y,88,30,6):ctx.rect(X,Y,88,30); ctx.fill(); ctx.stroke();
+      [...z.order].forEach((ch,i)=>{ ctx.fillStyle=PC[ch]; ctx.beginPath(); ctx.arc(X+18+i*26,Y+15,8,0,Math.PI*2); ctx.fill(); if(i<2){ ctx.fillStyle='#cfd8e6'; ctx.fillRect(X+28+i*26,Y+14,6,2); } }); } }
+  if(!r3a){ each('G',(X,Y)=>{ ctx.fillStyle='#2a3445'; ctx.fillRect(X,Y,T,T); ctx.strokeStyle='#8fa3b8'; ctx.lineWidth=3; for(let i=1;i<4;i++){ ctx.beginPath(); ctx.moveTo(X+i*T/4,Y); ctx.lineTo(X+i*T/4,Y+T); ctx.stroke(); } });
+    each('X',(X,Y)=>{ ctx.fillStyle='#8a6420'; ctx.fillRect(X+1,Y+1,T-2,T-2); ctx.strokeStyle='#ffd166'; ctx.lineWidth=2; ctx.strokeRect(X+2,Y+2,T-4,T-4); ctx.fillStyle='#2a1a04'; ctx.beginPath(); ctx.arc(X+T/2,Y+T/2-3,4,0,Math.PI*2); ctx.fill(); ctx.fillRect(X+T/2-2,Y+T/2,4,8); }); }
+  else each('X',(X,Y)=>{ ctx.fillStyle='#2a1a04'; ctx.beginPath(); ctx.arc(X+T/2,Y+T/2-3,4,0,Math.PI*2); ctx.fill(); ctx.fillRect(X+T/2-2,Y+T/2,4,8); });
+  each('g',(X,Y)=>{ ctx.strokeStyle='rgba(143,163,184,.35)'; ctx.setLineDash([4,4]); ctx.lineWidth=2; ctx.strokeRect(X+3,Y+1,T-6,T-2); ctx.setLineDash([]); });
+  for(const [ch,col,act] of [['[','#ff6b6b',!leverOn],[']','#6aa8ff',leverOn]]) each(ch,(X,Y)=>{ if(act){ ctx.fillStyle=col; ctx.fillRect(X+1,Y+1,T-2,T-2); ctx.fillStyle='rgba(255,255,255,.25)'; ctx.fillRect(X+1,Y+1,T-2,5); ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.lineWidth=2; ctx.strokeRect(X+1,Y+1,T-2,T-2); } else { ctx.strokeStyle=col; ctx.globalAlpha=.5; ctx.setLineDash([5,4]); ctx.lineWidth=2; ctx.strokeRect(X+3,Y+3,T-6,T-6); ctx.setLineDash([]); ctx.globalAlpha=1; } });
+  each('h',(X,Y)=>{ ctx.fillStyle='#3a4656'; ctx.fillRect(X+10,Y+T-8,T-20,8); ctx.save(); ctx.translate(X+T/2,Y+T-8); ctx.rotate(leverOn?.6:-.6); ctx.strokeStyle='#cfd8e6'; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-22); ctx.stroke(); ctx.fillStyle=leverOn?'#6aa8ff':'#ff6b6b'; ctx.beginPath(); ctx.arc(0,-24,6,0,Math.PI*2); ctx.fill(); ctx.restore(); });
+  each('k',(X,Y)=>{ const b=Math.sin(t*3+X)*3; ctx.save(); ctx.translate(X+T/2,Y+T/2+b); if(GLOW){ ctx.globalAlpha=.25; ctx.fillStyle='#ffd166'; ctx.beginPath(); ctx.arc(0,0,16,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1; } ctx.strokeStyle='#ffd166'; ctx.lineWidth=4; ctx.beginPath(); ctx.arc(-6,0,6,0,Math.PI*2); ctx.moveTo(0,0); ctx.lineTo(12,0); ctx.moveTo(8,0); ctx.lineTo(8,6); ctx.moveTo(12,0); ctx.lineTo(12,5); ctx.stroke(); ctx.restore(); });
+  for(const p of players) if(!p.absent&&!p.dead&&p.keys>0) for(let i=0;i<p.keys;i++){ ctx.save(); ctx.translate(p.x+p.w/2-8+i*14,p.y-(p.kind==='spark'?34:18)); ctx.strokeStyle='#ffd166'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(-3,0,4,0,Math.PI*2); ctx.moveTo(1,0); ctx.lineTo(9,0); ctx.stroke(); ctx.restore(); }
+}
 function drawMech(){
   const t=clock;
   for(const w of winds){ ctx.save(); ctx.globalAlpha=mechD()>=2?.06+.16*Math.max(0,Math.sin(levelTime*1.7+w.x)):.16; const g=ctx.createLinearGradient(0,w.y+w.h,0,w.y); g.addColorStop(0,'#cfe8ff'); g.addColorStop(1,'rgba(207,232,255,0)'); ctx.fillStyle=g; ctx.fillRect(w.x,w.y,w.w,w.h); ctx.globalAlpha=.55; ctx.strokeStyle='#e6f3ff'; ctx.lineWidth=2;
@@ -2990,7 +3075,7 @@ function step(dt){
   const [s,b]=players;
   if(solo){ const p=players.find(q=>!q.absent); control(p,readInput(players.indexOf(p)),dt); }
   else { control(s,readInput(0),dt); control(b,readInput(1),dt); }
-  updateMech(dt);
+  updateMech(dt); updatePz(dt);
   const N=Math.max(1,Math.ceil(dt*240)), h=dt/N;
   for(let k=0;k<N;k++){
     updateMovers(h);
@@ -3729,7 +3814,7 @@ function draw(){
   if(state==='ending'){ drawEnding(); return; }
   if(state==='prologue'){ drawPrologue(); return; }
   if(settings.ambient) drawAmbient();
-  drawCracks(); if(arena) drawArena(); drawExit(); drawDoors(); drawPlates(); if(!r3) drawMovers(); drawMech();
+  drawCracks(); if(arena) drawArena(); drawExit(); drawDoors(); drawPlates(); if(!r3) drawMovers(); drawMech(); drawPz();
   for(const pk of pickups) if(!pk.hidden) drawPickup(pk);
   if(!r3) for(const c of crates) drawCrate(c);
   for(const en of enemies) drawEnemy(en);
@@ -4592,7 +4677,7 @@ const R3D=(()=>{
     if(tileGroup){ scene.remove(tileGroup); tileGroup.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); }
     tileGroup=new THREE.Group(); scene.add(tileGroup);
     const C=themeCols();
-    const kinds={'#':{c:C.wall,r:.8,m:.1},S:{c:C.wall,r:.8,m:.1},x:{c:C.wall.clone().lerp(new THREE.Color(0x8a6a40),.35),r:.9,m:0},Z:{c:C.wall,r:.8,m:.1},Y:{c:C.wall,r:.8,m:.1},I:{c:new THREE.Color(0x9fe4f5),r:.15,m:.1,t:.85},K:{c:new THREE.Color(0x9a6634),r:.95,m:0}};
+    const kinds={'#':{c:C.wall,r:.8,m:.1},S:{c:C.wall,r:.8,m:.1},x:{c:C.wall.clone().lerp(new THREE.Color(0x8a6a40),.35),r:.9,m:0},Z:{c:C.wall,r:.8,m:.1},Y:{c:C.wall,r:.8,m:.1},G:{c:new THREE.Color(0x5a6b80)},X:{c:new THREE.Color(0xb88a2e)},I:{c:new THREE.Color(0x9fe4f5),r:.15,m:.1,t:.85},K:{c:new THREE.Color(0x9a6634),r:.95,m:0}};
     const box=new THREE.BoxGeometry(T,T,DEPTH);
     for(const ch in kinds){ const list=[]; for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++) if(grid[y][x]===ch) list.push([x,y]); if(!list.length) continue;
       const K=kinds[ch], mat=new THREE.MeshLambertMaterial({color:K.c,roughness:K.r,transparent:!!K.t,opacity:K.t||1});
