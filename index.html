@@ -921,12 +921,12 @@ function genLevel(n){
       set(c0+6,16,k); pillar(gx);
     } else if(t==='M'){
       for(let x=c0+1;x<=c0+6;x++) set(x,16,'^');
-      movers.push({ax:c0+1,ay:14,bx:c0+5,by:14-(n>20&&R()<.5?3:0),w:2,sp:msp});
+      movers.push({ax:c0+1,ay:15,bx:c0+4,by:15-(n>20&&R()<.5?3:0),w:3,sp:msp});
       if(n>18&&R()<.5) enemies.push({type:'flyer',tx:c0+4,ty:10,min:c0*T,max:(c0+8)*T});
       pillar(gx);
     } else if(t==='N'){
       set(c0+1,16,k); for(let x=c0+2;x<=c0+6;x++) set(x,16,'^');
-      movers.push({ax:c0+2,ay:14,bx:c0+5,by:14,w:2,sp:msp*.9,key:K});
+      movers.push({ax:c0+2,ay:15,bx:c0+5,by:15,w:2,sp:msp*.9,key:K});
       pillar(gx); set(c0+7,16,k);
     } else if(t==='L'){
       for(let x=c0+3;x<=c0+6;x++) set(x,8,'#');
@@ -1029,9 +1029,9 @@ function genSolo(n,hero){
     else if(t==='crate'){ set(c0+2,16,'C'); set(c0+6,16,k); door(gx,K); }
     else if(t==='slam'){ set(c0+1,15,'#'); set(c0+1,16,'#'); for(let x=c0+2;x<=c0+6;x++) set(x,14,'#'); set(c0+3,14,'x'); set(c0+4,14,'x'); for(let y=1;y<=14;y++) set(gx,y,'#'); pickups.push({type:'gear',tx:c0+5,ty:15}); }
     else if(t==='wall'){ for(let y=12;y<=16;y++) set(c0+4,y,'x'); pillar(gx); if(R()<.5) enemies.push({type:'crawler',tx:c0+6,ty:16,min:(c0+5)*T,max}); }
-    else if(t==='mover'){ for(let x=c0+1;x<=c0+6;x++) set(x,16,'^'); movers.push({ax:c0+1,ay:14,bx:c0+5,by:14-(n>20&&R()<.5?3:0),w:2,sp:msp}); pillar(gx); if(n>15&&R()<.5) enemies.push({type:'flyer',tx:c0+4,ty:10,min,max}); }
+    else if(t==='mover'){ for(let x=c0+1;x<=c0+6;x++) set(x,16,'^'); movers.push({ax:c0+1,ay:15,bx:c0+4,by:15-(n>20&&R()<.5?3:0),w:3,sp:msp}); pillar(gx); if(n>15&&R()<.5) enemies.push({type:'flyer',tx:c0+4,ty:10,min,max}); }
     else if(t==='lift'){ for(let y=8;y<=16;y++) set(gx,y,'#'); set(c0+6,8,'#'); movers.push({ax:c0+4,ay:15,bx:c0+4,by:8,w:2,sp:msp*.8,pause:.6}); if(n>12) set(c0+2,16,'^'); }
-    else if(t==='pmover'){ set(c0+1,16,k); for(let x=c0+2;x<=c0+6;x++) set(x,16,'^'); movers.push({ax:c0+2,ay:14,bx:c0+5,by:14,w:2,sp:msp*1.1,key:K}); pillar(gx); }
+    else if(t==='pmover'){ set(c0+1,16,k); for(let x=c0+2;x<=c0+6;x++) set(x,16,'^'); movers.push({ax:c0+2,ay:15,bx:c0+5,by:15,w:2,sp:msp*1.1,key:K}); pillar(gx); }
     else if(t==='hop'){ set(c0+2,16,'^'); set(c0+3,16,'^'); if(!easy) set(c0+5,16,'#'); pillar(gx); }
     else if(t==='foes'){ const cnt=Math.min(3,1+Math.floor(tier/2)+(R()<.5?1:0)); [c0+2,c0+4,c0+6].slice(0,cnt).forEach(sx=>enemies.push({type:'crawler',tx:sx,ty:16,min,max})); if(n>=20&&R()<.6) enemies.push({type:'flyer',tx:c0+3,ty:10,min,max}); if(n>=35&&R()<.5) enemies.push({type:'turret',tx:c0+6,ty:16}); pillar(gx); }
   });
@@ -2908,7 +2908,13 @@ function drawPlates(){
     ctx.fillStyle='rgba(0,0,0,.25)'; ctx.fillRect(X+4,Y+h-2,T-16,2);
   }
 }
-function drawDoors(){
+function drawCrawl(){ // low tunnel under gap doors: only Spark fits
+  for(const k in doors){ const d=doors[k]; if(d.bridge) continue; let maxY=-1,cx=null; for(const [x,y] of d.cells) if(y>maxY){ maxY=y; cx=x; }
+    if(maxY<0||maxY>=16||!grid[maxY+1]||grid[maxY+1][cx]!=='.') continue;
+    const X=cx*T, Y=(maxY+1)*T; ctx.save(); ctx.fillStyle='rgba(4,8,18,.55)'; ctx.fillRect(X-6,Y,T+12,T);
+    ctx.strokeStyle='rgba(255,138,61,.75)'; ctx.lineWidth=2; ctx.setLineDash([5,4]); ctx.strokeRect(X-6,Y+1,T+12,T-2); ctx.setLineDash([]);
+    ctx.fillStyle='#ff8a3d'; ctx.globalAlpha=.6+.4*Math.sin(clock*4); ctx.beginPath(); ctx.moveTo(X+T/2-6,Y+T/2+4); ctx.lineTo(X+T/2,Y+T/2-8); ctx.lineTo(X+T/2+6,Y+T/2+4); ctx.closePath(); ctx.fill(); ctx.restore(); } }
+function drawDoors(){ drawCrawl();
   for(const k in doors){
     const d=doors[k], c=KEYC[d.key];
     if(solo&&d.timer>0&&!plates.some(p=>p.key===d.key&&p.on)&&!d.bridge){ const [x,y]=d.cells[0]; ctx.save(); ctx.font="400 18px 'Russo One', Unbounded, sans-serif"; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineWidth=4; ctx.strokeStyle='#04070f'; const t=Math.ceil(d.timer); ctx.strokeText(t,x*T+T/2,y*T-14); ctx.fillStyle=t<=1?'#ff6b6b':c; ctx.fillText(t,x*T+T/2,y*T-14); ctx.restore(); }
