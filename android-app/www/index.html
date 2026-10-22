@@ -403,6 +403,14 @@ body.b3d .tog input{-webkit-appearance:none;appearance:none;width:22px;height:22
 body.b3d .tog input:checked{background:radial-gradient(circle at 35% 30%,#fff3c4,#ffd166 45%,#d29a24);box-shadow:0 2px 0 #8a5f12,0 3px 6px rgba(0,0,0,.45),inset 0 -2px 3px rgba(0,0,0,.2);transform:translateY(2px)}
 body.b3d .tog input:checked::after{content:"";position:absolute;left:7px;top:3px;width:6px;height:11px;border:solid #2a1a04;border-width:0 3px 3px 0;transform:rotate(45deg)}
 body.b3d .tog:hover input{filter:brightness(1.12)}
+body.b3d .overlay .opts{row-gap:12px;column-gap:8px}
+body.b3d .overlay .btns{row-gap:14px;column-gap:10px}
+body.b3d .overlay .lab{margin-top:6px}
+body.b3d .overlay .card{gap:16px}
+.overlay{overflow-x:hidden}
+body.b3d .overlay .srow{padding:5px 0}
+body.b3d .overlay .tog{padding:3px 0}
+.shop>.hero[hidden]{display:none!important}
 </style>
 
 <div class="app">
@@ -4490,9 +4498,9 @@ addEventListener('keydown',actEv,true); addEventListener('pointerdown',actEv,tru
 /* ===== touch polish: fit menus to screen, drop keyboard hints ===== */
 const isTouchUI=()=>document.body.classList.contains('touch');
 function fitOverlay(){ if(!overlay) return; const c=overlay.querySelector(':scope > .card'); if(!c) return; c.style.transform=''; c.style.marginBottom=''; c.style.zoom='';
-  if(!isTouchUI()||overlay.hidden) return;
+  if(overlay.hidden) return;
   const cs=getComputedStyle(overlay), avH=Math.min(overlay.clientHeight,innerHeight)-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom)-6, avW=Math.min(overlay.clientWidth,innerWidth)-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight)-6, h=c.offsetHeight, w=c.offsetWidth; if(!h||!w) return;
-  const r=Math.min(1,avH/h,avW/w); if(r<.99){ const k=Math.max(.4,r); c.style.transformOrigin='top center'; c.style.transform='scale('+k.toFixed(3)+')'; c.style.marginBottom=(-h*(1-k)).toFixed(1)+'px'; } }
+  const r=Math.min(1,avH/h,avW/w); if(r<.7&&!overlay.querySelector('.ctabs')&&overlay.querySelector('.shop')){ customTabs(overlay); if(overlay.querySelector('.ctabs')) return fitOverlay(); } if(r<.99){ const k=Math.max(isTouchUI()?.4:.5,r); c.style.transformOrigin='top center'; c.style.transform='scale('+k.toFixed(3)+')'; c.style.marginBottom=(-h*(1-k)).toFixed(1)+'px'; } }
 const KEYHINT=/\s*·\s*(Enter|Esc|Tab|Пробел|Space)(?=\s*$)/g;
 const tabMem={};
 function customTabs(root){ if(!root.querySelectorAll) return; root.querySelectorAll('.shop').forEach(sh=>{ const hs=[...sh.children].filter(c=>c.classList.contains('hero')); if(hs.length!==2||sh.previousElementSibling&&sh.previousElementSibling.classList.contains('ctabs')) return;
@@ -4650,7 +4658,7 @@ R3D.on=settings.r3d!==false&&R3D.on; document.body.classList.toggle('b3d',R3D.on
 function paintRanges(root){ (root||document).querySelectorAll('.overlay input[type=range]').forEach(el=>{ const p=(el.value-el.min)/((el.max-el.min)||1)*100; el.style.setProperty('--p',p+'%'); }); }
 addEventListener('input',e=>{ if(e.target&&e.target.type==='range') paintRanges(); },true);
 new MutationObserver(()=>paintRanges(overlay)).observe(overlay,{childList:true,subtree:true});
-const GAME_VER='1.13';
+const GAME_VER='1.14';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' beta'; $('screen').appendChild(v); })();
 window.__ib={proTest:()=>{proT=0;storyNext=null;setState("prologue");},endTest:()=>{endT=0;setState("ending");},net:{NET,netApply,netSnap},getLevel,startGame,dmgE:(e,d)=>damageEnemy(e,d),complete:()=>complete(),hurt:i=>hurt(players[i]),setState:x=>setState(x),startDemo:()=>startDemo(),stopDemo:()=>stopDemo(),get demo(){return demo},tr:x=>tr(x),demoAt:i=>{ lastIntro=-1; loadLevel(i); follow=true; demoT=0; setState('play'); },get combo(){return combo},openSecret,nextLevel,hitBoss:(d)=>hitBoss(d),get outro(){return outro},get state(){return {state,levelIdx,boss,players,enemies,pickups,arena,run,movers,grid,ebullets,bullets}}};
 const hot=window.claude&&window.claude.hot;
