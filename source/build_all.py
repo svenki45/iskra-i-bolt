@@ -15,4 +15,13 @@ main, long_ = js('src-pc'), js('src-long')
 wr('pc.html', H + '<script>' + main + '</script></body></html>')
 wr('long.html', H.replace('<title>Искра и Болт</title>', '<title>Искра и Болт · длинные уровни</title>', 1) + '<script>' + long_ + '</script></body></html>')
 wr('mobile.html', H + '<script>window.MOBILE_BUILD=true;</script><script>' + main + '</script></body></html>')
-print('Готово: source/out/pc.html, mobile.html, long.html')
+# Steam/офлайн-версия: шрифты внутри файла, без интернета -> копировать в desktop-app/index.html
+import base64, re, datetime
+F=[('Unbounded',500),('Unbounded',700),('Unbounded',900),('Rubik',400),('Rubik',500),('Rubik',700),('Russo One',400)]
+ff=''.join("@font-face{font-family:'%s';font-style:normal;font-weight:%d;font-display:block;src:url(data:font/woff;base64,%s) format('woff')}\n"%(fam,w,base64.b64encode(open(os.path.join(D,'fonts',fam.replace(' ','')+'-%d.woff'%w),'rb').read()).decode()) for fam,w in F)
+h=re.sub(r'<link rel="preconnect"[^>]*>\n','',H); h=re.sub(r'<link rel="stylesheet" href="https://fonts.googleapis.com[^>]*>\n','',h)
+h=h.replace('<style>\n','<style>\n'+ff+'[hidden]{display:none!important}\n',1)
+pre='<!doctype html>\n<html lang="ru">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n'
+stamp='const BUILD_STAMP="'+(datetime.datetime.utcnow()+datetime.timedelta(hours=3)).strftime('%d.%m %H:%M')+'";\n'
+wr('steam.html', pre+h.replace('<div class="app">','</head>\n<body>\n<div class="app">',1)+'<script>\n'+stamp+main+'\n</script>\n</body>\n</html>\n')
+print('Готово: source/out/pc.html, mobile.html, long.html, steam.html (-> desktop-app/index.html)')
