@@ -278,13 +278,12 @@ function setState(s){
           ${tg('vignette','Виньетка','Затемнение по краям экрана')}
           ${tg('shake','Тряска экрана','При ударах и взрывах')}
           ${tg('flash','Вспышки экрана','При уроне и победе над боссом')}
-          ${tg('r3d','3D-окружение','Объёмные стены, свет и тени (2.5D)')}
           ${tg('retro','Ретро-экран','Полосы как на старом мониторе')}
         </div>
       </div>
       ${touchUI.on?'<div class="btns"><button class="secondary" id="bTedit3" type="button">Кнопки и размер экрана</button></div>':''}<div class="btns"><button class="secondary" id="bReport" type="button">Отчёт для тестов</button></div><div class="btns"><button class="secondary" id="bDef" type="button">Сбросить</button><button class="primary" id="bBack" type="button">Готово · Esc</button></div></div>`;
     for(const id of ['master','music','sfx','particles']){ const el=$(id); el.oninput=()=>{ settings[id]=el.value/100; $(id+'O').textContent=el.value+'%'; if(id==='particles') settings.quality='custom'; saveSettings(); applyVolumes(); if(id==='sfx'||id==='master') sfx('gear'); }; }
-    for(const id of ['mute','glow','ambient','trails','vignette','shake','flash','retro','r3d']){ const el=$(id); el.onchange=()=>{ settings[id]=el.checked; if(id==='r3d'){ R3D.on=el.checked; document.body.classList.toggle('b3d',el.checked); const eb=document.getElementById('err3d'); if(eb) eb.remove(); } if(!['mute','shake','flash','retro','r3d'].includes(id)) settings.quality='custom'; saveSettings(); applyVolumes(); const sc=overlay.scrollTop; setState('settings'); overlay.scrollTop=sc; }; }
+    for(const id of ['mute','glow','ambient','trails','vignette','shake','flash','retro']){ const el=$(id); if(!el) continue; el.onchange=()=>{ settings[id]=el.checked; if(id==='r3d'){ R3D.on=el.checked; document.body.classList.toggle('b3d',el.checked); const eb=document.getElementById('err3d'); if(eb) eb.remove(); } if(!['mute','shake','flash','retro','r3d'].includes(id)) settings.quality='custom'; saveSettings(); applyVolumes(); const sc=overlay.scrollTop; setState('settings'); overlay.scrollTop=sc; }; }
     overlay.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{ settings.quality=b.dataset.q; Object.assign(settings,PRESETS[b.dataset.q]); saveSettings(); fit(); const sc=overlay.scrollTop; setState('settings'); overlay.scrollTop=sc; });
     overlay.querySelectorAll('[data-lang]').forEach(b=>b.onclick=()=>{ if(b.dataset.lang!==LANG) setLang(b.dataset.lang); });
     overlay.querySelectorAll('[data-song]').forEach(b=>b.onclick=()=>{ audioInit(); previewSong=b.dataset.song; const sc=overlay.scrollTop; setState('settings'); overlay.scrollTop=sc; });

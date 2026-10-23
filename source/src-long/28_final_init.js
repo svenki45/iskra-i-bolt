@@ -1,4 +1,5 @@
-R3D.on=settings.r3d!==false&&R3D.on; document.body.classList.toggle('b3d',R3D.on);
+settings.r3d=true; R3D.on=true; // 3D всегда включён (2D только если видеокарта не умеет WebGL)
+ document.body.classList.toggle('b3d',R3D.on);
 function paintRanges(root){ (root||document).querySelectorAll('.overlay input[type=range]').forEach(el=>{ const p=(el.value-el.min)/((el.max-el.min)||1)*100; el.style.setProperty('--p',p+'%'); }); }
 addEventListener('input',e=>{ if(e.target&&e.target.type==='range') paintRanges(); },true);
 new MutationObserver(()=>paintRanges(overlay)).observe(overlay,{childList:true,subtree:true});
