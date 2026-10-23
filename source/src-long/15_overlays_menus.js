@@ -29,12 +29,12 @@ function setState(s){
     overlay.innerHTML=`<div class="titlescr">
       <div class="logo" aria-label="Искра и Болт">${word('ИСКРА','s',0.15)}<span class="lt amp" style="animation-delay:.6s">и</span>${word('БОЛТ','b',0.7)}<span class="beta">БЕТА</span></div>
       <p class="tag">Кооператив на двоих · 100 уровней · 10 боссов</p>
-      <div class="startwrap"><div class="modes"><button class="${solo?'primary':'secondary'} start mode" id="bOne" type="button">1 ИГРОК<small>выбрать героя</small></button><button class="${solo?'secondary':'primary'} start mode" id="bTwo" type="button">2 ИГРОКА<small>${window.MOBILE_BUILD?"на одном телефоне":"за одной клавиатурой"}</small></button></div><button class="secondary" id="bOnline" type="button" style="margin-top:10px">🌐 ОНЛАЙН<small>${window.MOBILE_BUILD?"подключиться к другу на ПК":"играть с другом по интернету"}</small></button>
+      <div class="startwrap"><div class="modes"><button class="${solo?'primary':'secondary'} start mode" id="bOne" type="button">1 ИГРОК<small>выбрать героя</small></button><button class="${solo?'secondary':'primary'} start mode" id="bTwo" type="button">2 ИГРОКА<small>${window.MOBILE_BUILD?"на одном телефоне":"за одной клавиатурой"}</small></button></div><button class="secondary" id="bOnline" type="button" style="margin-top:10px">🌐 ОНЛАЙН<small>${window.MOBILE_BUILD?"подключиться к другу на ПК":"играть с другом по интернету"}</small></button>${window.MOBILE_BUILD?'':'<div style="display:flex;gap:10px;justify-content:center;margin-top:10px"><button class="secondary" id="tEditor" type="button">🛠 КОНСТРУКТОР<small style="margin-left:8px">свои уровни</small></button><button class="secondary" id="tMyGame" type="button">📚 МОЯ ИГРА<small style="margin-left:8px">из моих уровней</small></button></div>'}
       <p class="press">Стрелки и Enter, или крестовина и A на геймпаде</p></div>
     </div>`;
     for(const [id,k] of [['bOne','one'],['bTwo','two']]){ const el=$(id); el.addEventListener('mouseenter',()=>titleFocus=k); el.addEventListener('focus',()=>titleFocus=k); }
     $('bOne').onclick=()=>{ audioInit(); sfx('nav'); heroBack='title'; setState('hero'); };
-    $('bOnline').onclick=()=>{ audioInit(); sfx('nav'); NET.status=''; setState('net'); }; $('bTwo').onclick=()=>{ setMode(false); goMenuFromTitle(); };
+    $('bOnline').onclick=()=>{ audioInit(); sfx('nav'); NET.status=''; setState('net'); }; if($('tEditor')){ $('tEditor').onclick=()=>{ audioInit(); sfx('nav'); ED.open(); }; $('tMyGame').onclick=()=>{ audioInit(); sfx('nav'); ED.open(); ED.game(); }; } $('bTwo').onclick=()=>{ setMode(false); goMenuFromTitle(); };
     setTimeout(()=>{ try{ $(solo?'bOne':'bTwo').focus({preventScroll:true}); }catch(e){} },0);
   } else if(s==='menu'){
     const cont=best>0&&best<TOTAL, got=Object.keys(achGot).length, LS=latestSlot();
