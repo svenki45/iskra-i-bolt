@@ -109,6 +109,7 @@ function startTitleIntro(){ for(const t of titleIntro.timers) clearTimeout(t); t
   if(fast){ titleIntro.seen=true; return; }
   for(let i=0;i<5;i++) at(300+i*200+120,()=>{ const p=letterXY('.logo .lt.s')[i]; if(p){ burst(p[0],p[1],26,['#fff','#ffe9a8','#ffd166','#ff8a3d'],420,.6); sfx('gear'); } });
   for(let i=0;i<4;i++) at(1600+i*200+300,()=>{ const p=letterXY('.logo .lt.b')[i]; if(p){ burst(p[0],p[1],14,['#9cc3ff','#62c7c1','#fff'],260,.45); sfx('pick'); } });
+  at(2900,()=>{ sfx('pick'); tone(220,880,.25,'square',.05); const p=document.querySelector('.b3dbadge'); if(p){ const sr=$('screen').getBoundingClientRect(), r=p.getBoundingClientRect(); burst((r.left+r.width/2-sr.left)/sr.width*VW,(r.top+r.height/2-sr.top)/sr.height*VH,30,['#fff','#9fb4d6','#7fe8e0'],380,.6); } });
   at(2650,()=>{ flash('#ffffff',.5); shake=Math.max(shake,9); sfx('boost'); const lg=document.querySelector('.logo'); if(lg){ lg.classList.remove('slam'); void lg.offsetWidth; lg.classList.add('slam'); } });
   for(let i=0;i<5;i++) at(3300+i*450,()=>{ titleIntro.roar=i; titleIntro.roarT=performance.now(); shake=Math.max(shake,3+i); tone(70-i*6,40,.7,'sawtooth',.06); });
   at(6000,()=>{ titleIntro.seen=true; });
@@ -197,6 +198,7 @@ function drawTitleScene(){
   const now=performance.now(), dt=Math.min(.05,(now-TS.last)/1000); TS.last=now;
   const mode=titleFocus==='two'?'duo':titleFocus==='one'?(soloHero==='bolt'?'bolt':'spark'):'idle';
   if(TS.lastMode!==mode){ if(TS.lastMode!==undefined&&mode!=='idle'){ const sx=TS.sx+12, bx=TS.bx+17; if(mode!=='bolt'){ burst(sx,VH*.64-20,22,['#fff','#ffd166','#ff8a3d'],320,.5); flash('#ff8a3d',.12); } if(mode!=='spark'){ burst(bx,VH*.64-30,18,['#fff','#9cc3ff','#62c7c1'],280,.5); shake=Math.max(shake,4); } sfx('pick'); } TS.lastMode=mode; }
+  { const lg=drawTitleScene.lg&&drawTitleScene.lg.isConnected?drawTitleScene.lg:(drawTitleScene.lg=document.querySelector('.logo')); if(lg){ const mx=titleMouse?(titleMouse.x/VW-.5):Math.sin(clock*.5)*.3, my=titleMouse?(titleMouse.y/VH-.4):Math.cos(clock*.4)*.15; lg.style.setProperty('--ry',(mx*18).toFixed(1)+'deg'); lg.style.setProperty('--rx',(6-my*12).toFixed(1)+'deg'); } }
   const M=titleMouse, near=(x,y)=>M&&Math.hypot(M.x-x,M.y-y)<90;
   let sTx, bTx, sY=fy-30, bY=fy-56, sSx=1, sSy=1, bSx=1, bSy=1, sFace=1, bFace=1, sTrail=false, bSlam=false;
   if(mode==='duo'){
