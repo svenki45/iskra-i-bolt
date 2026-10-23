@@ -80,7 +80,7 @@ function die(p,cause){
   const pick=a=>a[Math.floor(Math.random()*a.length)];
   go={t:10,cause,who:p.kind,bossType:b?b.type:null,bossName:b?b.name:null,bossPct:b?Math.max(1,Math.round(b.hp/b.max*100)):0,
       tip:b?pick((b.v>1&&BOSS_TIPS2[b.type])?BOSS_TIPS2[b.type].concat(BOSS_TIPS[b.type].slice(0,1)):BOSS_TIPS[b.type]):pick(((TIPS[cause]||[]).concat(TIPS.any)).filter(t=>!solo||!(soloHero==='bolt'?/Искр/:/Болт/).test(t)).concat(solo?['Не торопитесь: осмотрите уровень, прежде чем прыгать.']:[]))};
-  deaths++; $('deaths').textContent=deaths; state='dying'; deathTimer=1.3; flash('#ff3b4e',.45); shake=Math.max(shake,8); sfx('die');
+  deaths++; $('deaths').textContent=deaths; state='dying'; deathTimer=1.7; try{ atoms=[]; for(const q of players||[]) if(q&&!q.absent&&(q===p||q.down)) atomize(q); }catch(_){} flash('#ff3b4e',.45); shake=Math.max(shake,8); sfx('die');
   burst(p.x+p.w/2,p.y+p.h/2,26,p.kind==='spark'?'#ff8a3d':'#62c7c1',420,.8);
   p.dead=true;
   texts.push({x:p.x+p.w/2,y:p.y-16,t:'ОЙ!',life:.9,c:'#ff6b6b'});
@@ -116,3 +116,20 @@ function complete(){
   if(levelIdx===TOTAL-1){ endT=0; setState('ending'); } else setState('done');
 }
 
+
+/* ---------- death: hero breaks apart into atoms ---------- */
+let atoms=[], atomClock=0;
+function atomize(p){ if(!p||p.atomized) return; p.atomized=true;
+  const pal=p.kind==='spark'?[['#fff3b0','#ffd166'],['#ffb347','#ff8a3d'],['#ff8a3d','#e8642a'],['#e8642a','#b8461c']]:[['#e6eef7','#c9d6e3'],['#7fe8e0','#62c7c1'],['#62c7c1','#3e9c96'],['#3e9c96','#2b5a63']];
+  const S=4; for(let y=0;y<p.h;y+=S) for(let x=0;x<p.w;x+=S){ const band=pal[Math.min(3,Math.floor(y/p.h*4))], cx=p.x+x+S/2, cy=p.y+y+S/2, dx=cx-(p.x+p.w/2), dy=cy-(p.y+p.h/2);
+    atoms.push({x:cx,y:cy,vx:dx*2.2+(Math.random()-.5)*120,vy:dy*1.6-60-Math.random()*160,c:band[Math.random()<.5?0:1],s:S*(.7+Math.random()*.5),d:(1-y/p.h)*.35+Math.random()*.12,life:1.1+Math.random()*.5,t:0,sp:Math.random()*6}); }
+  for(let i=0;i<3;i++) rings&&rings.push&&rings.push({x:p.x+p.w/2,y:p.y+p.h/2,r:6+i*10,max:90+i*40,life:.45+i*.1,c:p.kind==='spark'?'#ffb347':'#7fe8e0',w:3});
+  shake=Math.max(shake,10); }
+function drawAtoms(){ if(!atoms.length) return; const now=performance.now(), dt=Math.min(.05,(now-(atomClock||now))/1000); atomClock=now;
+  ctx.save(); ctx.globalCompositeOperation='lighter';
+  for(const a of atoms){ a.t+=dt; if(a.t<a.d){ ctx.globalAlpha=1; ctx.fillStyle=a.c; ctx.fillRect(a.x-a.s/2,a.y-a.s/2,a.s,a.s); continue; }
+    const k=a.t-a.d; a.vx*=.985; a.vy=a.vy*.985-30*dt; a.x+=a.vx*dt+Math.sin(a.sp+k*9)*0.6; a.y+=a.vy*dt; const f=Math.max(0,1-k/a.life);
+    if(f<=0) continue; const sz=a.s*(0.4+0.6*f);
+    ctx.globalAlpha=f*.35; ctx.fillStyle=a.c; ctx.beginPath(); ctx.arc(a.x,a.y,sz*1.6,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha=f; ctx.fillRect(a.x-sz/2,a.y-sz/2,sz,sz); }
+  ctx.restore(); ctx.globalAlpha=1; atoms=atoms.filter(a=>a.t<a.d+a.life); }

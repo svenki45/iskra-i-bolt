@@ -270,7 +270,7 @@ function drawLimbs(p,kind){
   }
   ctx.restore(); ctx.translate(0,-LG);
 }
-function drawSpark(p){
+function drawSpark(p){ if(p&&p.atomized) return;
   if(p.dead) return;
   const w=p.w,h=p.h; ctx.save(); ctx.globalAlpha=playerAlpha(p); ctx.translate(p.x+w/2,p.y+h);
   if(p.down){ ctx.rotate(p.face*Math.PI/2*.9); }
@@ -289,7 +289,7 @@ function drawSpark(p){
   ctx.restore();
   if(p.down) drawDown(p);
 }
-function drawBolt(p){
+function drawBolt(p){ if(p&&p.atomized) return;
   if(p.dead) return;
   const w=p.w,h=p.h; ctx.save(); ctx.globalAlpha=playerAlpha(p); ctx.translate(p.x+w/2,p.y+h);
   if(p.down){ ctx.translate(0,-6); ctx.rotate(p.face*Math.PI/2*.9); ctx.translate(0,h/2-w/2); }
@@ -610,7 +610,7 @@ function draw(){
   if(outro) drawOutroWorld();
   if(settings.glow) drawLights();
   drawDark();
-  drawBolt(players[1]); drawSpark(players[0]); drawDecor(true);
+  drawBolt(players[1]); drawSpark(players[0]); drawAtoms(); drawDecor(true);
   if(false){ const p=players[active], bob=Math.sin(clock*6)*3, x=p.x+p.w/2, y=p.y-(p.kind==='spark'?30:14)+bob;
     ctx.fillStyle=p.kind==='spark'?'#ff8a3d':'#62c7c1'; ctx.beginPath(); ctx.moveTo(x-7,y-10); ctx.lineTo(x+7,y-10); ctx.lineTo(x,y-2); ctx.closePath(); ctx.fill();
     const o=players[1-active]; if(follow&&!o.down){ ctx.globalAlpha=.7; ctx.fillStyle='#9cc3ff'; ctx.font="700 9px Unbounded, sans-serif"; ctx.textAlign='center'; ctx.fillText('ЗА МНОЙ',o.x+o.w/2,o.y-(o.kind==='spark'?26:10)); ctx.globalAlpha=1; } }
