@@ -591,6 +591,10 @@ function draw(){
       z=C.z; ox=Math.min(0,Math.max(VW-WW*z,VW/2-C.x*z)); oy=Math.min(0,Math.max(VH-VH*z,VH*0.58-C.y*z)); } }
   if(WW>VW&&!intro&&!outro&&players&&state!=='title'){ const live=players.filter(p=>!p.absent&&!p.dead); if(live.length){ const cx=live.reduce((a,p)=>a+p.x+p.w/2,0)/live.length;
       const L=draw.cl||(draw.cl={x:cx,lv:-1}); if(L.lv!==levelIdx){ L.lv=levelIdx; L.x=cx; } L.x+=(cx-L.x)*.12; const zz=z||1; ox=Math.min(0,Math.max(VW-WW*zz,VW/2-L.x*zz)); } }
+  if((state==='dying'||state==='gameover')&&typeof atomFocus!=='undefined'&&atomFocus){ const F=atomFocus, pv=draw.view||{z:1,ox:0,oy:0}; if(!F.v) F.v={z:pv.z,ox:pv.ox,oy:pv.oy};
+    const k=state==='gameover'?1:Math.min(1,(2.4-deathTimer)/1.6), e=k*k*(3-2*k), tz=F.v.z*(1+0.35*e), W=WW, tx=Math.min(0,Math.max(VW-W*tz,VW/2-F.x*tz)), ty=Math.min(0,Math.max(VH-VH*tz,VH/2-F.y*tz));
+    z=tz; ox=F.v.ox+(tx-F.v.ox)*e; oy=F.v.oy+(ty-F.v.oy)*e; }
+  else if(state==='play') atomFocus=null;
   draw.view={z,ox,oy};
   ctx.setTransform(scale*z,0,0,scale*z,(sx+ox)*scale,(sy+oy)*scale);
   let r3ok=r3; if(r3){ try{ R3D.render(z,ox+sx,oy+sy); }catch(err){ R3D.fail(err); r3ok=false; } } if(!r3ok){ if(r3){ r3=false; R3D.hide(); ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle='#0b1830'; ctx.fillRect(0,0,cv.width,cv.height); ctx.setTransform(scale*z,0,0,scale*z,(sx+ox)*scale,(sy+oy)*scale); }

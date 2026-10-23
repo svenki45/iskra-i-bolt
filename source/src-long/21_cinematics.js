@@ -319,7 +319,7 @@ function drawOverlays(){
     ctx.drawImage(vignetteC,0,0,VW,VH);
   }
   if(settings.retro){ ctx.fillStyle='rgba(0,0,0,.18)'; for(let y=0;y<VH;y+=4) ctx.fillRect(0,y,VW,1.6); }
-  if(state==='gameover'||state==='dying'){ const k=state==='dying'?Math.min(1,(1.7-deathTimer)/1.7):1; ctx.fillStyle=`rgba(60,0,10,${.45*k})`; ctx.fillRect(0,0,VW,VH); }
+  if(state==='gameover'||state==='dying'){ const k=state==='dying'?Math.min(1,(2.4-deathTimer)/2.4):1; ctx.fillStyle=`rgba(10,0,4,${.55*k})`; ctx.fillRect(0,0,VW,VH); const vg=ctx.createRadialGradient(VW/2,VH/2,VH*.25,VW/2,VH/2,VH*.85); vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,`rgba(0,0,0,${.75*k})`); ctx.fillStyle=vg; ctx.fillRect(0,0,VW,VH); }
   if(flashA>0){ ctx.globalAlpha=flashA; ctx.fillStyle=flashC; ctx.fillRect(0,0,VW,VH); ctx.globalAlpha=1; }
   if(titleT>0&&state==='play'){
     const L=getLevel(levelIdx), a=Math.min(1,titleT*1.5, (2.2-titleT)*4);
