@@ -4790,7 +4790,7 @@ let edTest=false, edLevel=null, edSaved=null;
 #editor .edside{width:250px;display:flex;flex-direction:column;background:#0d1628;border-right:1px solid #22324f;min-height:0}
 #editor #edSearch{margin:8px;padding:7px 9px;border-radius:8px;background:#0a1426;color:#e8effa;border:1px solid #33456a;font:inherit}
 #editor .edpal{flex:1;overflow:auto;padding:0 6px 6px}
-#editor .edinfo{border-top:1px solid #22324f;padding:8px 10px;min-height:120px;font-size:12.5px;line-height:1.4;background:#0f1a30}
+#editor .edinfo{position:fixed;z-index:9100;width:270px;padding:8px 10px;font-size:12.5px;line-height:1.4;background:#0f1a30f2;border:1px solid #ffd16688;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.5);pointer-events:none;display:none}
 #editor .edinfo p{margin:4px 0;color:#cfd8ea}
 #editor .edinfo .edcomb{color:#9cc3ff}
 #editor .edih{display:flex;align-items:center;gap:8px;font-size:14px;color:#ffd166}
@@ -4947,8 +4947,10 @@ const ED=(()=>{
     el.querySelectorAll('canvas[data-ico]').forEach(c=>ico(c.getContext('2d'),c.dataset.ico,0,0,28));
     const info=el.querySelector('#edInfo'), showInfo=id=>{ const d=DESC[id]; if(!d) return; const nm=(TOOLS.flatMap(g=>g[1]).find(t=>t[0]===id)||[])[1]||'';
       info.innerHTML=`<div class="edih"><canvas width="40" height="40" id="edIc"></canvas><b>${nm}</b></div><p>${d[0]} ${d[1]}</p>${d[2]?`<p class="edcomb"><b>Сочетается:</b> ${d[2]}</p>`:''}`; ico(info.querySelector('#edIc').getContext('2d'),id,0,0,40); };
-    showInfo(tool);
-    el.querySelectorAll('[data-tool]').forEach(b=>{ b.onmouseenter=()=>showInfo(b.dataset.tool); b.onmouseleave=()=>showInfo(tool); });
+    const place=e=>{ const w=info.offsetWidth||270, h=info.offsetHeight||120; let x=e.clientX+16, y=e.clientY+14; if(x+w>innerWidth-8) x=e.clientX-w-16; if(y+h>innerHeight-8) y=innerHeight-h-8; info.style.left=x+'px'; info.style.top=y+'px'; };
+    const hideInfo=()=>{ info.style.display='none'; };
+    el.querySelectorAll('[data-tool]').forEach(b=>{ b.onmouseenter=()=>{ showInfo(b.dataset.tool); info.style.display='block'; const r=b.getBoundingClientRect(), side=el.querySelector('.edside').getBoundingClientRect(), h=info.offsetHeight; info.style.left=(side.right+10)+'px'; info.style.top=Math.max(8,Math.min(innerHeight-h-8,r.top+r.height/2-h/2))+'px'; }; b.onmouseleave=hideInfo; });
+    E.place=place; E.hideInfo=hideInfo;
     el.querySelector('#edSearch').oninput=e=>{ const v=e.target.value.trim().toLowerCase(); el.querySelectorAll('.edgrp').forEach(gp=>{ let any=false; gp.querySelectorAll('.edt').forEach(b=>{ const ok=!v||b.dataset.name.includes(v); b.hidden=!ok; any=any||ok; }); gp.hidden=!any; }); };
     const q=s=>el.querySelector(s);
     q('#edName').oninput=e=>{ L.name=e.target.value; dirty=true; }; q('#edHint').oninput=e=>{ L.hint=e.target.value; dirty=true; };
@@ -4956,7 +4958,7 @@ const ED=(()=>{
     q('#edHue').oninput=e=>{ const v=+e.target.value; L.hue=v<0?null:v; dirty=true; paint(); }; q('#edDark').onchange=e=>{ L.dark=e.target.checked; dirty=true; };
     q('#edOrder').onchange=e=>{ L.order=e.target.value; dirty=true; paint(); };
     el.querySelectorAll('[data-timed]').forEach(c=>c.onchange=()=>{ L.timed[c.dataset.timed]=c.checked; dirty=true; });
-    el.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>{ tool=b.dataset.tool; moverA=null; el.querySelectorAll('.edt').forEach(x=>x.classList.toggle('on',x===b)); showInfo(tool); });
+    el.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>{ tool=b.dataset.tool; moverA=null; el.querySelectorAll('.edt').forEach(x=>x.classList.toggle('on',x===b)); });
     q('#edPlay2').onclick=()=>test(false); q('#edPlayS').onclick=()=>test('spark'); q('#edPlayB').onclick=()=>test('bolt');
     q('#edSave').onclick=()=>{ const o=list(); const nm=(L.name||'Мой уровень').trim(); o[nm]=L; saveList(o); dirty=false; toastQ.push({small:'Конструктор',title:'Сохранено: '+nm}); showToast(); build(); };
     q('#edLoad').onclick=()=>{ const k=q('#edList').value; if(!k) return; L=JSON.parse(JSON.stringify(list()[k])); build(); };
@@ -4967,8 +4969,8 @@ const ED=(()=>{
     q('#edExit').onclick=close;
     const wrap=q('.edwrap'); wrap.addEventListener('wheel',e=>{ if(Math.abs(e.deltaY)>Math.abs(e.deltaX)){ wrap.scrollLeft+=e.deltaY; e.preventDefault(); } },{passive:false});
     cv2.oncontextmenu=e=>e.preventDefault();
-    cv2.onpointerdown=e=>{ painting=e.button===2?2:1; apply(e); }; cv2.onpointermove=e=>{ if(painting&&!tool.startsWith('@')&&tool!=='E'&&tool!=='1'&&tool!=='2') apply(e); hover=cellAt(e); paint(); const [hx,hy]=hover; const id=L.enemies.find(o=>o.tx===hx&&o.ty===hy)?'@'+L.enemies.find(o=>o.tx===hx&&o.ty===hy).t:L.pickups.find(o=>o.tx===hx&&o.ty===hy)?'@'+L.pickups.find(o=>o.tx===hx&&o.ty===hy).t:(L.map[hy]&&L.map[hy][hx]); if(id&&id!=='.'&&id!==lastHov){ lastHov=id; showInfo(id); } };
-    cv2.onpointerleave=()=>{ lastHov=null; showInfo(tool); };
+    cv2.onpointerdown=e=>{ painting=e.button===2?2:1; apply(e); }; cv2.onpointermove=e=>{ if(painting&&!tool.startsWith('@')&&tool!=='E'&&tool!=='1'&&tool!=='2') apply(e); hover=cellAt(e); paint(); const [hx,hy]=hover; if(e) place(e); const id=L.enemies.find(o=>o.tx===hx&&o.ty===hy)?'@'+L.enemies.find(o=>o.tx===hx&&o.ty===hy).t:L.pickups.find(o=>o.tx===hx&&o.ty===hy)?'@'+L.pickups.find(o=>o.tx===hx&&o.ty===hy).t:(L.map[hy]&&L.map[hy][hx]); if(id&&id!=='.'){ if(id!==lastHov){ lastHov=id; showInfo(id); } info.style.display='block'; } else { lastHov=null; hideInfo(); } };
+    cv2.onpointerleave=()=>{ lastHov=null; hideInfo(); };
     addEventListener('pointerup',()=>painting=0);
     requestAnimationFrame(()=>{ fitCell(); paint(); });
   }
