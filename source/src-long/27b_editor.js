@@ -25,6 +25,7 @@ let edTest=false, edLevel=null, edSaved=null;
 #editor .edwrap{flex:1;overflow:auto;padding:6px}
 #editor canvas{display:block;cursor:crosshair;width:auto!important;height:auto!important}
 #editor button.primary,#editor button.secondary,#editor .edimp{padding:6px 12px;font-size:13px;cursor:pointer}
+#editor .glist{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:4px}#editor .glist li span{display:inline-block;min-width:170px}#editor .glist button{background:#1d2a45;color:#cfe;border:1px solid #3a4a6a;border-radius:6px;padding:2px 8px;margin-left:3px;cursor:pointer}#editor .gnote{font-size:12px;opacity:.75;margin:0}
 #editor #edRnd{position:fixed;right:16px;bottom:96px;z-index:9200;width:360px;max-height:70vh;overflow:auto;background:#0f1a30;border:1px solid #ffd16688;border-radius:12px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:8px}
 #editor #edRnd>b{font:900 14px Unbounded,sans-serif;color:#ffd166}
 #editor .rgrp span{display:block;font:700 10px Unbounded,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#9cc3ff;margin:4px 0}
@@ -152,7 +153,7 @@ const ED=(()=>{
       if(e.t==='flyer') return Object.assign(base,{type:'flyer',trait:null}); return Object.assign(base,{type:'crawler',trait:e.t==='shield'?'shield':null,bigForce:e.t==='big'}); });
     return {name:L.name||'Мой уровень',motif:L.motif,hue:L.hue,dark:!!L.dark,hint:L.hint||'Уровень из конструктора.',map:map.map(r=>r.join('')),enemies:en,
       pickups:L.pickups.map(p=>({type:p.t==='pshield'?'shield':p.t,tx:p.tx,ty:p.ty})),movers:L.movers.map(m=>Object.assign({w:2,sp:90},m)),
-      winds:L.winds.map(w=>({x:w.tx*T,y:3*T,w:3*T,h:14*T})),checkpoints:L.flags.map(x=>x*T),pz,tier:0,custom:true,decor:(L.decor||[]).map(d=>Object.assign({},d)),lampsC:(L.lamps&&L.lamps.length)?L.lamps.map(l=>Object.assign({},l)):null,darkA:L.darkA||.94}; }
+      winds:L.winds.map(w=>({x:w.tx*T,y:3*T,w:3*T,h:14*T})),checkpoints:L.flags.map(x=>x*T),pz,tier:L.boss?[2,6,10][(L.bossV||1)-1]:0,custom:true,decor:(L.decor||[]).map(d=>Object.assign({},d)),...(L.boss?{boss:L.boss,arena:L.boss,tier:[2,6,10][(L.bossV||1)-1]}:{}),lampsC:(L.lamps&&L.lamps.length)?L.lamps.map(l=>Object.assign({},l)):null,darkA:L.darkA||.94}; }
   // ---------- UI ----------
   function build(){
     if(!el){ el=document.createElement('div'); el.id='editor'; document.body.appendChild(el); }
@@ -168,6 +169,8 @@ const ED=(()=>{
       <label>Густота тьмы <input id="edDA" type="range" min="50" max="98" value="${Math.round((L.darkA||.94)*100)}"></label>
       <label>Лампа: <select id="edLM">${[['touch','выстрел/касание'],['timer','на 10 секунд'],['plate:P','жёлтая кнопка'],['plate:Q','сиреневая кнопка'],['plate:R','зелёная кнопка'],['lever','рычаг']].map(([k,n])=>`<option value="${k}" ${k===lampOpt.mode?'selected':''}>${n}</option>`).join('')}</select>
         <select id="edLR">${[[120,'свет малый'],[200,'свет средний'],[320,'свет большой']].map(([k,n])=>`<option value="${k}" ${k===lampOpt.r?'selected':''}>${n}</option>`).join('')}</select></label>
+      <label>Босс <select id="edBoss"><option value="">нет</option>${Object.keys(BOSS_NAMES).map(k=>`<option value="${k}" ${k===L.boss?'selected':''}>${BOSS_NAMES[k]}</option>`).join('')}</select>
+        <select id="edBV">${[1,2,3].map(v=>`<option value="${v}" ${v===(L.bossV||1)?'selected':''}>версия ${['I','II','III'][v-1]}</option>`).join('')}</select></label>
       <label>Двери на время ${['P','Q','R'].map(K=>`<input type="checkbox" data-timed="${K}" ${L.timed[K]?'checked':''} title="${({P:'жёлтая',Q:'сиреневая',R:'зелёная'})[K]}">`).join('')}</label>
     </div>
     <div class="edmain"><div class="edside"><input id="edSearch" placeholder="🔍 Поиск объекта…" autocomplete="off"><div class="edpal">${TOOLS.map(([gn,ts])=>`<div class="edgrp"><span>${gn}</span>${ts.map(([id,n])=>`<button type="button" class="edt ${id===tool?'on':''}" data-tool="${id}" data-name="${(n+' '+(DESC[id]||[]).join(' ')).toLowerCase().replace(/"/g,'')}"><canvas width="28" height="28" data-ico="${id}"></canvas>${n}</button>`).join('')}</div>`).join('')}</div>
@@ -180,8 +183,8 @@ const ED=(()=>{
       <select id="edList"><option value="">Мои уровни (${Object.keys(mine).length})</option>${Object.keys(mine).map(k=>`<option>${k}</option>`).join('')}</select>
       <button type="button" class="secondary" id="edLoad">Открыть</button><button type="button" class="secondary" id="edDel">Удалить</button>
       <button type="button" class="secondary" id="edNew">Новый</button><button type="button" class="secondary" id="edRndB">🎲 Случайный</button><button type="button" class="secondary" id="edExp">Экспорт файла</button><label class="secondary edimp">Импорт<input id="edImp" type="file" accept=".json,application/json" hidden></label>
-      <button type="button" class="secondary" id="edExit">Выход · Esc</button>
-      <span class="edhelp">ЛКМ — рисовать, ПКМ — стереть, колесо — прокрутка. Края уровня — стены.</span></div>`;
+      <button type="button" class="primary" id="edGame">📚 Моя игра</button><button type="button" class="secondary" id="edExit">Выход · Esc</button>
+      <span class="edhelp">ЛКМ — рисовать, ПКМ — стереть, колесо — прокрутка. Декор: Q/E — повернуть, Shift+колесо — размер, R — отразить, F — передний план. Края уровня — стены.</span></div>`;
     cv2=el.querySelector('#edCv'); g2=cv2.getContext('2d');
     el.querySelectorAll('canvas[data-ico]').forEach(c=>ico(c.getContext('2d'),c.dataset.ico,0,0,28));
     const info=el.querySelector('#edInfo'), showInfo=id=>{ const d=DESC[id]; if(!d) return; const nm=(TOOLS.flatMap(g=>g[1]).find(t=>t[0]===id)||[])[1]||'';
@@ -195,6 +198,7 @@ const ED=(()=>{
     q('#edName').oninput=e=>{ L.name=e.target.value; dirty=true; }; q('#edHint').oninput=e=>{ L.hint=e.target.value; dirty=true; };
     q('#edW').onchange=e=>resize(+e.target.value); q('#edMotif').onchange=e=>{ L.motif=e.target.value; dirty=true; };
     q('#edHue').oninput=e=>{ const v=+e.target.value; L.hue=v<0?null:v; dirty=true; paint(); }; q('#edDark').onchange=e=>{ L.dark=e.target.checked; dirty=true; };
+    q('#edBoss').onchange=e=>{ L.boss=e.target.value||null; if(L.boss&&L.map[0].length>32){ alert('Босс сражается только на уровне в 1 экран — длина уменьшена.'); resize(32); } dirty=true; }; q('#edBV').onchange=e=>{ L.bossV=+e.target.value; dirty=true; };
     q('#edDA').oninput=e=>{ L.darkA=+e.target.value/100; dirty=true; }; q('#edLM').onchange=e=>lampOpt.mode=e.target.value; q('#edLR').onchange=e=>lampOpt.r=+e.target.value;
     q('#edOrder').onchange=e=>{ L.order=e.target.value; dirty=true; paint(); };
     el.querySelectorAll('[data-timed]').forEach(c=>c.onchange=()=>{ L.timed[c.dataset.timed]=c.checked; dirty=true; });
@@ -206,7 +210,7 @@ const ED=(()=>{
     q('#edNew').onclick=()=>{ if(dirty&&!confirm('Начать новый уровень? Несохранённое пропадёт.')) return; L=blankLevel(); dirty=false; build(); };
     q('#edExp').onclick=()=>{ const data=JSON.stringify({iskraBoltLevel:1,level:L},null,1); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([data],{type:'application/json'})); a.download=(L.name||'level').replace(/[^\wа-яё -]/gi,'_')+'.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); };
     q('#edImp').onchange=e=>{ const f=e.target.files[0]; if(!f) return; f.text().then(t=>{ try{ const d=JSON.parse(t); L=Object.assign(blankLevel(),d.level||d); build(); }catch(err){ alert('Не удалось открыть файл уровня'); } }); };
-    q('#edExit').onclick=close; q('#edRndB').onclick=rndDialog;
+    q('#edExit').onclick=close; q('#edGame').onclick=gameDialog; q('#edRndB').onclick=rndDialog;
     cv2.addEventListener('wheel',e=>{ if(e.shiftKey&&hovDecor){ e.preventDefault(); e.stopPropagation(); hovDecor.sc=Math.max(.5,Math.min(3,(hovDecor.sc||1)+(e.deltaY<0?.25:-.25))); dirty=true; paint(); } },{passive:false});
     const wrap=q('.edwrap'); wrap.addEventListener('wheel',e=>{ if(e.shiftKey&&hovDecor) return; if(Math.abs(e.deltaY)>Math.abs(e.deltaX)){ wrap.scrollLeft+=e.deltaY; e.preventDefault(); } },{passive:false});
     cv2.oncontextmenu=e=>e.preventDefault();
@@ -292,23 +296,61 @@ const ED=(()=>{
     q('#rS').onchange=e=>rndOpt.screens=+e.target.value; q('#rL').oninput=e=>{ rndOpt.lvl=+e.target.value; q('#rLo').textContent=e.target.value; }; q('#rF').onchange=e=>rndOpt.foes=e.target.value;
     d.querySelectorAll('[data-r]').forEach(c=>c.onchange=()=>rndOpt.on[c.dataset.r]=c.checked?1:0);
     q('#rX').onclick=()=>d.remove(); q('#rGo').onclick=()=>{ if(dirty&&!confirm('Заменить текущий уровень случайным? Несохранённое пропадёт.')) return; randomize(); rndDialog(); }; }
+
+  // ---------- my game (campaign) ----------
+  const GSTORE=STORE+'-game';
+  const gameGet=()=>{ try{ return Object.assign({name:'Моя игра',list:[]},JSON.parse(localStorage.getItem(GSTORE)||'{}')); }catch(e){ return {name:'Моя игра',list:[]}; } };
+  const gameSet=o=>{ try{ localStorage.setItem(GSTORE,JSON.stringify(o)); }catch(e){} };
+  let camp=null;
+  function gameDialog(){ let d=el.querySelector('#edRnd'); if(d){ d.remove(); return; } d=document.createElement('div'); d.id='edRnd'; d.className='edgame'; el.appendChild(d); drawG(); }
+  function drawG(){ const d=el.querySelector('#edRnd'); if(!d) return; const G=gameGet(), mine=list();
+    d.innerHTML=`<b>📚 Моя игра — уровни по порядку</b>
+      <label>Название игры <input id="gN" value="${G.name.replace(/"/g,'&quot;')}"></label>
+      <ol class="glist">${G.list.map((n,i)=>`<li><span>${mine[n]?(mine[n].boss?'👹 ':'')+n:'⚠ '+n+' (нет такого уровня)'}</span><button data-u="${i}">▲</button><button data-dn="${i}">▼</button><button data-x="${i}">✕</button></li>`).join('')||'<li><i>Пока пусто. Добавьте сохранённые уровни ниже.</i></li>'}</ol>
+      <label>Добавить <select id="gA">${Object.keys(mine).map(k=>`<option>${k}</option>`).join('')}</select> <button type="button" class="secondary" id="gAdd">+ В игру</button></label>
+      <p class="gnote">Уровень с боссом делается как обычный: вверху выберите «Босс», нарисуйте арену в 1 экран и сохраните.</p>
+      <div class="rbtn"><button type="button" class="primary" id="gP2">▶ Играть вдвоём</button><button type="button" class="secondary" id="gPS">▶ Искрой</button><button type="button" class="secondary" id="gPB">▶ Болтом</button></div>
+      <div class="rbtn"><button type="button" class="secondary" id="gExp">💾 Сохранить игру в файл</button><label class="secondary edimp">📂 Загрузить игру из файла<input id="gImp" type="file" accept=".json,application/json" hidden></label><button type="button" class="secondary" id="gX">Закрыть</button></div>`;
+    const q=x=>d.querySelector(x);
+    q('#gN').onchange=e=>{ G.name=e.target.value||'Моя игра'; gameSet(G); };
+    d.querySelectorAll('[data-u]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.u; if(i>0){ [G.list[i-1],G.list[i]]=[G.list[i],G.list[i-1]]; gameSet(G); drawG(); } });
+    d.querySelectorAll('[data-dn]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.dn; if(i<G.list.length-1){ [G.list[i+1],G.list[i]]=[G.list[i],G.list[i+1]]; gameSet(G); drawG(); } });
+    d.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{ G.list.splice(+b.dataset.x,1); gameSet(G); drawG(); });
+    q('#gAdd').onclick=()=>{ const v=q('#gA').value; if(v){ G.list.push(v); gameSet(G); drawG(); } };
+    q('#gX').onclick=()=>d.remove();
+    q('#gP2').onclick=()=>playGame(null); q('#gPS').onclick=()=>playGame('spark'); q('#gPB').onclick=()=>playGame('bolt');
+    q('#gExp').onclick=()=>{ const lv={}; for(const n of G.list) if(mine[n]) lv[n]=mine[n]; const b=new Blob([JSON.stringify({iskraGame:1,name:G.name,list:G.list,levels:lv})],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=(G.name||'game')+'.json'; a.click(); };
+    q('#gImp').onchange=e=>{ const f=e.target.files[0]; if(!f) return; f.text().then(t=>{ try{ const o=JSON.parse(t); if(!o.iskraGame) throw 0; const m=list(); Object.assign(m,o.levels||{}); saveList(m); gameSet({name:o.name||'Моя игра',list:o.list||[]}); drawG(); toastQ.push({small:'Моя игра',title:'Игра загружена: '+(o.list||[]).length+' ур.'}); showToast(); }catch(_){ alert('Это не файл игры.'); } }); }; }
+  function playGame(hero){ const G=gameGet(), mine=list(); const lv=G.list.filter(n=>mine[n]).map(n=>mine[n]);
+    if(!lv.length){ alert('Добавьте в игру хотя бы один сохранённый уровень.'); return; }
+    edSaved={solo,soloHero,levelIdx}; const keep=L; camp={hero,levels:[],i:0,keep,name:G.name};
+    for(const x of lv){ L=Object.assign(blankLevel(),JSON.parse(JSON.stringify(x))); camp.levels.push(toGame()); }
+    L=keep; const d=el.querySelector('#edRnd'); if(d) d.remove(); runCamp(); }
+  function runCamp(){ const hero=camp.hero, G=JSON.parse(JSON.stringify(camp.levels[camp.i]));
+    G.name=camp.name+' · '+(camp.i+1)+'/'+camp.levels.length+' · '+G.name;
+    solo=!!hero; if(hero) soloHero=hero;
+    if(hero) G.map=G.map.map(r=>r.replace('2','.'));
+    edLevel=G; edTest=true; el.hidden=true; E.on=false; deaths=0; lastIntro=-1; for(const k in cache) delete cache[k]; loadLevel(0); setState('play'); }
   // ---------- test run ----------
   function test(hero){ const G=toGame(), m=G.map;
     if(!m.some(r=>r.includes('E'))){ alert('Поставьте выход (E).'); return; }
     if(!m.some(r=>r.includes('1'))){ alert('Поставьте старт Искры (1).'); return; }
     if(!hero&&!m.some(r=>r.includes('2'))){ alert('Поставьте старт Болта (2).'); return; }
-    edSaved={solo,soloHero,levelIdx}; solo=!!hero; if(hero) soloHero=hero;
+    edSaved={solo,soloHero,levelIdx}; camp=null; solo=!!hero; if(hero) soloHero=hero;
     if(hero) G.map=G.map.map(r=>r.replace('2','.'));
     edLevel=G; edTest=true; el.hidden=true; E.on=false; deaths=0;
     lastIntro=-1; loadLevel(0); setState('play'); }
-  E.endTest=(won)=>{ if(!edTest) return; edTest=false; edLevel=null; if(edSaved){ solo=edSaved.solo; soloHero=edSaved.soloHero; } for(const k in cache) delete cache[k];
-    loadLevel(edSaved?edSaved.levelIdx:0); open(); toastQ.push({small:'Конструктор',title:won?'Уровень пройден! 🎉':'Тест закончен'}); showToast(); };
+  E.endTest=(won)=>{ if(!edTest) return;
+    if(camp&&won&&camp.i<camp.levels.length-1){ camp.i++; toastQ.push({small:camp.name,title:'Уровень '+camp.i+' пройден! Дальше —'}); showToast(); runCamp(); return; }
+    const campDone=camp&&won; camp=null; edTest=false; edLevel=null; if(edSaved){ solo=edSaved.solo; soloHero=edSaved.soloHero; } for(const k in cache) delete cache[k];
+    loadLevel(edSaved?edSaved.levelIdx:0); open(); toastQ.push({small:'Конструктор',title:campDone?'Игра пройдена! 🏆':won?'Уровень пройден! 🎉':'Тест закончен'}); showToast(); };
   function open(){ if(!L){ L=blankLevel(); try{ const d=JSON.parse(localStorage.getItem(STORE+'-draft')||'null'); if(d) L=Object.assign(blankLevel(),d); }catch(e){} }
     L=Object.assign(blankLevel(),L);
     E.on=true; overlay.hidden=true; state='editor'; build(); el.hidden=false; document.body.classList.add('editing'); }
   function close(){ try{ localStorage.setItem(STORE+'-draft',JSON.stringify(L)); }catch(e){} E.on=false; el.hidden=true; document.body.classList.remove('editing'); setState('menu'); pressed.clear(); }
-  E.open=open; E.close=close;
+  E.open=open; E.close=close; E.game=()=>{ if(!el.querySelector('#edRnd')) gameDialog(); };
   addEventListener('keydown',e=>{ if(!E.on) return; if(e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')){ e.stopImmediatePropagation(); return; } if(e.code==='Escape'){ e.preventDefault(); e.stopImmediatePropagation(); close(); }
+    else if(hovDecor&&(e.code==='KeyQ'||e.code==='KeyE')){ e.stopImmediatePropagation(); hovDecor.rot=(((hovDecor.rot||0)+(e.code==='KeyE'?15:-15))%360+360)%360; dirty=true; paint(); }
     else if(hovDecor&&(e.code==='KeyR'||e.code==='KeyF')){ e.stopImmediatePropagation(); if(e.code==='KeyR') hovDecor.fl=hovDecor.fl?0:1; else hovDecor.fr=hovDecor.fr?0:1; dirty=true; paint(); } else e.stopImmediatePropagation(); },true);
   addEventListener('resize',()=>{ if(E.on){ fitCell(); paint(); } });
   setInterval(()=>{ if(E.on&&L&&L.decor&&L.decor.length) paint(); },100);

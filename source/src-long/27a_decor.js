@@ -31,6 +31,6 @@ const DECOR={
 function drawDecorItem(g,d,x,y,t,cs){ // x,y = anchor cell top-left in px; cs = cell size
   const D=DECOR[d.t]; if(!D) return; const sc=d.sc||1, W=D.w*cs*sc, H=D.h*cs*sc;
   let X=x+cs/2-W/2, Y=D.a==='b'?y+cs-H:D.a==='t'?y:y+cs/2-H/2;
-  g.save(); g.translate(X,Y); if(d.fl){ g.translate(W,0); g.scale(-1,1); } try{ D.d(g,W,H,t); }catch(e){} g.restore(); }
+  g.save(); g.translate(X,Y); if(d.rot){ g.translate(W/2,H/2); g.rotate(d.rot*Math.PI/180); g.translate(-W/2,-H/2); } if(d.fl){ g.translate(W,0); g.scale(-1,1); } try{ D.d(g,W,H,t); }catch(e){} g.restore(); }
 function decorBox(d,cs){ const D=DECOR[d.t]; if(!D) return null; const sc=d.sc||1, W=D.w*cs*sc, H=D.h*cs*sc, x=d.tx*cs, y=d.ty*cs; return {x:x+cs/2-W/2,y:D.a==='b'?y+cs-H:D.a==='t'?y:y+cs/2-H/2,w:W,h:H}; }
 function drawDecor(front){ const L=getLevel(levelIdx); if(!L||!L.decor||!L.decor.length) return; for(const d of L.decor){ if(!!d.fr!==front) continue; if(front) ctx.globalAlpha=.85; drawDecorItem(ctx,d,d.tx*T,d.ty*T,clock,T); ctx.globalAlpha=1; } }
