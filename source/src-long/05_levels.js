@@ -301,7 +301,7 @@ function harden(L,n){
 const LONG_SCREENS=3, isLong=i=>i<=8;   // test: chapter 1, levels 1–9 (10 is the boss arena)
 function longLevel(i){ const n=i+1, parts=[], tut=!solo&&i<TUTORIAL.length; for(let k=0;k<LONG_SCREENS;k++){ const f=pzForced(n,k,solo,soloHero); parts.push(tut&&k===0?Object.assign({enemies:[],pickups:[],movers:[],tier:0},TUTORIAL[i]):harden(solo?genSolo(n,soloHero,k,f):genLevel(n,k,f),n)); }
   const rows=[...Array(ROWS)].map(()=>[]), out={pz:[],enemies:[],pickups:[],movers:[],winds:[],tier:parts[0].tier,name:parts[0].name,newMech:parts[0].newMech,long:LONG_SCREENS,checkpoints:[]};
-  { const note='Длинный уровень: '+LONG_SCREENS+' экрана, флажки сохраняют путь.'; const h0=parts[0].hint||''; out.hint=/На уровне: [^.]*\./.test(h0)?h0.replace(/На уровне: [^.]*\./,note):h0+' '+note; }
+  { const note='Длинный уровень: '+LONG_SCREENS+' экрана, флажки сохраняют путь. Держите Tab (на геймпаде Select) — карта.'; const h0=parts[0].hint||''; out.hint=/На уровне: [^.]*\./.test(h0)?h0.replace(/На уровне: [^.]*\./,note):h0+' '+note; }
   parts.forEach((L,k)=>{ const g=L.map.map(r=>r.split('')), x0=k?1:0, x1=k<parts.length-1?31:32, off=rows[0].length, dx=off-x0;
     if(k) out.checkpoints.push(off*T+T);
     for(let y=0;y<ROWS;y++) for(let x=x0;x<x1;x++){ let c=g[y][x]; if(k&&(c==='1'||c==='2')) c='.'; if(k<parts.length-1&&c==='E') c='.'; rows[y].push(c); }
