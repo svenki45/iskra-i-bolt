@@ -2,7 +2,7 @@
 const overlap=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
 function solid(tx,ty){
   if(tx<0||tx>=COLS||ty<0||ty>=ROWS) return true;
-  const c=grid[ty][tx]; if(c==='#'||c==='S'||c==='x'||c==='Z'||c==='Y'||c==='I'||c==='K'||c==='G'||c==='X') return true; if(c==='[') return !leverOn; if(c===']') return leverOn;
+  const c=grid[ty][tx]; if(c==='#'||c==='S'||c==='x'||c==='Z'||c==='Y'||c==='I'||c==='K'||c==='G'||c==='X'||c==='D') return true; if(c==='[') return !leverOn; if(c===']') return leverOn;
   const d=doorAt[ty][tx]; return !!(d&&d.solid);
 }
 const solidPx=(x,y)=>solid(Math.floor(x/T),Math.floor(y/T));

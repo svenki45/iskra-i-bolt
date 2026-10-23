@@ -89,6 +89,8 @@ function drawPz(){
   if(!r3a){ each('G',(X,Y)=>{ ctx.fillStyle='#2a3445'; ctx.fillRect(X,Y,T,T); ctx.strokeStyle='#8fa3b8'; ctx.lineWidth=3; for(let i=1;i<4;i++){ ctx.beginPath(); ctx.moveTo(X+i*T/4,Y); ctx.lineTo(X+i*T/4,Y+T); ctx.stroke(); } });
     each('X',(X,Y)=>{ ctx.fillStyle='#8a6420'; ctx.fillRect(X+1,Y+1,T-2,T-2); ctx.strokeStyle='#ffd166'; ctx.lineWidth=2; ctx.strokeRect(X+2,Y+2,T-4,T-4); ctx.fillStyle='#2a1a04'; ctx.beginPath(); ctx.arc(X+T/2,Y+T/2-3,4,0,Math.PI*2); ctx.fill(); ctx.fillRect(X+T/2-2,Y+T/2,4,8); }); }
   else each('X',(X,Y)=>{ ctx.fillStyle='#2a1a04'; ctx.beginPath(); ctx.arc(X+T/2,Y+T/2-3,4,0,Math.PI*2); ctx.fill(); ctx.fillRect(X+T/2-2,Y+T/2,4,8); });
+  each('D',(X,Y)=>{ ctx.fillStyle='#232a3a'; ctx.fillRect(X,Y,T,T); ctx.strokeStyle='#ffd166'; ctx.lineWidth=2; ctx.strokeRect(X+2,Y+2,T-4,T-4); ctx.fillStyle='#ffd166'; ctx.beginPath(); ctx.arc(X+T/2,Y+T/2-3,7,0,7); ctx.fill(); ctx.fillRect(X+T/2-3,Y+T/2+3,6,5);
+    if(lamps.length){ ctx.fillStyle='#fff3c4'; ctx.font="700 10px Rubik,sans-serif"; ctx.textAlign='center'; ctx.fillText(lamps.filter(l=>l.lit).length+'/'+lamps.length,X+T/2,Y+T-4); } });
   each('g',(X,Y)=>{ ctx.strokeStyle='rgba(143,163,184,.35)'; ctx.setLineDash([4,4]); ctx.lineWidth=2; ctx.strokeRect(X+3,Y+1,T-6,T-2); ctx.setLineDash([]); });
   for(const [ch,col,act] of [['[','#ff6b6b',!leverOn],[']','#6aa8ff',leverOn]]) each(ch,(X,Y)=>{ if(act){ ctx.fillStyle=col; ctx.fillRect(X+1,Y+1,T-2,T-2); ctx.fillStyle='rgba(255,255,255,.25)'; ctx.fillRect(X+1,Y+1,T-2,5); ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.lineWidth=2; ctx.strokeRect(X+1,Y+1,T-2,T-2); } else { ctx.strokeStyle=col; ctx.globalAlpha=.5; ctx.setLineDash([5,4]); ctx.lineWidth=2; ctx.strokeRect(X+3,Y+3,T-6,T-6); ctx.setLineDash([]); ctx.globalAlpha=1; } });
   each('h',(X,Y)=>{ ctx.fillStyle='#3a4656'; ctx.fillRect(X+10,Y+T-8,T-20,8); ctx.save(); ctx.translate(X+T/2,Y+T-8); ctx.rotate(leverOn?.6:-.6); ctx.strokeStyle='#cfd8e6'; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-22); ctx.stroke(); ctx.fillStyle=leverOn?'#6aa8ff':'#ff6b6b'; ctx.beginPath(); ctx.arc(0,-24,6,0,Math.PI*2); ctx.fill(); ctx.restore(); });
@@ -129,7 +131,7 @@ function step(dt){
   if(NET.role==='host'&&NET.rpos&&b&&!b.absent&&!b.down){ const r=NET.rpos;
     if(Math.hypot(r[0]-b.x,r[1]-b.y)<260){ b.x=r[0]; b.y=r[1]; b.vx=r[2]; b.vy=r[3]; b.face=r[4]; } }
   for(const p of players) p.wasGround=p.onGround;
-  updateLamps(); updateEnemies(dt); updateBoss(dt); updateArena(dt); updateBullets(dt); updatePickups(dt);
+  updateLamps(dt); updateEnemies(dt); updateBoss(dt); updateArena(dt); updateBullets(dt); updatePickups(dt);
   if(state==='play') updateWorld(dt);
 }
 function tick(dt){

@@ -40,7 +40,7 @@ const R3D=(()=>{
     if(tileGroup){ scene.remove(tileGroup); tileGroup.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); }
     tileGroup=new THREE.Group(); scene.add(tileGroup);
     const C=themeCols();
-    const kinds={'#':{c:C.wall,r:.8,m:.1},S:{c:C.wall,r:.8,m:.1},x:{c:C.wall.clone().lerp(new THREE.Color(0x8a6a40),.35),r:.9,m:0},Z:{c:C.wall,r:.8,m:.1},Y:{c:C.wall,r:.8,m:.1},G:{c:new THREE.Color(0x5a6b80)},X:{c:new THREE.Color(0xb88a2e)},I:{c:new THREE.Color(0x9fe4f5),r:.15,m:.1,t:.85},K:{c:new THREE.Color(0x9a6634),r:.95,m:0}};
+    const kinds={'#':{c:C.wall,r:.8,m:.1},S:{c:C.wall,r:.8,m:.1},x:{c:C.wall.clone().lerp(new THREE.Color(0x8a6a40),.35),r:.9,m:0},Z:{c:C.wall,r:.8,m:.1},Y:{c:C.wall,r:.8,m:.1},G:{c:new THREE.Color(0x5a6b80)},D:{c:new THREE.Color(0x3a3020)},X:{c:new THREE.Color(0xb88a2e)},I:{c:new THREE.Color(0x9fe4f5),r:.15,m:.1,t:.85},K:{c:new THREE.Color(0x9a6634),r:.95,m:0}};
     const box=new THREE.BoxGeometry(T,T,DEPTH);
     for(const ch in kinds){ const list=[]; for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++) if(grid[y][x]===ch) list.push([x,y]); if(!list.length) continue;
       const K=kinds[ch], mat=new THREE.MeshLambertMaterial({color:K.c,roughness:K.r,transparent:!!K.t,opacity:K.t||1});
