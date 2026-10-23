@@ -24,4 +24,6 @@ h=h.replace('<style>\n','<style>\n'+ff+'[hidden]{display:none!important}\n',1)
 pre='<!doctype html>\n<html lang="ru">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n'
 stamp='const BUILD_STAMP="'+(datetime.datetime.utcnow()+datetime.timedelta(hours=3)).strftime('%d.%m %H:%M')+'";\n'
 wr('steam.html', pre+h.replace('<div class="app">','</head>\n<body>\n<div class="app">',1)+'<script>\n'+stamp+main+'\n</script>\n</body>\n</html>\n')
-print('Готово: source/out/pc.html, mobile.html, long.html, steam.html (-> desktop-app/index.html)')
+# Android (APK): та же Steam-сборка, но с сенсорным управлением и мобильной подгонкой экрана
+wr('android.html', pre+h.replace('<div class="app">','</head>\n<body>\n<div class="app">',1)+'<script>window.MOBILE_BUILD=true;</script>\n<script>\n'+stamp+main+'\n</script>\n</body>\n</html>\n')
+print('Готово: source/out/pc.html, mobile.html, long.html, steam.html (-> desktop-app/index.html), android.html (-> android-app/www/index.html)')
