@@ -19,7 +19,7 @@ function updateWorld(dt){
   for(const p of players){
     const tx0=Math.floor(p.x/T), tx1=Math.floor((p.x+p.w-0.01)/T), ty0=Math.floor(p.y/T), ty1=Math.floor((p.y+p.h-0.01)/T);
     for(let ty=ty0;ty<=ty1;ty++) for(let tx=tx0;tx<=tx1;tx++)
-      if(grid[ty]&&grid[ty][tx]==='^'&&overlap(p,{x:tx*T+7,y:ty*T+T*0.5,w:T-14,h:T*0.5})){ die(p,'spikes'); return; }
+      if(grid[ty]&&grid[ty][tx]==='^'&&overlap(p,{x:tx*T+7,y:ty*T+T*0.5,w:T-14,h:T*0.5})){ if(p.inv<=0&&!p.down){ hurt(p); if(!p.down&&!p.dead){ p.vy=-560; p.grounded=false; texts.push({x:p.x+p.w/2,y:p.y-20,t:'АЙ! ШИПЫ',life:.9,c:'#ff6b6b'}); } } return; }
       else if(grid[ty]&&grid[ty][tx]==='L'&&!p.down&&overlap(p,{x:tx*T+4,y:ty*T+T*0.45,w:T-8,h:T*0.55})){ const had=p.inv<=0; hurt(p); if(had){ p.vy=-720; p.cut=true; burst(p.x+p.w/2,p.y+p.h,14,['#ffb347','#ff5a2a','#fff3c4'],260,.5); } }
     p.inExit=!p.down&&overlap(p,{x:exitRect.x+6,y:exitRect.y,w:exitRect.w-12,h:exitRect.h});
   }
