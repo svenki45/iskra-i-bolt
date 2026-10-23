@@ -53,12 +53,12 @@ function setState(s){
         <button class="secondary" id="bHelp" type="button">Помощь</button>
         <button class="secondary" id="bCtl" type="button">Кнопки</button>
         <button class="secondary" id="bSet" type="button">Настройки</button>
-        ${window.MOBILE_BUILD?'':'<button class="secondary" id="bEditor" type="button">Конструктор<small>свои уровни</small></button><button class="secondary" id="bMyGame" type="button">Моя игра<small>собранная из моих уровней</small></button>'}
+        ${window.MOBILE_BUILD?'':'<button class="secondary" id="bEditor" type="button">Конструктор<small>свои уровни</small></button><button class="secondary" id="bMyGame" type="button">Моя игра<small>собранная из моих уровней</small></button>'}<button class="secondary" id="bToTitle" type="button">На главный экран<small>выбор режима игры</small></button>
         ${cheatMenu?`<button class="secondary" id="bCheats" type="button">Читы<small>${anyCheat()?'включены':'выключены'}</small></button>`:''}
       </div>
       <p class="mfoot">Стрелки, WASD или геймпад · Enter / A выбрать · Esc / B назад</p>
     </div>`;
-    $('bShop').onclick=()=>setState('custom'); $('bMode').onclick=()=>{ heroBack='menu'; if(solo){ setMode(false); loadLevel(Math.min(TOTAL-1,best)); renderLegend(true); setState('menu'); } else setState('hero'); }; $('bShopM').onclick=()=>{ shopFrom='menu'; setState('shop'); }; if($('bEditor')) $('bEditor').onclick=()=>ED.open(); if($('bMyGame')) $('bMyGame').onclick=()=>{ ED.open(); ED.game(); }; $('bSet').onclick=()=>{ ctlBack='menu'; setState('settings'); }; $('bCtl').onclick=()=>{ if(touchUI.on){ editBack='menu'; setState('touchedit'); return; } ctlBack='menu'; setState('controls'); }; $('bAch').onclick=()=>setState('ach');
+    $('bShop').onclick=()=>setState('custom'); $('bMode').onclick=()=>{ heroBack='menu'; if(solo){ setMode(false); loadLevel(Math.min(TOTAL-1,best)); renderLegend(true); setState('menu'); } else setState('hero'); }; $('bShopM').onclick=()=>{ shopFrom='menu'; setState('shop'); }; if($('bEditor')) $('bEditor').onclick=()=>ED.open(); $('bToTitle').onclick=()=>{ sfx('nav'); setState('title'); }; if($('bMyGame')) $('bMyGame').onclick=()=>{ ED.open(); ED.game(); }; $('bSet').onclick=()=>{ ctlBack='menu'; setState('settings'); }; $('bCtl').onclick=()=>{ if(touchUI.on){ editBack='menu'; setState('touchedit'); return; } ctlBack='menu'; setState('controls'); }; $('bAch').onclick=()=>setState('ach');
     $('bHelp').onclick=()=>{ helpBack='menu'; setState('help'); };
     $('bNet').onclick=()=>{ if(NET.role==='host'){ startGame(Math.min(TOTAL-1,best)); return; } setState('net'); };
     if(cheatMenu) $('bCheats').onclick=()=>setState('cheats');
