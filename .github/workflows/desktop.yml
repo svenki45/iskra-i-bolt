@@ -1,0 +1,26 @@
+name: Desktop (Steam test build)
+on:
+  push:
+    paths: ['desktop-app/**', '.github/workflows/desktop.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: Package
+        working-directory: desktop-app
+        shell: bash
+        run: |
+          npx --yes @electron/packager@18.3.6 . "Iskra i Bolt" --platform=win32 --arch=x64 --electron-version=33.2.1 --icon=icon.ico --out=dist --overwrite --asar --app-copyright="Edward Dergachev" --win32metadata.ProductName="Iskra i Bolt" --win32metadata.FileDescription="Iskra i Bolt"
+          cd dist && 7z a -tzip ../../iskra-i-bolt-desktop.zip "Iskra i Bolt-win32-x64"
+      - name: Publish release
+        shell: bash
+        env: { GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}' }
+        run: |
+          gh release delete desktop -y --cleanup-tag || true
+          gh release create desktop iskra-i-bolt-desktop.zip --title "Искра и Болт — тестовая сборка для ПК (как для Steam)" --notes "Electron, своё окно. Тест."
