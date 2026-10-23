@@ -11,7 +11,7 @@ H, LV, I18N, THREE = rd('head.html'), rd('levels.json'), rd('i18n.json'), rd('th
 def js(folder):
     s = ''.join(open(f, encoding='utf-8').read() for f in sorted(glob.glob(os.path.join(D, folder, '*.js'))))
     return THREE + '\n' + s.replace('/*LEVELS*/', LV).replace('/*I18N*/', I18N)
-main, long_ = js('src'), js('src-long')
+main, long_ = js('src-pc'), js('src-long')
 wr('pc.html', H + '<script>' + main + '</script></body></html>')
 wr('long.html', H.replace('<title>Искра и Болт</title>', '<title>Искра и Болт · длинные уровни</title>', 1) + '<script>' + long_ + '</script></body></html>')
 wr('mobile.html', H + '<script>window.MOBILE_BUILD=true;</script><script>' + main + '</script></body></html>')
