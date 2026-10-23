@@ -3,7 +3,7 @@ function paintRanges(root){ (root||document).querySelectorAll('.overlay input[ty
 addEventListener('input',e=>{ if(e.target&&e.target.type==='range') paintRanges(); },true);
 new MutationObserver(()=>paintRanges(overlay)).observe(overlay,{childList:true,subtree:true});
 const GAME_VER='1.15';
-(()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · длинные уровни (тест)'; $('screen').appendChild(v); })();
+(()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · длинные уровни (тест) · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 window.__ib={proTest:()=>{proT=0;storyNext=null;setState("prologue");},endTest:()=>{endT=0;setState("ending");},net:{NET,netApply,netSnap},getLevel,startGame,dmgE:(e,d)=>damageEnemy(e,d),complete:()=>complete(),hurt:i=>hurt(players[i]),setState:x=>setState(x),startDemo:()=>startDemo(),stopDemo:()=>stopDemo(),get demo(){return demo},tr:x=>tr(x),demoAt:i=>{ lastIntro=-1; loadLevel(i); follow=true; demoT=0; setState('play'); },get combo(){return combo},openSecret,nextLevel,hitBoss:(d)=>hitBoss(d),get outro(){return outro},get state(){return {state,levelIdx,boss,players,enemies,pickups,arena,run,movers,grid,ebullets,bullets}}};
 const hot=window.claude&&window.claude.hot;
 if(hot&&hot.snapshot) hot.snapshot(()=>({levelIdx,deaths,totalTime,gears,state:(state==='play'||state==='dying')?'play':'menu'}));

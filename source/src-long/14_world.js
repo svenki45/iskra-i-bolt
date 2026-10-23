@@ -119,7 +119,7 @@ function complete(){
 
 /* ---------- death: hero breaks apart into atoms ---------- */
 let atoms=[], atomClock=0;
-function atomize(p){ if(!p||p.atomized) return; p.atomized=true;
+function atomize(p){ if(!p||p.atomized) return; p.atomized=true; if(p.y>VH-p.h-20) p.y=VH-p.h-20;
   const pal=p.kind==='spark'?[['#fff3b0','#ffd166'],['#ffb347','#ff8a3d'],['#ff8a3d','#e8642a'],['#e8642a','#b8461c']]:[['#e6eef7','#c9d6e3'],['#7fe8e0','#62c7c1'],['#62c7c1','#3e9c96'],['#3e9c96','#2b5a63']];
   const S=4; for(let y=0;y<p.h;y+=S) for(let x=0;x<p.w;x+=S){ const band=pal[Math.min(3,Math.floor(y/p.h*4))], cx=p.x+x+S/2, cy=p.y+y+S/2, dx=cx-(p.x+p.w/2), dy=cy-(p.y+p.h/2);
     atoms.push({x:cx,y:cy,vx:dx*2.2+(Math.random()-.5)*120,vy:dy*1.6-60-Math.random()*160,c:band[Math.random()<.5?0:1],s:S*(.7+Math.random()*.5),d:(1-y/p.h)*.35+Math.random()*.12,life:1.1+Math.random()*.5,t:0,sp:Math.random()*6}); }
