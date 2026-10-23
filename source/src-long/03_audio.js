@@ -168,9 +168,18 @@ setInterval(()=>{
 },25);
 function playMusic(name){ if(music.song===name) return; if(name==null){ music.song=null; return; } music.song=name; music.step=0; if(actx) music.next=actx.currentTime+0.08; }
 let previewSong=null;
+/* ---- title theme: dark workshop march (reacts to the highlighted mode) ---- */
+SONGS.title={bpm:84,custom:(step,t,s16)=>{ const st=step%16, bar=Math.floor(step/16)%8, prog=[45,45,41,43,45,45,40,40], root=prog[bar], f1=typeof titleFocus!=='undefined'?titleFocus:null;
+  if(st===0){ boom('timp',t); voice(mf(root-12),t,s16*15,'sawtooth',.05,260); voice(mf(root),t,s16*15,'triangle',.035,700); if(bar%4===0) boom('crash',t); }
+  if(st===8){ clank(t,.22); drum('kick',t); }
+  if(st===12&&bar%2===1){ boom('tom',t); }
+  if(st===14) clank(t,.12);
+  if(f1==='one'&&st%4===2){ const a=[0,3,7,12][(st/4|0)%4]; voice(mf(root+24+a),t,s16*2,'triangle',.03,2400); }
+  if(f1==='two'&&st%2===0){ const a=[0,7,12,15,12,7,3,7][(st/2)%8]; voice(mf(root+24+a),t,s16*1.5,'square',.018,1800); if(st%8===4) drum('snare',t); }
+  if(st===4&&bar%2===0) voice(mf(root+31),t,s16*6,'triangle',.02,1500); } };
 function updateMusic(){
   if(state!=='settings') previewSong=null;
-  const want=(state==='gameover'||state==='dying')?null:state==='settings'&&previewSong?previewSong:(state==='play'||state==='dying'||state==='pause'||state==='done')?(intro?null:(boss&&!boss.dead?'boss_'+boss.type:'ch'+chapterOf(levelIdx))):'menu';
+  const want=(state==='gameover'||state==='dying')?null:state==='settings'&&previewSong?previewSong:(state==='play'||state==='dying'||state==='pause'||state==='done')?(intro?null:(boss&&!boss.dead?'boss_'+boss.type:'ch'+chapterOf(levelIdx))):(state==='title'?'title':'menu');
   playMusic(want); applyVolumes(false);
 }
 function noise(freq,dur,vol,type='bandpass',delay=0){
