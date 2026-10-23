@@ -252,7 +252,7 @@ function drawLimbs(p,kind){
   const bolt=kind==='bolt', w=p.w, h=p.h, S=skinOf(kind), LG=bolt?8:6;
   const col=p.down?'#5c5450':mixHex(S.body,'#000000',.32), shoe=p.down?'#4a4440':mixHex(S.body,'#000000',.55);
   const vx=p.vx||0, moving=Math.abs(vx)>30&&(p.wasGround!==false), air=p.wasGround===false&&!p.down&&p.vx!==undefined;
-  const t=p.vx===undefined?clock*2.2:(p.x||0)*(bolt?.09:.13), sw=moving?Math.sin(t):0, idle=p.vx===undefined?Math.sin(clock*2)*.3:0;
+  const t=p.runPh!==undefined?p.runPh:p.vx===undefined?clock*2.2:(p.x||0)*(bolt?.09:.13), sw=moving?Math.sin(t):0, idle=p.vx===undefined?Math.sin(clock*2)*.3:0;
   ctx.save(); ctx.lineCap='round'; ctx.strokeStyle=col; ctx.lineWidth=bolt?5:3.4;
   // legs
   for(const s of [-1,1]){

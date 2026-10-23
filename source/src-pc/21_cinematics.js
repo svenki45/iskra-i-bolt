@@ -160,7 +160,8 @@ function drawBossSilhouettes(hz){ const el=(performance.now()-titleIntro.t0)/100
     ctx.restore(); });
   ctx.restore(); }
 // a solid 3D steel platform the heroes stand on (perspective slab that turns slightly with the mouse)
-function drawTitlePlatform(fy){ const cx=VW/2, mx=titleMouse?(titleMouse.x/VW-.5):Math.sin(clock*.5)*.3, sh=mx*-40;
+let titleBelt=0;
+function drawTitlePlatform(fy){ titleBelt+=(drawTitlePlatform.sp||1)*0.016; const BO=titleBelt%1; const cx=VW/2, mx=titleMouse?(titleMouse.x/VW-.5):Math.sin(clock*.5)*.3, sh=mx*-40;
   const W1=250, W0=210, yb=fy-12, yf=fy+12, D=44; // back/front half-widths, depth of the front face
   const P=(x,y)=>[x,y], back=[P(cx-W0+sh,yb),P(cx+W0+sh,yb)], front=[P(cx-W1,yf),P(cx+W1,yf)];
   ctx.save();
@@ -171,11 +172,12 @@ function drawTitlePlatform(fy){ const cx=VW/2, mx=titleMouse?(titleMouse.x/VW-.5
   ctx.beginPath(); ctx.moveTo(...back[1]); ctx.lineTo(...front[1]); ctx.lineTo(front[1][0],yf+D); ctx.lineTo(back[1][0],yb+D*.8); ctx.closePath(); if(sh<0) ctx.fill();
   // front face: dark steel with hazard stripes and rivets
   const fg=ctx.createLinearGradient(0,yf,0,yf+D); fg.addColorStop(0,'#3a4660'); fg.addColorStop(1,'#151b29'); ctx.fillStyle=fg; ctx.fillRect(cx-W1,yf,W1*2,D);
-  ctx.save(); ctx.beginPath(); ctx.rect(cx-W1,yf+D-12,W1*2,8); ctx.clip(); for(let x=cx-W1-20;x<cx+W1;x+=22){ ctx.fillStyle='#e7b54a'; ctx.beginPath(); ctx.moveTo(x,yf+D-4); ctx.lineTo(x+11,yf+D-4); ctx.lineTo(x+19,yf+D-12); ctx.lineTo(x+8,yf+D-12); ctx.fill(); } ctx.restore();
-  ctx.fillStyle='#8a9bb8'; for(let x=cx-W1+16;x<cx+W1;x+=40){ ctx.beginPath(); ctx.arc(x,yf+10,2.6,0,Math.PI*2); ctx.fill(); }
+  ctx.save(); ctx.beginPath(); ctx.rect(cx-W1,yf+D-12,W1*2,8); ctx.clip(); for(let x=cx-W1-22-BO*22;x<cx+W1;x+=22){ ctx.fillStyle='#e7b54a'; ctx.beginPath(); ctx.moveTo(x,yf+D-4); ctx.lineTo(x+11,yf+D-4); ctx.lineTo(x+19,yf+D-12); ctx.lineTo(x+8,yf+D-12); ctx.fill(); } ctx.restore();
+  ctx.fillStyle='#8a9bb8'; for(let x=cx-W1+16-((titleBelt*20)%40);x<cx+W1;x+=40){ if(x<cx-W1+4) continue; ctx.beginPath(); ctx.arc(x,yf+10,2.6,0,Math.PI*2); ctx.fill(); }
   // top face: lit metal plate with perspective grooves
   const tg=ctx.createLinearGradient(0,yb,0,yf); tg.addColorStop(0,'#5a6a88'); tg.addColorStop(1,'#a9b9d6'); ctx.fillStyle=tg; ctx.beginPath(); ctx.moveTo(...back[0]); ctx.lineTo(...back[1]); ctx.lineTo(...front[1]); ctx.lineTo(...front[0]); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle='rgba(20,28,44,.35)'; ctx.lineWidth=1; for(let k=1;k<8;k++){ const t=k/8; ctx.beginPath(); ctx.moveTo(back[0][0]+(back[1][0]-back[0][0])*t,yb); ctx.lineTo(front[0][0]+(front[1][0]-front[0][0])*t,yf); ctx.stroke(); }
+  ctx.strokeStyle='rgba(20,28,44,.35)'; ctx.lineWidth=1; for(let k=0;k<12;k++){ const t=((k-BO*1.0)/12+1)%1; ctx.beginPath(); ctx.moveTo(back[0][0]+(back[1][0]-back[0][0])*t,yb); ctx.lineTo(front[0][0]+(front[1][0]-front[0][0])*t,yf); ctx.stroke(); }
+  for(const ex of [cx-W1,cx+W1]){ ctx.save(); ctx.translate(ex,yf+D/2); ctx.fillStyle='#2a3348'; ctx.beginPath(); ctx.arc(0,0,D/2,0,Math.PI*2); ctx.fill(); ctx.rotate(-titleBelt*6); ctx.strokeStyle='#8a9bb8'; ctx.lineWidth=2; for(let k=0;k<4;k++){ ctx.rotate(Math.PI/2); ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(D/2-3,0); ctx.stroke(); } ctx.restore(); }
   // glowing front edge in the colour of the highlighted mode
   const [m1,m2]=titleMix, ec=m2>m1?'98,199,193':m1>0.3?'255,138,61':'255,209,102';
   ctx.globalCompositeOperation='lighter'; ctx.strokeStyle=`rgba(${ec},.9)`; ctx.lineWidth=3; ctx.shadowColor=`rgba(${ec},1)`; ctx.shadowBlur=18; ctx.beginPath(); ctx.moveTo(...front[0]); ctx.lineTo(...front[1]); ctx.stroke();
@@ -224,11 +226,8 @@ function drawTitleScene(){
   const M=titleMouse, near=(x,y)=>M&&Math.hypot(M.x-x,M.y-y)<90;
   let sTx, bTx, sY=fy-30, bY=fy-56, sSx=1, sSy=1, bSx=1, bSy=1, sFace=1, bFace=1, sTrail=false, bSlam=false;
   if(mode==='duo'){
-    const cyc=1.9, ph=(clock%cyc)/cyc; sTx=VW/2-12; bTx=VW/2-17; sY=fy-56-30;
-    if(ph<0.18){ const k=ph/0.18; bSx=1+0.25*k; bSy=1-0.25*k; }
-    else { const k=(ph-0.18)/0.82; sY=fy-56-30-Math.sin(Math.PI*k)*230; if(k<0.15){ sSx=0.7; sSy=1.4; } if(k>0.92){ sSx=1.25; sSy=0.8; } }
-    if(ph>0.18&&ph<0.21&&!drawTitleScene._fx){ drawTitleScene._fx=true; burst(VW/2,fy-56,14,['#ffd166','#62c7c1'],240,.5); }
-    if(ph<0.1) drawTitleScene._fx=false;
+    drawTitlePlatform.sp=1.8; sTx=VW/2+40; bTx=VW/2-90; sFace=1; bFace=1; TS.run=true;
+    const hop=(clock%2.6)/2.6; if(hop>.75){ const k=(hop-.75)/.25; sY=fy-30-Math.sin(k*Math.PI)*120; sTx=VW/2+40-Math.sin(k*Math.PI)*0; }
   } else if(mode==='spark'){
     const t=clock*1.15; sTx=VW/2-12+Math.sin(t)*190; bTx=-120;
     const jp=(clock%1.3)/1.3; sY=fy-30-Math.abs(Math.sin(jp*Math.PI*2))*(jp<.5?80:115);
@@ -240,9 +239,10 @@ function drawTitleScene(){
     else if(ph<.7){ const k=(ph-.6)/.1; bY=fy-56-115*(1-k*k); bSlam=true; }
     else { const k=(ph-.7)/.3; bSx=1.25-.25*k; bSy=.75+.25*k; if(!drawTitleScene._sl){ drawTitleScene._sl=true; shake=Math.max(shake,5); burst(VW/2,fy,22,['#9cc3ff','#62c7c1','#fff'],320,.6); rings.push({x:VW/2,y:fy,r:10,max:220,life:.5,c:'#62c7c1',w:5}); } }
     if(ph<.6) drawTitleScene._sl=false;
-  } else { // idle: both stand and watch you
-    sTx=VW/2+36; bTx=VW/2-70; const br=Math.sin(clock*2.4)*.03; sSx=1+br; sSy=1-br; bSx=1-br*.6; bSy=1+br*.6;
+  } else { // idle: both jog on the moving platform
+    drawTitlePlatform.sp=1; sTx=VW/2+36; bTx=VW/2-70; sFace=1; bFace=1; TS.run=true; const b1=Math.abs(Math.sin(clock*9))*3, b2=Math.abs(Math.sin(clock*7))*3; sY-=b1; bY-=b2;
   }
+  if(mode==='spark'||mode==='bolt'){ TS.run=false; drawTitlePlatform.sp=.35; }
   TS.sx+=(sTx-TS.sx)*Math.min(1,dt*5); TS.bx+=(bTx-TS.bx)*Math.min(1,dt*5);
   // hop physics for mouse reactions
   for(const k of ['s','b']){ const yo=k+'y0', vy=k+'vy'; TS[vy]+=2200*dt; TS[yo]+=TS[vy]*dt; if(TS[yo]>0){ TS[yo]=0; TS[vy]=0; } }
@@ -253,10 +253,12 @@ function drawTitleScene(){
     if(Math.hypot(c.x-sCx,c.y-(sY+15))<70){ TS.svy=-900; burst(sCx,sY+15,16,['#ffd166','#ff8a3d','#fff'],260,.5); sfx('boost'); }
     else if(Math.hypot(c.x-bCx,c.y-(bY+28))<80){ TS.bvy=-760; burst(bCx,bY+28,16,['#62c7c1','#9cc3ff','#fff'],260,.5); sfx('boost'); }
     else burst(c.x,c.y,10,['#ffd166','#62c7c1'],200,.4); }
-  if(M&&mode!=='spark'){ sFace=M.x>sCx?1:-1; } if(M) bFace=M.x>bCx?1:-1;
+  if(!TS.run){ if(M&&mode!=='spark'){ sFace=M.x>sCx?1:-1; } if(M) bFace=M.x>bCx?1:-1; }
   if(titleIntro.roar>=0&&performance.now()-titleIntro.roarT<1400){ const bx=VW*TITLE_BOSSES[titleIntro.roar].x; if(mode!=='spark') sFace=bx>sCx?1:-1; bFace=bx>bCx?1:-1; if(mode==='idle'){ const k=Math.max(0,1-(performance.now()-titleIntro.roarT)/400); sSx*=1+.15*k; sSy*=1-.15*k; bSx*=1+.1*k; bSy*=1-.1*k; } }
-  const bolt={kind:'bolt',w:34,h:56,x:TS.bx,y:bY+TS.by0,sx:bSx,sy:bSy,face:bFace,blinkT:(clock%3.3)<.12?-1:1,inv:0,down:false,shield:false,dead:false,slam:bSlam};
-  const spark={kind:'spark',w:24,h:30,x:TS.sx,y:sY+TS.sy0,sx:sSx,sy:sSy,face:sFace,blinkT:(clock%2.7)<.12?-1:1,inv:0,down:false,shield:false,dead:false};
+  const RUN=TS.run, rp=clock*(drawTitlePlatform.sp||1)*11;
+  const bolt={kind:'bolt',vx:RUN?200:undefined,wasGround:true,runPh:RUN?rp*.8:undefined,w:34,h:56,x:TS.bx,y:bY+TS.by0,sx:bSx,sy:bSy,face:bFace,blinkT:(clock%3.3)<.12?-1:1,inv:0,down:false,shield:false,dead:false,slam:bSlam};
+  const spark={kind:'spark',vx:RUN?200:undefined,wasGround:RUN?(sY>=fy-31):true,runPh:RUN?rp:undefined,w:24,h:30,x:TS.sx,y:sY+TS.sy0,sx:sSx,sy:sSy,face:sFace,blinkT:(clock%2.7)<.12?-1:1,inv:0,down:false,shield:false,dead:false};
+  if(TS.run&&Math.random()<.35){ const who=Math.random()<.5?bolt:spark; addP({x:who.x+who.w/2-12,y:fy-2,vx:-80-Math.random()*60,vy:-30-Math.random()*30,life:.4,max:.4,c:'rgba(200,215,240,.7)',s:3,g:0}); }
   if(sTrail&&Math.random()<.8) addP({x:spark.x+12-sFace*10,y:spark.y+15+(Math.random()-.5)*14,vx:-sFace*60,vy:-20,life:.35,max:.35,c:Math.random()<.5?'#ffd166':'#ff8a3d',s:3,g:0});
   if(settings.glow){ ctx.save(); ctx.globalCompositeOperation='lighter'; glowAt(spark.x+12,spark.y+4,120,skinOf('spark').flame,.2); ctx.restore(); }
   if(Math.random()<.5) addP({x:spark.x+12+(Math.random()-.5)*10,y:spark.y+4,vx:(Math.random()-.5)*30,vy:-40-Math.random()*40,life:.5,max:.5,c:Math.random()<.5?'#ffd166':'#ff8a3d',s:2.5,g:-.05});
