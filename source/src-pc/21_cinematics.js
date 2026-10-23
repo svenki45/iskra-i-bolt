@@ -159,6 +159,28 @@ function drawBossSilhouettes(hz){ const el=(performance.now()-titleIntro.t0)/100
     else { ctx.save(); ctx.translate(0,-130); ctx.rotate(clock*.25+(am?am.rot:0)); const n=20,r=120; for(let k=0;k<=n;k++){ const a=k/n*Math.PI*2, rr=k%2?r*.84:r; ctx.lineTo(Math.cos(a)*rr,Math.sin(a)*rr); ctx.lineTo(Math.cos(a+Math.PI/n)*rr,Math.sin(a+Math.PI/n)*rr); } ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); eye(-30,-140,9); eye(30,-140,9); }
     ctx.restore(); });
   ctx.restore(); }
+// a solid 3D steel platform the heroes stand on (perspective slab that turns slightly with the mouse)
+function drawTitlePlatform(fy){ const cx=VW/2, mx=titleMouse?(titleMouse.x/VW-.5):Math.sin(clock*.5)*.3, sh=mx*-40;
+  const W1=250, W0=210, yb=fy-12, yf=fy+12, D=44; // back/front half-widths, depth of the front face
+  const P=(x,y)=>[x,y], back=[P(cx-W0+sh,yb),P(cx+W0+sh,yb)], front=[P(cx-W1,yf),P(cx+W1,yf)];
+  ctx.save();
+  // shadow on the floor
+  const sg=ctx.createRadialGradient(cx,yf+D+10,10,cx,yf+D+10,W1*1.2); sg.addColorStop(0,'rgba(0,0,0,.55)'); sg.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=sg; ctx.beginPath(); ctx.ellipse(cx,yf+D+12,W1*1.15,26,0,0,Math.PI*2); ctx.fill();
+  // side faces
+  ctx.fillStyle='#1b2335'; ctx.beginPath(); ctx.moveTo(...back[0]); ctx.lineTo(...front[0]); ctx.lineTo(front[0][0],yf+D); ctx.lineTo(back[0][0],yb+D*.8); ctx.closePath(); if(sh>0) ctx.fill();
+  ctx.beginPath(); ctx.moveTo(...back[1]); ctx.lineTo(...front[1]); ctx.lineTo(front[1][0],yf+D); ctx.lineTo(back[1][0],yb+D*.8); ctx.closePath(); if(sh<0) ctx.fill();
+  // front face: dark steel with hazard stripes and rivets
+  const fg=ctx.createLinearGradient(0,yf,0,yf+D); fg.addColorStop(0,'#3a4660'); fg.addColorStop(1,'#151b29'); ctx.fillStyle=fg; ctx.fillRect(cx-W1,yf,W1*2,D);
+  ctx.save(); ctx.beginPath(); ctx.rect(cx-W1,yf+D-12,W1*2,8); ctx.clip(); for(let x=cx-W1-20;x<cx+W1;x+=22){ ctx.fillStyle='#e7b54a'; ctx.beginPath(); ctx.moveTo(x,yf+D-4); ctx.lineTo(x+11,yf+D-4); ctx.lineTo(x+19,yf+D-12); ctx.lineTo(x+8,yf+D-12); ctx.fill(); } ctx.restore();
+  ctx.fillStyle='#8a9bb8'; for(let x=cx-W1+16;x<cx+W1;x+=40){ ctx.beginPath(); ctx.arc(x,yf+10,2.6,0,Math.PI*2); ctx.fill(); }
+  // top face: lit metal plate with perspective grooves
+  const tg=ctx.createLinearGradient(0,yb,0,yf); tg.addColorStop(0,'#5a6a88'); tg.addColorStop(1,'#a9b9d6'); ctx.fillStyle=tg; ctx.beginPath(); ctx.moveTo(...back[0]); ctx.lineTo(...back[1]); ctx.lineTo(...front[1]); ctx.lineTo(...front[0]); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle='rgba(20,28,44,.35)'; ctx.lineWidth=1; for(let k=1;k<8;k++){ const t=k/8; ctx.beginPath(); ctx.moveTo(back[0][0]+(back[1][0]-back[0][0])*t,yb); ctx.lineTo(front[0][0]+(front[1][0]-front[0][0])*t,yf); ctx.stroke(); }
+  // glowing front edge in the colour of the highlighted mode
+  const [m1,m2]=titleMix, ec=m2>m1?'98,199,193':m1>0.3?'255,138,61':'255,209,102';
+  ctx.globalCompositeOperation='lighter'; ctx.strokeStyle=`rgba(${ec},.9)`; ctx.lineWidth=3; ctx.shadowColor=`rgba(${ec},1)`; ctx.shadowBlur=18; ctx.beginPath(); ctx.moveTo(...front[0]); ctx.lineTo(...front[1]); ctx.stroke();
+  ctx.shadowBlur=0; ctx.strokeStyle='rgba(255,255,255,.35)'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(...back[0]); ctx.lineTo(...back[1]); ctx.stroke();
+  ctx.restore(); }
 function drawTitleScene(){
   // opaque, alive backdrop that reacts to the highlighted mode
   const tgt=titleFocus==='one'?[1,0]:titleFocus==='two'?[0,1]:[0,0];
@@ -192,7 +214,7 @@ function drawTitleScene(){
   // spotlight
   const gr=ctx.createRadialGradient(VW/2,VH*0.68,10,VW/2,VH*0.68,360); gr.addColorStop(0,'rgba(255,209,102,.16)'); gr.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=gr; ctx.fillRect(0,0,VW,VH);
   // floor line
-  const fy=VH*0.64; ctx.strokeStyle='rgba(190,215,255,.55)'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(VW/2-220,fy); ctx.lineTo(VW/2+220,fy); ctx.stroke();
+  const fy=VH*0.64; drawTitlePlatform(fy);
   // heroes: scene depends on the highlighted mode, and they watch the mouse
   const TS=drawTitleScene.ts||(drawTitleScene.ts={sx:VW/2+40,bx:VW/2-80,sy0:0,svy:0,by0:0,bvy:0,last:performance.now(),slamT:0,wave:0});
   const now=performance.now(), dt=Math.min(.05,(now-TS.last)/1000); TS.last=now;
@@ -239,6 +261,7 @@ function drawTitleScene(){
   if(settings.glow){ ctx.save(); ctx.globalCompositeOperation='lighter'; glowAt(spark.x+12,spark.y+4,120,skinOf('spark').flame,.2); ctx.restore(); }
   if(Math.random()<.5) addP({x:spark.x+12+(Math.random()-.5)*10,y:spark.y+4,vx:(Math.random()-.5)*30,vy:-40-Math.random()*40,life:.5,max:.5,c:Math.random()<.5?'#ffd166':'#ff8a3d',s:2.5,g:-.05});
   for(const r of rings){ ctx.strokeStyle=r.c; ctx.globalAlpha=Math.max(0,r.life*2); ctx.lineWidth=r.w; ctx.beginPath(); ctx.ellipse(r.x,r.y,r.r,r.r*.25,0,0,Math.PI*2); ctx.stroke(); } ctx.globalAlpha=1;
+  { const sd=(x,y,w)=>{ const h=Math.max(0,fy-y); const k=Math.max(.25,1-h/220); ctx.fillStyle=`rgba(10,14,24,${.45*k})`; ctx.beginPath(); ctx.ellipse(x,fy+2,w*k,5*k,0,0,Math.PI*2); ctx.fill(); }; sd(bolt.x+17,bolt.y+bolt.h,22); sd(spark.x+12,spark.y+spark.h,16); }
   drawBolt(bolt); drawSpark(spark);
   for(const q of particles){ ctx.globalAlpha=Math.max(0,q.life/q.max); ctx.fillStyle=q.c; if(q.sh) drawShape(q.sh,q.x,q.y,q.s,q.c); else ctx.fillRect(q.x-q.s/2,q.y-q.s/2,q.s,q.s); }
   ctx.globalAlpha=1;
