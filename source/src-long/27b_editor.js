@@ -25,6 +25,11 @@ let edTest=false, edLevel=null, edSaved=null;
 #editor .edwrap{flex:1;overflow:auto;padding:6px}
 #editor canvas{display:block;cursor:crosshair;width:auto!important;height:auto!important}
 #editor button.primary,#editor button.secondary,#editor .edimp{padding:6px 12px;font-size:13px;cursor:pointer}
+#editor #edRnd{position:fixed;right:16px;bottom:96px;z-index:9200;width:360px;max-height:70vh;overflow:auto;background:#0f1a30;border:1px solid #ffd16688;border-radius:12px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:8px}
+#editor #edRnd>b{font:900 14px Unbounded,sans-serif;color:#ffd166}
+#editor .rgrp span{display:block;font:700 10px Unbounded,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#9cc3ff;margin:4px 0}
+#editor .rchk{display:inline-flex;gap:4px;align-items:center;margin:2px 10px 2px 0;font-size:12.5px}
+#editor .rbtn{display:flex;gap:8px;margin-top:4px}
 #editor .edhelp{color:#8fa3c0;font-size:12px}
 body.editing #pauseBtn,body.editing #verTag{display:none}`; document.head.appendChild(st); }
 const ED=(()=>{
@@ -162,7 +167,7 @@ const ED=(()=>{
       <button type="button" class="secondary" id="edSave">Сохранить</button>
       <select id="edList"><option value="">Мои уровни (${Object.keys(mine).length})</option>${Object.keys(mine).map(k=>`<option>${k}</option>`).join('')}</select>
       <button type="button" class="secondary" id="edLoad">Открыть</button><button type="button" class="secondary" id="edDel">Удалить</button>
-      <button type="button" class="secondary" id="edNew">Новый</button><button type="button" class="secondary" id="edExp">Экспорт файла</button><label class="secondary edimp">Импорт<input id="edImp" type="file" accept=".json,application/json" hidden></label>
+      <button type="button" class="secondary" id="edNew">Новый</button><button type="button" class="secondary" id="edRndB">🎲 Случайный</button><button type="button" class="secondary" id="edExp">Экспорт файла</button><label class="secondary edimp">Импорт<input id="edImp" type="file" accept=".json,application/json" hidden></label>
       <button type="button" class="secondary" id="edExit">Выход · Esc</button>
       <span class="edhelp">ЛКМ — рисовать, ПКМ — стереть, колесо — прокрутка. Края уровня — стены.</span></div>`;
     cv2=el.querySelector('#edCv'); g2=cv2.getContext('2d');
@@ -188,7 +193,7 @@ const ED=(()=>{
     q('#edNew').onclick=()=>{ if(dirty&&!confirm('Начать новый уровень? Несохранённое пропадёт.')) return; L=blankLevel(); dirty=false; build(); };
     q('#edExp').onclick=()=>{ const data=JSON.stringify({iskraBoltLevel:1,level:L},null,1); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([data],{type:'application/json'})); a.download=(L.name||'level').replace(/[^\wа-яё -]/gi,'_')+'.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); };
     q('#edImp').onchange=e=>{ const f=e.target.files[0]; if(!f) return; f.text().then(t=>{ try{ const d=JSON.parse(t); L=Object.assign(blankLevel(),d.level||d); build(); }catch(err){ alert('Не удалось открыть файл уровня'); } }); };
-    q('#edExit').onclick=close;
+    q('#edExit').onclick=close; q('#edRndB').onclick=rndDialog;
     const wrap=q('.edwrap'); wrap.addEventListener('wheel',e=>{ if(Math.abs(e.deltaY)>Math.abs(e.deltaX)){ wrap.scrollLeft+=e.deltaY; e.preventDefault(); } },{passive:false});
     cv2.oncontextmenu=e=>e.preventDefault();
     cv2.onpointerdown=e=>{ painting=e.button===2?2:1; apply(e); }; cv2.onpointermove=e=>{ if(painting&&!tool.startsWith('@')&&tool!=='E'&&tool!=='1'&&tool!=='2') apply(e); hover=cellAt(e); paint(); const [hx,hy]=hover; if(e) place(e); const id=L.enemies.find(o=>o.tx===hx&&o.ty===hy)?'@'+L.enemies.find(o=>o.tx===hx&&o.ty===hy).t:L.pickups.find(o=>o.tx===hx&&o.ty===hy)?'@'+L.pickups.find(o=>o.tx===hx&&o.ty===hy).t:(L.map[hy]&&L.map[hy][hx]); if(id&&id!=='.'){ if(id!==lastHov){ lastHov=id; showInfo(id); } info.style.display='block'; } else { lastHov=null; hideInfo(); } };
@@ -228,6 +233,37 @@ const ED=(()=>{
     if(L.trapX!=null){ g.strokeStyle='#ff3b4e'; g.setLineDash([5,5]); g.lineWidth=2; g.beginPath(); g.moveTo(L.trapX*c,c); g.lineTo(L.trapX*c,17*c); g.stroke(); g.setLineDash([]); g.lineWidth=1; }
     if(hover){ g.strokeStyle='#ffd166'; g.lineWidth=2; g.strokeRect(hover[0]*c+1,hover[1]*c+1,c-2,c-2); g.lineWidth=1; }
   }
+  // ---------- random level from the game's generator ----------
+  const RND_SETS=[['Задачки',['cdrop','detour','tdoor','order','trap','lever','key']],['Классика',['A','B','C','D','E','F','M','N','L']],['Механики',['ice','portal','crumble','wind']]];
+  const rndLabel=t=>(PZ_LABEL[t]||CHUNK_LABEL[t]||t);
+  let rndOpt={screens:2,lvl:5,foes:'mid',on:{cdrop:1,detour:1,tdoor:1,order:1,trap:1,lever:1,key:1,A:1,B:1,C:1,D:1,E:1,F:1,M:1,N:1,L:0,ice:0,portal:0,crumble:0,wind:0}};
+  function randomize(){ const o=rndOpt, allowed=Object.keys(o.on).filter(k=>o.on[k]); if(!allowed.length){ alert('Отметьте хотя бы одну задачку.'); return; }
+    const seed=Math.floor(Math.random()*1e6), Rr=rng(seed), pick=a=>a[Math.floor(Rr()*a.length)], n=o.lvl, once={order:0,trap:0};
+    const parts=[]; for(let k=0;k<o.screens;k++){ const f=[]; for(let i=0;i<3;i++){ let t, g=0; do{ t=pick(allowed); g++; } while(g<30&&((once[t]!=null&&once[t]>0)||(f.includes(t)&&allowed.length>2))); if(once[t]!=null) once[t]++; f.push(t); } parts.push(genLevel(n,seed%997+k+1,f)); }
+    const rows=[...Array(ROWS)].map(()=>[]), N={name:'Случайный уровень',motif:pick(NAMES),hue:null,dark:false,hint:'',order:'abc',timed:{P:false,Q:false,R:false},enemies:[],pickups:[],movers:[],winds:[],flags:[],trapX:null};
+    parts.forEach((Lp,k)=>{ const gm=Lp.map.map(r=>r.split('')), x0=k?1:0, x1=k<parts.length-1?31:32, off=rows[0].length, dx=off-x0;
+      if(k) N.flags.push(off+1);
+      for(let y=0;y<ROWS;y++) for(let x=x0;x<x1;x++){ let c=gm[y][x]; if(k&&(c==='1'||c==='2')) c='.'; if(k<parts.length-1&&c==='E') c='.'; if(c==='S') c='#'; rows[y].push(c); }
+      for(const e of Lp.enemies||[]) N.enemies.push({t:e.type==='flyer'?'flyer':e.type==='turret'?'turret':e.trait==='shield'?'shield':'crawler',tx:e.tx+dx,ty:e.ty});
+      for(const pk of Lp.pickups||[]){ if(pk.secret||pk.type==='relic') continue; const t=pk.type==='shield'?'pshield':pk.type; if(['gear','heart','pshield','triple','rapid','power'].includes(t)) N.pickups.push({t,tx:pk.tx+dx,ty:pk.ty}); }
+      for(const m of Lp.movers||[]) N.movers.push(Object.assign({},m,{ax:m.ax+dx,bx:m.bx+dx}));
+      for(const w of Lp.winds||[]) N.winds.push({tx:Math.round(w.x/T)+dx});
+      for(const z of Lp.pz||[]){ if(z.type==='order') N.order=z.order; if(z.type==='trap') N.trapX=Math.round(z.trigX/T)+dx; if(z.type==='timed'){ const [x,y]=z.cells.door[0]; const K=gm[y][x]; if('PQR'.includes(K)) N.timed[K]=true; } } });
+    N.map=rows;
+    if(o.foes==='few') N.enemies=N.enemies.filter((e,i)=>i%2===0);
+    if(o.foes==='many'){ const W=rows[0].length; for(let i=0;i<o.screens*2;i++){ const x=6+Math.floor(Rr()*(W-12)); if(rows[16][x]==='.'&&rows[15][x]==='.'&&!N.enemies.some(e=>Math.abs(e.tx-x)<2)) N.enemies.push({t:Rr()<.7?'crawler':'flyer',tx:x,ty:Rr()<.7?16:9}); } }
+    L=N; dirty=true; build(); toastQ.push({small:'Конструктор',title:'🎲 Готово! Жмите ещё раз или правьте.'}); showToast(); }
+  function rndDialog(){ let d=el.querySelector('#edRnd'); if(d){ d.remove(); return; } d=document.createElement('div'); d.id='edRnd';
+    d.innerHTML=`<b>🎲 Случайный уровень</b>
+      <label>Длина <select id="rS">${[1,2,3,4].map(k=>`<option value="${k}" ${k===rndOpt.screens?'selected':''}>${k} экран${k>1?(k<5?'а':'ов'):''}</option>`).join('')}</select></label>
+      <label>Сложность (как уровень игры) <input id="rL" type="range" min="1" max="60" value="${rndOpt.lvl}"><output id="rLo">${rndOpt.lvl}</output></label>
+      <label>Врагов <select id="rF">${[['few','мало'],['mid','средне'],['many','много']].map(([k,n])=>`<option value="${k}" ${k===rndOpt.foes?'selected':''}>${n}</option>`).join('')}</select></label>
+      ${RND_SETS.map(([gn,ts])=>`<div class="rgrp"><span>${gn}</span>${ts.map(t=>`<label class="rchk"><input type="checkbox" data-r="${t}" ${rndOpt.on[t]?'checked':''}>${rndLabel(t)}</label>`).join('')}</div>`).join('')}
+      <div class="rbtn"><button type="button" class="primary" id="rGo">🎲 Сгенерировать</button><button type="button" class="secondary" id="rX">Закрыть</button></div>`;
+    el.appendChild(d); const q=x=>d.querySelector(x);
+    q('#rS').onchange=e=>rndOpt.screens=+e.target.value; q('#rL').oninput=e=>{ rndOpt.lvl=+e.target.value; q('#rLo').textContent=e.target.value; }; q('#rF').onchange=e=>rndOpt.foes=e.target.value;
+    d.querySelectorAll('[data-r]').forEach(c=>c.onchange=()=>rndOpt.on[c.dataset.r]=c.checked?1:0);
+    q('#rX').onclick=()=>d.remove(); q('#rGo').onclick=()=>{ if(dirty&&!confirm('Заменить текущий уровень случайным? Несохранённое пропадёт.')) return; randomize(); rndDialog(); }; }
   // ---------- test run ----------
   function test(hero){ const G=toGame(), m=G.map;
     if(!m.some(r=>r.includes('E'))){ alert('Поставьте выход (E).'); return; }
