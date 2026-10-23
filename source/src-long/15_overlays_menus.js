@@ -24,10 +24,10 @@ function setState(s){
   document.body.classList.toggle('cine',s==='prologue'||s==='ending');
   state=s; overlay.hidden=(s==='play'||s==='dying'||s==='touchedit'||s==='ending'||s==='prologue'); { const tb=document.getElementById('tedbar'); if(tb&&s!=='touchedit') tb.hidden=true; }
   overlay.classList.toggle('clear',s==='title'||s==='gameover'); if(s!=='hero'){ overlay.classList.toggle('hs',solo&&soloHero==='spark'); overlay.classList.toggle('hb',solo&&soloHero==='bolt'); overlay.classList.toggle('hd',!solo); } else overlay.classList.remove('hd'); overlay.classList.toggle('pz',s!=='title'&&s!=='play'&&s!=='dying'&&s!=='gameover'); { const dd=overlay.querySelector('.pzdeco'); if(dd&&s==='gameover') dd.remove(); }
-  if(s==='title'){
-    const word=(w,cls,d0)=>[...w].map((ch,i)=>`<span class="lt ${cls}" style="animation-delay:${(d0+i*0.07).toFixed(2)}s">${ch}</span>`).join('');
+  if(s==='title'){ startTitleIntro();
+    const fast=titleIntro.seen, word=(w,cls,d0,st)=>[...w].map((ch,i)=>`<span class="lt ${cls}" style="animation-delay:${(fast?d0*.25+i*.04:d0+i*st).toFixed(2)}s">${ch}</span>`).join('');
     overlay.innerHTML=`<div class="titlescr">
-      <div class="logo" aria-label="Искра и Болт">${word('ИСКРА','s',0.15)}<span class="lt amp" style="animation-delay:.6s">и</span>${word('БОЛТ','b',0.7)}<span class="beta">БЕТА</span></div>
+      <div class="logo" aria-label="Искра и Болт">${word('ИСКРА','s',0.3,0.2)}<span class="lt amp" style="animation-delay:${fast?.4:1.45}s">и</span>${word('БОЛТ','b',1.6,0.2)}<span class="beta">БЕТА</span></div>
       <p class="tag">Кооператив на двоих · 100 уровней · 10 боссов</p>
       <div class="startwrap"><div class="modes"><button class="${solo?'primary':'secondary'} start mode" id="bOne" type="button">1 ИГРОК<small>выбрать героя</small></button><button class="${solo?'secondary':'primary'} start mode" id="bTwo" type="button">2 ИГРОКА<small>${window.MOBILE_BUILD?"на одном телефоне":"за одной клавиатурой"}</small></button></div><div class="tbtns"><button class="secondary" id="bOnline" type="button">🌐 ОНЛАЙН<small>${window.MOBILE_BUILD?"подключиться к другу на ПК":"с другом по интернету"}</small></button>${window.MOBILE_BUILD?'':'<button class="secondary" id="tEditor" type="button">🛠 КОНСТРУКТОР<small>свои уровни</small></button><button class="secondary" id="tMyGame" type="button">📚 МОЯ ИГРА<small>из моих уровней</small></button>'}</div>
       <p class="press">Стрелки и Enter, или крестовина и A на геймпаде</p></div>
