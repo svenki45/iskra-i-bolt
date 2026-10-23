@@ -21,7 +21,7 @@ function setState(s){
   if(edTest&&(s==='menu'||s==='title')){ ED.endTest(false); return; }
   const prevState=state, fk=focusKey(document.activeElement);
   if(s==='play'){ prevPad[0]={j:true,a:true}; prevPad[1]={j:true,a:true}; }
-  document.body.classList.toggle('cine',s==='prologue'||s==='ending');
+  document.body.classList.toggle('cine',s==='prologue'||s==='ending'); if(s!=='prologue'&&typeof CINE3D!=='undefined') CINE3D.hide();
   state=s; overlay.hidden=(s==='play'||s==='dying'||s==='touchedit'||s==='ending'||s==='prologue'); { const tb=document.getElementById('tedbar'); if(tb&&s!=='touchedit') tb.hidden=true; }
   overlay.classList.toggle('clear',s==='title'||s==='gameover'); if(s!=='hero'){ overlay.classList.toggle('hs',solo&&soloHero==='spark'); overlay.classList.toggle('hb',solo&&soloHero==='bolt'); overlay.classList.toggle('hd',!solo); } else overlay.classList.remove('hd'); overlay.classList.toggle('pz',s!=='title'&&s!=='play'&&s!=='dying'&&s!=='gameover'); { const dd=overlay.querySelector('.pzdeco'); if(dd&&s==='gameover') dd.remove(); }
   if(s==='title'){ startTitleIntro();

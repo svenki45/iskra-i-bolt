@@ -6,6 +6,8 @@ function drawPrologue(){
   if(pressed.has('Enter')||pressed.has('Space')||pressed.has('Escape')) proT=Math.max(proT,PRO_LEN);
   const t=proT, c=ctx, W=VW, H=VH, ease=k=>k<0?0:k>1?1:k*k*(3-2*k), FY=H*.82;
   const awake=ease((t-6.2)/1.2), red=awake*(t<15?1:.8);
+  const use3d=CINE3D.prologue(t); if(use3d){ c.save(); c.setTransform(1,0,0,1,0,0); c.clearRect(0,0,cv.width,cv.height); c.restore(); cv.style.background='transparent'; }
+  if(!use3d){
   c.fillStyle=`rgb(${8+20*red|0},${10|0},${22-6*red|0})`; c.fillRect(0,0,W,H);
   // rain + lightning (scene 1-2)
   if(t<9){ c.strokeStyle='rgba(160,190,230,.25)'; c.lineWidth=1; c.beginPath(); for(let i=0;i<70;i++){ const x=(i*97+t*900)%W, y=(i*53+t*1400)%H; c.moveTo(x,y); c.lineTo(x-6,y+18); } c.stroke(); }
@@ -37,6 +39,19 @@ function drawPrologue(){
     drawSpark({kind:'spark',w:24,h:30,x:W*.42,y:sy,sx:1,sy:1,face:1,blinkT:1,inv:0,down:false,shield:false,dead:false,vx:0});
     if(t>17) drawBolt({kind:'bolt',w:34,h:56,x:bx,y:FY-56,sx:1,sy:1,face:-1,blinkT:1,inv:0,down:false,shield:false,dead:false,slam:false,vx:t<18.5?-100:0}); }
   for(const q of particles){ c.globalAlpha=Math.max(0,q.life/q.max); c.fillStyle=q.c; c.fillRect(q.x-q.s/2,q.y-q.s/2,q.s,q.s); } c.globalAlpha=1;
+  } // end 2D fallback scene
+  if(use3d){ // game sprites (2D) placed into the 3D shot
+    drawPrologue.bs=drawPrologue.bs||{};
+    for(const a of CINE3D.actors||[]){ if(!a.front||a.px<2) continue; c.save(); c.globalAlpha=a.k;
+      if(a.kind==='spark'||a.kind==='bolt'){ const H=a.kind==='spark'?30:56, W=a.kind==='spark'?24:34, sc=a.px/H; c.translate(a.x,a.y); c.scale(sc,sc);
+        if(a.kind==='spark'&&settings.glow){ c.save(); c.globalCompositeOperation='lighter'; glowAt(0,-H+4,140,'#ffb347',.35); c.restore(); }
+        const P={kind:a.kind,w:W,h:H,x:-W/2,y:-H,sx:1,sy:1,face:a.face,blinkT:(clock%3)<.12?-1:1,inv:0,down:false,shield:false,dead:false,slam:false,vx:a.walk?-120:undefined,wasGround:true,runPh:a.walk?clock*14:undefined};
+        if(a.kind==='spark') drawSpark(P); else drawBolt(P); }
+      else { const type=a.kind==='core'?'core':a.type, b=drawPrologue.bs[type]||(drawPrologue.bs[type]=makeBoss(type,1)); const sc=a.px/b.h;
+        b.t=t; b.flash=0; b.dead=false; b.face=a.x<VW/2?1:-1; b.x=0; b.y=0; c.translate(a.x-b.w*sc/2,a.y-b.h*sc); c.scale(sc,sc);
+        if(a.kind==='core'){ c.globalAlpha=.35+.65*a.awake; } try{ drawBoss(b); }catch(e){} }
+      c.restore(); }
+  }
   const cap=(txt,t0,t1,size,col,y,who)=>{ const a=Math.min(ease((t-t0)/.6),1-ease((t-t1+.6)/.6)); if(a<=0) return; drawPrologue.said=drawPrologue.said||{}; if(!drawPrologue.said[txt]&&t<t1-.5){ drawPrologue.said[txt]=1; babble(txt,who||'narr'); } c.save(); c.globalAlpha=a; c.textAlign='center'; c.textBaseline='middle'; c.font=`800 ${size}px Unbounded, 'Arial Black', sans-serif`; c.lineWidth=8; c.strokeStyle='rgba(0,0,0,.7)'; c.strokeText(txt,W/2,y||H*.1); c.fillStyle=col; c.fillText(txt,W/2,y||H*.1); c.restore(); };
   if(t<.3) drawPrologue.said={};
   cap('Старая мастерская давно закрыта. Мастер ушёл и не вернулся.',0.4,5.4,24,'#cfd8e6');
@@ -50,7 +65,7 @@ function drawPrologue(){
   if(t>27){ const k=ease((t-27)/.8); c.fillStyle=`rgba(0,0,0,${k*.7})`; c.fillRect(0,0,W,H); c.save(); c.globalAlpha=k; c.textAlign='center'; c.textBaseline='middle'; c.font="900 86px Unbounded, 'Arial Black', sans-serif";
     c.fillStyle='#ff8a3d'; c.fillText('ИСКРА',W/2-170,H/2); c.fillStyle='#eaf2ff'; c.font="900 44px Unbounded, sans-serif"; c.fillText('и',W/2+30,H/2+8); c.fillStyle='#62c7c1'; c.font="900 86px Unbounded, 'Arial Black', sans-serif"; c.fillText('БОЛТ',W/2+210,H/2); c.restore(); }
   if(t>1&&t<PRO_LEN){ c.save(); c.globalAlpha=.5; c.font="500 13px Rubik, sans-serif"; c.fillStyle='#cfd8e6'; c.textAlign='right'; c.fillText('Enter — пропустить',W-20,H-16); c.restore(); }
-  if(t>=PRO_LEN){ particles=[]; const f=storyNext; storyNext=null; if(f) f(); else setState('menu'); }
+  if(t>=PRO_LEN){ particles=[]; CINE3D.hide(); const f=storyNext; storyNext=null; if(f) f(); else setState('menu'); }
 }
 let endT=0, endLast=0, endBoom=false;
 const END_LEN=24;
