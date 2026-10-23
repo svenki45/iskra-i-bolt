@@ -100,6 +100,7 @@ function complete(){
   if(edTest){ ED.endTest(true); return; }
   cpSave=null;
   if(demo){ demoNext(); return; }
+  { const L0=getLevel(levelIdx); if(L0&&L0.boss==='toad'&&!complete.cine&&!NET.role&&typeof CINE3D!=='undefined'){ complete.cine=true; proMode='toad'; proT=0; proLast=0; storyNext=()=>{ complete(); complete.cine=false; }; setState('prologue'); return; } }
   recordStars(getLevel(levelIdx));
   lvlStat(levelIdx,'c',1); lvlStat(levelIdx,'t',Math.round(levelTime));
   sfx('win'); saveBest(levelIdx+1); saveStats();

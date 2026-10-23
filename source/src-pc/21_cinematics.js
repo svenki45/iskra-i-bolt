@@ -1,7 +1,59 @@
 /* ================= ending cinematic ================= */
 let proT=0, proLast=0, proBolt=false;
 const PRO_LEN=30;
-function drawPrologue(){
+let proMode='pro';
+function drawCineActors(list,t){ drawPrologue.bs=drawPrologue.bs||{}; const c=ctx;
+  for(const a of list||[]){ if(!a.front||a.px<2) continue; c.save(); c.globalAlpha=a.k;
+    if(a.kind==='spark'||a.kind==='bolt'){ const H=a.kind==='spark'?30:56, W=a.kind==='spark'?24:34, sc=a.px/H; c.translate(a.x,a.y); c.scale(sc,sc);
+      if(a.kind==='spark'&&settings.glow){ c.save(); c.globalCompositeOperation='lighter'; glowAt(0,-H+4,140,'#ffb347',.35); c.restore(); }
+      const P={kind:a.kind,hi5:a.hi5,w:W,h:H,x:-W/2,y:-H,sx:1,sy:1,face:a.face,blinkT:(clock%3)<.12?-1:1,inv:0,down:false,shield:false,dead:false,slam:false,vx:a.walk?120*a.face:undefined,wasGround:true,runPh:a.walk?clock*14:undefined,shootCd:a.shoot?.2:0};
+      if(a.kind==='spark') drawSpark(P); else drawBolt(P); }
+    else { const type=a.kind==='core'?'core':a.type, b=drawPrologue.bs[type]||(drawPrologue.bs[type]=makeBoss(type,1)); const sc=a.px/b.h;
+      b.t=t; b.flash=a.flash||0; b.emo=a.emo||null; b.dead=false; b.face=a.face||(a.x<VW/2?1:-1); b.x=0; b.y=0;
+      c.translate(a.x,a.y); if(a.tilt) c.rotate(a.tilt); c.scale(sc,sc*(a.sq||1)); c.translate(-b.w/2,-b.h);
+      if(a.kind==='core'){ c.globalAlpha=.35+.65*a.awake; } try{ drawBoss(b); }catch(e){} }
+    c.restore(); } }
+function drawToadOutro(){
+  const now=performance.now(), dt=Math.min(.05,(now-(proLast||now))/1000); proLast=now; proT+=dt;
+  if(pressed.has('Enter')||pressed.has('Space')||pressed.has('Escape')) proT=Math.max(proT,20);
+  const t=proT, c=ctx, W=VW, H=VH, ease=k=>k<0?0:k>1?1:k*k*(3-2*k), lerp=(a,b,k)=>a+(b-a)*k;
+  if(t<.05||t<(drawToadOutro.lastT||0)-1||!drawToadOutro.shots){ drawToadOutro.said={}; drawToadOutro.shots=[]; drawToadOutro.fx={}; } drawToadOutro.lastT=t;
+  const ok=CINE3D.toad(t); c.save(); c.setTransform(1,0,0,1,0,0); c.clearRect(0,0,cv.width,cv.height); c.restore(); cv.style.background='transparent';
+  if(!ok){ c.fillStyle='#0b1020'; c.fillRect(0,0,W,H); }
+  const A=CINE3D.actors||[], M=CINE3D.muzzle, TA=CINE3D.toadAt, FX=drawToadOutro.fx;
+  // volley of shots at the toad
+  const SH=drawToadOutro.shots; if(t<3.4&&ok){ drawToadOutro.cd=(drawToadOutro.cd||0)-dt; if(drawToadOutro.cd<=0){ drawToadOutro.cd=.16; const sp=SH.length%2===0; SH.push({sp,t0:t,a:sp?M.s:M.b}); tone(sp?880:440,sp?440:220,.06,'square',.025); } }
+  let hitF=0;
+  for(const q of SH){ const k=(t-q.t0)/.35; if(k>=1){ if(!q.hit){ q.hit=1; FX.hitT=t; burst(TA.x+(Math.random()-.5)*40,TA.y+(Math.random()-.5)*40,6,q.sp?['#ffd166','#ff8a3d']:['#c7d3dd','#9cc3ff'],220,.3); } continue; }
+    const x=lerp(q.a.x,TA.x,k), y=lerp(q.a.y,TA.y,k)-Math.sin(k*Math.PI)*20;
+    c.save(); if(q.sp){ c.globalCompositeOperation='lighter'; c.fillStyle='#ffb347'; c.beginPath(); c.arc(x,y,9,0,Math.PI*2); c.fill(); c.fillStyle='#fff3c4'; c.beginPath(); c.arc(x,y,4,0,Math.PI*2); c.fill(); }
+      else { c.translate(x,y); c.rotate(t*20); c.fillStyle='#9aa7b8'; c.beginPath(); for(let i=0;i<6;i++){ const a=i/6*Math.PI*2; c.lineTo(Math.cos(a)*8,Math.sin(a)*8); } c.fill(); c.fillStyle='#2a3142'; c.beginPath(); c.arc(0,0,3,0,Math.PI*2); c.fill(); } c.restore(); }
+  hitF=(t-(FX.hitT??-9))<.07?.12:0;
+  for(const a of A){ if(a.kind==='boss') a.flash=hitF; if(a.kind!=='boss'&&t<3.4) a.shoot=true; }
+  if(t>3.4&&!FX.big){ FX.big=1; flash('#ffffff',.8); shake=Math.max(shake,12); burst(TA.x,TA.y,40,['#fff','#ffd166','#6fae5b'],420,.8); sfx('boom'); }
+  if(t>3.6&&t<6.8&&Math.random()<.25) addP({x:TA.x+(Math.random()-.5)*60,y:TA.y-20,vx:(Math.random()-.5)*30,vy:-50,life:.8,max:.8,c:'rgba(120,120,130,.6)',s:6,g:-.02});
+  drawCineActors(A,t);
+  // dizzy stars over the beaten toad
+  if(t>3.8&&t<7){ for(let i=0;i<3;i++){ const a=t*4+i*2.1; c.fillStyle='#ffd166'; c.font='700 22px sans-serif'; c.textAlign='center'; c.fillText('★',TA.x+Math.cos(a)*40,TA.y-60+Math.sin(a)*10); } }
+  if(t>8.5&&!FX.glass){ FX.glass=1; const w=CINE3D.winAt; burst(w.x,w.y,30,['#cfe0ff','#fff','#9db8ff'],380,.8); sfx('boom'); }
+  if(t>9.2&&t<11){ const w=CINE3D.winAt, a=Math.min(1,(t-9.2)/.3)*(1-ease((t-10.4)/.6)); c.save(); c.globalAlpha=a; c.globalCompositeOperation='lighter'; c.fillStyle='#ff3b3b'; c.shadowColor='#ff2020'; c.shadowBlur=30; c.beginPath(); c.arc(w.x-22,w.y+10,7,0,Math.PI*2); c.arc(w.x+22,w.y+10,7,0,Math.PI*2); c.fill(); c.restore(); }
+  // high five
+  if(t>13.1&&!FX.five){ FX.five=1; const hp=CINE3D.handsAt; burst(hp.x,hp.y,36,['#fff','#ffd166','#7fe8e0','#ff8a3d'],380,.6); flash('#ffffff',.35); sfx('pick'); tone(660,1320,.25,'square',.06); }
+  if(t>13.05&&t<14.2){ const hp=CINE3D.handsAt, k=(t-13.05)/1.15; c.save(); c.globalAlpha=1-k; c.translate(hp.x,hp.y); c.rotate(k*1.5); c.fillStyle='#fff3c4'; c.beginPath(); for(let i=0;i<10;i++){ const r=i%2?14:42*(1+k*.5), a=i/10*Math.PI*2; c.lineTo(Math.cos(a)*r,Math.sin(a)*r); } c.fill(); c.restore(); }
+  for(const q of particles){ c.globalAlpha=Math.max(0,q.life/q.max); c.fillStyle=q.c; c.fillRect(q.x-q.s/2,q.y-q.s/2,q.s,q.s); } c.globalAlpha=1;
+  const cap=(txt,t0,t1,size,col,y,who)=>{ const a=Math.min(ease((t-t0)/.4),1-ease((t-t1+.4)/.4)); if(a<=0) return; const S=drawToadOutro.said; if(!S[txt]&&t<t1-.3){ S[txt]=1; babble(txt,who||'narr'); } c.save(); c.globalAlpha=a; c.textAlign='center'; c.textBaseline='middle'; c.font=`800 ${size}px Unbounded, 'Arial Black', sans-serif`; c.lineWidth=8; c.strokeStyle='rgba(0,0,0,.75)'; c.strokeText(txt,W/2,y||H*.1); c.fillStyle=col; c.fillText(txt,W/2,y||H*.1); c.restore(); };
+  cap('Огонь! Добиваем её!',0.2,3.2,28,'#ffd166',null,'spark');
+  cap('Ква-а-а… Это ещё не конец!',4.3,7,30,'#8fe07a',null,'boss');
+  cap('Я вернусь… и стану сильнее!',7.2,10.2,30,'#ff6b6b',null,'boss');
+  cap('Она ещё вернётся…',10.5,11.8,24,'#ffb347',null,'spark');
+  cap('Значит, будем сильнее мы!',11.6,12.9,24,'#7fe8e0',null,'bolt');
+  cap('ДАЙ ПЯТЬ!',12.9,14.4,46,'#ffffff',H*.22);
+  cap('Вперёд — к следующему цеху!',14.6,18.6,26,'#eaf2ff');
+  if(t>18.4){ const k=ease((t-18.4)/1.2); c.fillStyle=`rgba(0,0,0,${k})`; c.fillRect(0,0,W,H); }
+  if(t>1&&t<20){ c.save(); c.globalAlpha=.5; c.font="500 13px Rubik, sans-serif"; c.fillStyle='#cfd8e6'; c.textAlign='right'; c.fillText('Enter — пропустить',W-20,H-16); c.restore(); }
+  if(t>=20){ particles=[]; if(window.__cineLoop){ proT=0; return; } CINE3D.hide(); proMode='pro'; const f=storyNext; storyNext=null; if(f) f(); else setState('menu'); }
+}
+function drawPrologue(){ if(proMode==='toad') return drawToadOutro();
   const now=performance.now(), dt=Math.min(.05,(now-(proLast||now))/1000); proLast=now; proT+=dt;
   if(pressed.has('Enter')||pressed.has('Space')||pressed.has('Escape')) proT=Math.max(proT,PRO_LEN);
   const t=proT, c=ctx, W=VW, H=VH, ease=k=>k<0?0:k>1?1:k*k*(3-2*k), FY=H*.82;
@@ -40,18 +92,7 @@ function drawPrologue(){
     if(t>17) drawBolt({kind:'bolt',w:34,h:56,x:bx,y:FY-56,sx:1,sy:1,face:-1,blinkT:1,inv:0,down:false,shield:false,dead:false,slam:false,vx:t<18.5?-100:0}); }
   for(const q of particles){ c.globalAlpha=Math.max(0,q.life/q.max); c.fillStyle=q.c; c.fillRect(q.x-q.s/2,q.y-q.s/2,q.s,q.s); } c.globalAlpha=1;
   } // end 2D fallback scene
-  if(use3d){ // game sprites (2D) placed into the 3D shot
-    drawPrologue.bs=drawPrologue.bs||{};
-    for(const a of CINE3D.actors||[]){ if(!a.front||a.px<2) continue; c.save(); c.globalAlpha=a.k;
-      if(a.kind==='spark'||a.kind==='bolt'){ const H=a.kind==='spark'?30:56, W=a.kind==='spark'?24:34, sc=a.px/H; c.translate(a.x,a.y); c.scale(sc,sc);
-        if(a.kind==='spark'&&settings.glow){ c.save(); c.globalCompositeOperation='lighter'; glowAt(0,-H+4,140,'#ffb347',.35); c.restore(); }
-        const P={kind:a.kind,w:W,h:H,x:-W/2,y:-H,sx:1,sy:1,face:a.face,blinkT:(clock%3)<.12?-1:1,inv:0,down:false,shield:false,dead:false,slam:false,vx:a.walk?-120:undefined,wasGround:true,runPh:a.walk?clock*14:undefined};
-        if(a.kind==='spark') drawSpark(P); else drawBolt(P); }
-      else { const type=a.kind==='core'?'core':a.type, b=drawPrologue.bs[type]||(drawPrologue.bs[type]=makeBoss(type,1)); const sc=a.px/b.h;
-        b.t=t; b.flash=0; b.dead=false; b.face=a.x<VW/2?1:-1; b.x=0; b.y=0; c.translate(a.x-b.w*sc/2,a.y-b.h*sc); c.scale(sc,sc);
-        if(a.kind==='core'){ c.globalAlpha=.35+.65*a.awake; } try{ drawBoss(b); }catch(e){} }
-      c.restore(); }
-  }
+  if(use3d) drawCineActors(CINE3D.actors,t);
   const cap=(txt,t0,t1,size,col,y,who)=>{ const a=Math.min(ease((t-t0)/.6),1-ease((t-t1+.6)/.6)); if(a<=0) return; drawPrologue.said=drawPrologue.said||{}; if(!drawPrologue.said[txt]&&t<t1-.5){ drawPrologue.said[txt]=1; babble(txt,who||'narr'); } c.save(); c.globalAlpha=a; c.textAlign='center'; c.textBaseline='middle'; c.font=`800 ${size}px Unbounded, 'Arial Black', sans-serif`; c.lineWidth=8; c.strokeStyle='rgba(0,0,0,.7)'; c.strokeText(txt,W/2,y||H*.1); c.fillStyle=col; c.fillText(txt,W/2,y||H*.1); c.restore(); };
   if(t<.3) drawPrologue.said={};
   cap('Старая мастерская давно закрыта. Мастер ушёл и не вернулся.',0.4,5.4,24,'#cfd8e6');

@@ -143,5 +143,52 @@ const CINE3D=(()=>{
       C.actors=A.sort((a,b)=>b.px-a.px).reverse(); return true;
     }catch(e){ console.error('cine3d',e); C.ok=false; hide(); return false; }
   };
+
+  // ======== boss outro: Пресс-Жаба ========
+  const TK=[[0,0,230,950,0,60,0],[3,120,130,520,200,70,0],[4.2,60,140,560,170,60,0],[7,40,200,640,120,200,-200],[9.2,0,420,520,0,820,-880],[10.4,-190,130,620,-190,50,120],[12.6,-190,100,470,-191,55,120],[14,-170,120,540,-180,55,120],[17,60,240,1000,120,60,60],[20,140,260,1100,260,60,60]];
+  function camK(K,t){ let i=0; while(i<K.length-2&&t>K[i+1][0]) i++; const a=K[i], b=K[i+1], k=ease((t-a[0])/(b[0]-a[0])); return [1,2,3,4,5,6].map(j=>lerp(a[j],b[j],k)); }
+  C.toad=function(t){
+    if(!ensure()) return false;
+    try{
+      if(!C.built) build();
+      const dt=Math.max(0,Math.min(.05,t-lastT)); lastT=t;
+      const w=glc.clientWidth|0, h=glc.clientHeight|0; if(w&&h&&(glc.width!==Math.round(w*R.getPixelRatio())||glc.height!==Math.round(h*R.getPixelRatio()))){ R.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix(); }
+      glc.style.display='block';
+      // reuse the workshop: no rain, no mechanism, warm foundry light
+      S.rain.visible=false; S.mech.visible=false; S.waves.forEach(x=>x.material.opacity=0); S.guards.forEach(g=>g.visible=false); S.sparks.visible=false; S.bolt.material.opacity=0;
+      if(!S.foundry){ S.foundry=new THREE.PointLight(0xff7a30,0,1400,1.4); S.foundry.position.set(150,260,200); scene.add(S.foundry); S.cool=new THREE.PointLight(0x6fd0ff,0,1200,1.6); S.cool.position.set(-260,220,320); scene.add(S.cool); }
+      S.foundry.intensity=2.2+Math.sin(t*7)*.25; S.cool.intensity=1.1; S.hemi.color.setRGB(.55,.5,.6);
+      S.lamps.forEach((l,i)=>l.intensity=1.2*(Math.sin(t*13+i*5)>.97?.3:1));
+      const fl=(t>3.4&&t<3.7?1:0)+(t>8.5&&t<8.9?.8:0); S.flash.intensity=fl*5; S.win.material.color=col(t>8.6?'#3a1010':'#1a2a4a');
+      S.spark.visible=true; S.spark.traverse(o=>{ if(o.isMesh) o.visible=false; }); S.boltH.visible=false;
+      // actors
+      let toadY=0, toadZ=0, toadX=220, toadK=1, tilt=0, sq=1;
+      if(t>3.4&&t<7){ tilt=-.35*ease((t-3.4)/.4)*(1-ease((t-6.4)/.6)); sq=1-.12*ease((t-3.4)/.3)*(1-ease((t-6.4)/.6)); }
+      if(t>=7){ const k=ease((t-7.4)/1.4); if(t<7.4){ sq=1-.25*Math.sin((t-7)/.4*Math.PI); } toadY=k*900; toadZ=-880*k; toadX=lerp(220,0,k); toadK=t>9.2?0:1; }
+      let sx=t>10.4&&t<14?-300:-240, bx=t>10.4&&t<14?-80:-140, sy=0, by=0, sf=1, bf=1, walk=false;
+      if(t>10.5&&t<14){ sf=1; bf=-1; }
+      let run=false, hi=false;
+      if(t>11.6&&t<12.9){ const k=ease((t-11.6)/1.3); sx=lerp(-300,-223,k); bx=lerp(-80,-166,k); run=k<1; }
+      else if(t>=12.9&&t<14){ sx=-223; bx=-166; hi=t<13.7; const j=Math.max(0,Math.sin(Math.min(1,(t-12.9)/.5)*Math.PI)); sy=j*30; by=j*16; }
+      if(t>10.4&&t<=11.6){ sx=-300; bx=-80; }
+      C.run=run; C.hi=hi;
+      if(t>=14){ walk=true; const k=(t-14)*120; sx=-223+k; bx=-140+k; }
+      sy+=walk?Math.abs(Math.sin(t*10))*3:0; by+=walk?Math.abs(Math.sin(t*8))*3:0;
+      S.spark.position.set(sx,sy,120);
+      const fu=S.spark.userData; fu.light.intensity=2+Math.sin(t*19)*.4;
+      const shk=(t>3.4&&t<3.9?10:0)+(t>7&&t<7.4?6:0)+(t>13&&t<13.2?4:0);
+      const c=camK(TK,t); cam.position.set(c[0]+(Math.random()-.5)*shk,c[1]+(Math.random()-.5)*shk,c[2]); cam.lookAt(c[3],c[4],c[5]);
+      R.render(scene,cam); cam.updateMatrixWorld();
+      const pr=(x,y,z,hgt)=>{ const v=new THREE.Vector3(x,y,z).project(cam), v2=new THREE.Vector3(x,y+hgt,z).project(cam); return {x:(v.x*.5+.5)*VW,y:(-v.y*.5+.5)*VH,px:Math.abs(v2.y-v.y)*.5*VH,front:v.z<1}; };
+      const A=[];
+      const emo=t<3.4?'angry':t<7?'pain':'angry';
+      if(toadK) A.push(Object.assign({kind:'boss',type:'toad',k:1,tilt,sq,face:-1,emo},pr(toadX,toadY,toadZ,150)));
+      A.push(Object.assign({kind:'spark',k:1,face:sf,walk:walk||C.run,hi5:C.hi},pr(sx,sy,120,48)));
+      A.push(Object.assign({kind:'bolt',k:1,face:bf,walk:walk||C.run,hi5:C.hi},pr(bx,by,120,62)));
+      C.actors=A; C.toadAt=pr(toadX,toadY+70,toadZ,1); C.handsAt=pr(-195,70+Math.max(sy,by)*.6,120,1); C.winAt=pr(0,830,-880,1);
+      C.muzzle={s:pr(sx+14,sy+30,120,1),b:pr(bx+20,by+36,120,1)};
+      return true;
+    }catch(e){ console.error('cine3d toad',e); C.ok=false; hide(); return false; }
+  };
   return C;
 })();
