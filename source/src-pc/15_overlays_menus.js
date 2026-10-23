@@ -95,7 +95,7 @@ function setState(s){
     const hosting=NET.waiting&&NET.code;
     overlay.innerHTML=`<div class="card"><span class="eyebrow">2 игрока · по интернету</span><h2>Онлайн</h2>
       ${hosting?`<p>Код комнаты — скажите его другу:</p><div class="netcode">${NET.code}</div><p class="padst">Вы играете за <b style="color:#ff8a3d">Искру</b>, друг — за <b style="color:#62c7c1">Болта</b>. Игра начнётся сама, как только он подключится.</p>`
-      :`<div class="btns col"><button class="primary" id="bHost" type="button">Создать комнату<small>вы — Искра, хост</small></button></div>
+      :NET.creating?`<p>Создаём комнату… обычно это 2–5 секунд.</p><div class="ldgear">${gearSvg('#ff8a3d')}</div>`:`<div class="btns col"><button class="primary" id="bHost" type="button">Создать комнату<small>вы — Искра, хост</small></button></div>
       <div class="pick" style="margin-top:6px"><label for="netIn">Код друга</label><input id="netIn" type="text" maxlength="5" autocomplete="off" placeholder="ABCDE" style="text-transform:uppercase;letter-spacing:.2em;width:9ch"><button class="secondary" id="bJoin" type="button">Войти</button></div>
       <p class="padst">Друг создаёт комнату и диктует код из 5 символов. Вы вводите его и играете за Болта. Нужен интернет у обоих.</p>`}
       ${NET.status?`<p class="padst" id="netSt">${NET.status}</p>`:''}
@@ -103,7 +103,7 @@ function setState(s){
       <div class="btns"><button class="secondary" id="bNetBack" type="button">${hosting?'Отменить':'Назад'} · Esc</button></div></div>`;
     if($('bHost')) $('bHost').onclick=()=>{ NET.status=''; netHost(); };
     if($('bJoin')){ const go2=()=>netJoin($('netIn').value); $('bJoin').onclick=go2; $('netIn').addEventListener('keydown',e=>{ if(e.key==='Enter') go2(); }); }
-    $('bNetBack').onclick=()=>{ if(NET.waiting){ try{ NET.mq&&NET.mq.close(); }catch(e){} NET.mq=null; NET.waiting=false; } NET.status=''; setState('menu'); };
+    $('bNetBack').onclick=()=>{ NET.creating=false; if(NET.waiting||NET.mq){ try{ NET.mq&&NET.mq.close(); }catch(e){} NET.mq=null; NET.waiting=false; } NET.status=''; setState('menu'); };
   } else if(s==='netwait'){
     overlay.innerHTML=`<div class="card"><span class="eyebrow">Онлайн · комната ${NET.code}</span><h2>Вы — Болт</h2><div class="ldgear">${gearSvg('#62c7c1')}</div><p id="netHostSt">Ждём хоста…</p><p class="padst">Управление: любые клавиши героя (стрелки или WASD) или геймпад. Esc — выйти.</p></div>`;
   } else if(s==='touchedit'){
