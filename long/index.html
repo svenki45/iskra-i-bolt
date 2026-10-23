@@ -3981,7 +3981,7 @@ function viewRect(){ const v=draw.view||{z:1,ox:0,oy:0}; return {x:-v.ox/v.z,y:-
 function drawMiniMap(){
   if(!grid||!players||(state!=='play'&&state!=='pause'&&state!=='dying')||intro||outro||settings.minimap===false) return;
   const V=viewRect(); if(WW<=VW+2&&V.w>=VW-2) return;          // whole level already visible
-  const W=Math.min(300,Math.max(160,WW/T*3.2)), H=Math.round(W*VH/WW), X=(VW-W)/2, Y=58, k=W/WW;
+  const H=30, W=Math.min(360,H*WW/VH), X=VW/2-W-34, Y=5, k=W/WW;
   const key=levelIdx+'|'+WW+'|'+(getLevel(levelIdx).name||''); let M=drawMiniMap.c;
   if(!M||M.key!==key||M.W!==W){ const c=document.createElement('canvas'); c.width=Math.ceil(W); c.height=Math.ceil(H); const g=c.getContext('2d');
     for(let y=0;y<grid.length;y++) for(let x=0;x<grid[y].length;x++){ const ch=grid[y][x];
