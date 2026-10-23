@@ -29,7 +29,7 @@ function setState(s){
     overlay.innerHTML=`<div class="titlescr">
       <div class="logo" aria-label="Искра и Болт">${word('ИСКРА','s',0.3,0.2)}<span class="lt amp" style="animation-delay:${fast?.4:1.45}s">и</span>${word('БОЛТ','b',1.6,0.2)}<span class="beta">БЕТА</span><span class="b3dbadge" style="animation-delay:${titleIntro.seen?.5:2.75}s,${titleIntro.seen?.5:2.75}s"><i>3D</i></span></div>
       <div class="startwrap"><div class="modes"><button class="${solo?'primary':'secondary'} start mode" id="bOne" type="button">1 ИГРОК<small>выбрать героя</small></button><button class="${solo?'secondary':'primary'} start mode" id="bTwo" type="button">2 ИГРОКА<small>${window.MOBILE_BUILD?"на одном телефоне":"за одной клавиатурой"}</small></button></div><div class="tbtns"><button class="secondary" id="bOnline" type="button">🌐 ОНЛАЙН<small>${window.MOBILE_BUILD?"подключиться к другу на ПК":"с другом по интернету"}</small></button>${window.MOBILE_BUILD?'':'<button class="secondary" id="tEditor" type="button">🛠 КОНСТРУКТОР<small>свои уровни</small></button><button class="secondary" id="tMyGame" type="button">📚 МОЯ ИГРА<small>из моих уровней</small></button>'}</div>
-      <p class="press">Стрелки и Enter, или крестовина и A на геймпаде</p></div>
+      </div>
     </div>`;
     for(const [id,k] of [['bOne','one'],['bTwo','two']]){ const el=$(id); el.addEventListener('mouseenter',()=>titleFocus=k); el.addEventListener('focus',()=>titleFocus=k); }
     $('bOne').onclick=()=>{ audioInit(); sfx('nav'); heroBack='title'; setState('hero'); };
@@ -55,7 +55,6 @@ function setState(s){
         ${window.MOBILE_BUILD?'':'<button class="secondary" id="bEditor" type="button">Конструктор<small>свои уровни</small></button><button class="secondary" id="bMyGame" type="button">Моя игра<small>собранная из моих уровней</small></button>'}<button class="secondary" id="bToTitle" type="button">На главный экран<small>выбор режима игры</small></button>
         ${cheatMenu?`<button class="secondary" id="bCheats" type="button">Читы<small>${anyCheat()?'включены':'выключены'}</small></button>`:''}
       </div>
-      <p class="mfoot">Стрелки, WASD или геймпад · Enter / A выбрать · Esc / B назад</p>
     </div>`;
     $('bShop').onclick=()=>setState('custom'); $('bMode').onclick=()=>{ heroBack='menu'; if(solo){ setMode(false); loadLevel(Math.min(TOTAL-1,best)); renderLegend(true); setState('menu'); } else setState('hero'); }; $('bShopM').onclick=()=>{ shopFrom='menu'; setState('shop'); }; if($('bEditor')) $('bEditor').onclick=()=>ED.open(); $('bToTitle').onclick=()=>{ sfx('nav'); setState('title'); }; if($('bMyGame')) $('bMyGame').onclick=()=>{ ED.open(); ED.game(); }; $('bSet').onclick=()=>{ ctlBack='menu'; setState('settings'); }; $('bCtl').onclick=()=>{ if(touchUI.on){ editBack='menu'; setState('touchedit'); return; } ctlBack='menu'; setState('controls'); }; $('bAch').onclick=()=>setState('ach');
     $('bHelp').onclick=()=>{ helpBack='menu'; setState('help'); };
@@ -73,7 +72,6 @@ function setState(s){
         <button type="button" class="hero b pickhero" id="bHB"><h3>Болт</h3><canvas id="pvB" width="240" height="240" aria-hidden="true"></canvas>
           <ul><li>Толкает ящики на кнопки</li><li>Удар сверху ломает пол и давит врагов</li><li>Тяжёлые гайки, вдвое больше урона</li><li>Прыгает ниже, зато крепкий</li></ul></button>
       </div>
-      <p class="padst">Уровни собираются под умения героя. У каждого героя свой прогресс, очки и улучшения.</p>
       <div class="btns"><button class="secondary" id="bHBack" type="button">Назад · Esc</button></div></div>`;
     $('bHS').onclick=()=>{ setMode(true,'spark'); goMenuFromTitle(); };
     { const lay=`<div class="hbg s"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div><div class="hbg b"></div>`;
