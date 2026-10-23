@@ -9,7 +9,15 @@ let edTest=false, edLevel=null, edSaved=null;
 #editor input:not([type]),#editor select{background:#0a1426;color:#e8effa;border:1px solid #33456a;border-radius:6px;padding:4px 6px;font:inherit}
 #editor input#edHint{width:320px}
 #editor .edmain{flex:1;display:flex;min-height:0}
-#editor .edpal{width:210px;overflow:auto;padding:6px;background:#0d1628;border-right:1px solid #22324f}
+#editor .edside{width:250px;display:flex;flex-direction:column;background:#0d1628;border-right:1px solid #22324f;min-height:0}
+#editor #edSearch{margin:8px;padding:7px 9px;border-radius:8px;background:#0a1426;color:#e8effa;border:1px solid #33456a;font:inherit}
+#editor .edpal{flex:1;overflow:auto;padding:0 6px 6px}
+#editor .edinfo{border-top:1px solid #22324f;padding:8px 10px;min-height:120px;font-size:12.5px;line-height:1.4;background:#0f1a30}
+#editor .edinfo p{margin:4px 0;color:#cfd8ea}
+#editor .edinfo .edcomb{color:#9cc3ff}
+#editor .edih{display:flex;align-items:center;gap:8px;font-size:14px;color:#ffd166}
+#editor .edt[hidden],#editor .edgrp[hidden]{display:none}
+#editor .edt canvas{flex:none;width:28px!important;height:28px!important;background:#0a1222;border-radius:5px}
 #editor .edgrp>span{display:block;font:700 10px Unbounded,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#9cc3ff;margin:8px 2px 4px}
 #editor .edt{display:flex;gap:6px;align-items:center;width:100%;text-align:left;background:transparent;border:1px solid transparent;color:#e8effa;border-radius:6px;padding:3px 5px;font:inherit;cursor:pointer}
 #editor .edt i{flex:none;width:20px;height:20px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;font:700 11px system-ui;color:#0b1220;font-style:normal}
@@ -30,6 +38,87 @@ const ED=(()=>{
     ['Враги и бонусы',[['@crawler','Жук','#ff6b6b'],['@big','Большой жук','#d65a5a'],['@flyer','Летун','#c79bff'],['@turret','Турель','#9cc3ff'],['@shield','Жук со щитом','#9cc3ff'],['@gear','Шестерёнка','#e7b54a'],['@heart','Сердце','#ff5fa2'],['@pshield','Щит','#9cc3ff'],['@triple','Тройной выстрел','#ffd166'],['@rapid','Скорострел','#ff8a3d'],['@power','Мощный выстрел','#c79bff']]],
   ];
   const COLOR={}; TOOLS.forEach(g=>g[1].forEach(t=>COLOR[t[0]]=t[2]));
+  const DESC={
+    '.':['Пустая клетка.','Стирает всё в клетке. То же делает правая кнопка мыши.',''],
+    '#':['Стена или пол.','Рисуйте полы, платформы, стены. Герои стоят и прыгают по ним.','Всё. Платформы на высоте 2 клетки — Болт допрыгнет, выше — только Искра или с подбросом.'],
+    '^':['Шипы.','Касание отнимает сердце. Ставьте на пол.','Мост (U/V/W) над шипами, летающая платформа, ломкий мост.'],
+    'x':['Треснувшая стена или пол.','Ломается выстрелами или ударом Болта сверху.','Ловушка (выход из комнаты), секретный проход, пролом вниз.'],
+    'C':['Ящик.','Толкает только Болт. Падает вниз, держит кнопку, на нём можно стоять.','Кнопки (p/q/r) — ящик держит дверь сам. Уступ — столкнуть ящик на кнопку.'],
+    '1':['Старт Искры.','Где Искра появляется. Нужен на каждом уровне.','Ставьте рядом со стартом Болта.'],
+    '2':['Старт Болта.','Где Болт появляется (в режиме вдвоём).','Ставьте рядом со стартом Искры.'],
+    'E':['Выход 2×2.','Уровень пройден, когда оба героя в рамке выхода. Ставьте кликом по нижней левой клетке.','Обычно в конце уровня, за последней задачкой.'],
+    'p':['Жёлтая кнопка.','Пока на ней стоит герой или ящик — жёлтые двери открыты, жёлтый мост виден.','Жёлтая дверь (P), жёлтый мост (U), летающая платформа (едет от кнопки), ящик.'],
+    'P':['Жёлтая дверь.','Закрыта, пока не нажата жёлтая кнопка. Ставьте столбиком 3 клетки.','Жёлтая кнопка (p). Галочка «Двери на время» — дверь закроется через ~3 сек.'],
+    'U':['Жёлтый мост.','Появляется, пока нажата жёлтая кнопка.','Над шипами. Жёлтая кнопка (p).'],
+    'q':['Сиреневая кнопка.','Как жёлтая, но для сиреневых дверей и мостов.','Q, V.'],'Q':['Сиреневая дверь.','Открывается сиреневой кнопкой.','q, «Двери на время».'],'V':['Сиреневый мост.','Появляется от сиреневой кнопки.','q, шипы.'],
+    'r':['Зелёная кнопка.','Для зелёных дверей и мостов.','R, W.'],'R':['Зелёная дверь.','Открывается зелёной кнопкой.','r, «Двери на время».'],'W':['Зелёный мост.','Появляется от зелёной кнопки.','r, шипы.'],
+    'a':['Кнопка порядка (красная).','Нажимать по порядку, указанному вверху («Порядок кнопок»). Ошибка — сначала.','Нужны все три (a, b, c) и решётка G.'],
+    'b':['Кнопка порядка (зелёная).','Часть задачки «порядок кнопок».','a, c, решётка G.'],'c':['Кнопка порядка (синяя).','Часть задачки «порядок кнопок».','a, b, решётка G.'],
+    'G':['Решётка.','Исчезает, когда кнопки a-b-c нажаты в правильном порядке. Над ней в игре висит табличка с порядком.','Кнопки a, b, c.'],
+    'k':['Ключ.','Герой подбирает ключ, касаясь его. Ключ виден над головой.','Замок X. Ключ в сундуке из замков — хорошая задачка.'],
+    'X':['Замок.','Исчезает весь (все соседние клетки X), если коснуться его с ключом. Ключ тратится.','Ключ k. Сундук: бонус за замком.'],
+    'h':['Рычаг.','Касание переключает красные и синие платформы.','Красные [ и синие ] платформы. Ставьте рычаги и внизу, и наверху.'],
+    '[':['Красная платформа.','Твёрдая, пока рычаг в начальном положении.','Рычаг h, синие платформы ].'],
+    ']':['Синяя платформа.','Твёрдая после переключения рычага.','Рычаг h, красные платформы [.'],
+    'g':['Решётка ловушки.','Открыта, но захлопывается, когда оба героя пройдут «место срабатывания».','Место срабатывания (красная линия), треснувшая стена x как выход.'],
+    '@trap':['Место срабатывания ловушки.','Красная линия. Когда все герои правее неё — решётки g захлопываются.','Решётка ловушки g.'],
+    'I':['Лёд.','Скользкий пол — трудно затормозить.','Шипы после льда, узкие уступы.'],
+    'K':['Ломкий мост.','Рассыпается через полсекунды под ногами, потом вырастает.','Над шипами — нельзя стоять на месте.'],
+    'O':['Портал (вход).','Войти — выйдешь из ближайшего портала-выхода o справа.','Портал-выход o. Сквозь стену.'],
+    'o':['Портал (выход).','Сюда переносит портал-вход O слева. Работает и обратно.','Портал-вход O.'],
+    '@wind':['Ветер вверх.','Столб ветра шириной 3 клетки поднимает героев к высоким уступам.','Высокий уступ, шипы внизу.'],
+    '@mover':['Летающая платформа.','Кликните, где начинается, потом — куда едет. Ездит туда-обратно.','Шипы или пропасть под ней.'],
+    '@flag':['Флажок.','Контрольная точка: после падения герои появляются у него.','Длинные уровни — ставьте на границе экранов.'],
+    '@crawler':['Жук.','Ползает по полу. Давится прыжком сверху или выстрелами.','Возле кнопок — мешает на них встать.'],
+    '@big':['Большой жук.','Крепче обычного, ростом с Болта.','Узкие коридоры.'],
+    '@flyer':['Летун.','Летает волнами в воздухе.','Над ямами и шипами.'],
+    '@turret':['Турель.','Стоит и стреляет в ближайшего героя.','Укрытия из стен, двери.'],
+    '@shield':['Жук со щитом.','Щит спереди — бейте в спину или прыгайте сверху.','Узкий проход, где его надо обойти.'],
+    '@gear':['Шестерёнка.','Очки для Лавки.','Высокие уступы, тайники — награда за исследование.'],
+    '@heart':['Сердце.','Восстанавливает здоровье.','Перед трудным местом или в сундуке.'],'@pshield':['Щит.','Гасит один удар.','Перед врагами.'],
+    '@triple':['Тройной выстрел.','Три снаряда веером на время.','Много врагов.'],'@rapid':['Скорострел.','Стреляет чаще на время.','Турели, щиты.'],'@power':['Мощный выстрел.','Пробивает насквозь.','Толпа врагов, треснувшие стены.'],
+  };
+  function ico(g,id,X,Y,s){ const c=COLOR[id]||'#888', m=s*.1; g.save(); g.lineJoin='round'; g.lineCap='round';
+    const box=(col,r=0)=>{ g.fillStyle=col; g.fillRect(X+m,Y+m,s-2*m,s-2*m); };
+    switch(id){
+      case '.': g.strokeStyle='#33456a'; g.setLineDash([3,3]); g.strokeRect(X+m,Y+m,s-2*m,s-2*m); break;
+      case '#': box('#5a6b85'); g.strokeStyle='rgba(255,255,255,.18)'; g.lineWidth=1; for(let i=-s;i<s;i+=s/4){ g.beginPath(); g.moveTo(X+m+Math.max(0,i),Y+s-m-Math.max(0,-i)); g.lineTo(X+Math.min(s-m,i+s),Y+m+Math.max(0,i+s-s+m)); g.stroke(); } break;
+      case '^': g.fillStyle=c; for(let i=0;i<3;i++){ g.beginPath(); g.moveTo(X+i*s/3+1,Y+s-m); g.lineTo(X+i*s/3+s/6,Y+s*.35); g.lineTo(X+(i+1)*s/3-1,Y+s-m); g.fill(); } break;
+      case 'x': box('#4a3622'); g.strokeStyle='#e7b54a'; g.lineWidth=Math.max(1,s*.06); g.beginPath(); g.moveTo(X+s*.3,Y+m); g.lineTo(X+s*.45,Y+s*.45); g.lineTo(X+s*.35,Y+s-m); g.moveTo(X+s*.45,Y+s*.45); g.lineTo(X+s*.75,Y+s*.6); g.stroke(); break;
+      case 'C': box('#b07a42'); g.strokeStyle='#5a3a1c'; g.lineWidth=Math.max(1,s*.07); g.strokeRect(X+m*1.5,Y+m*1.5,s-3*m,s-3*m); g.beginPath(); g.moveTo(X+m*1.5,Y+m*1.5); g.lineTo(X+s-m*1.5,Y+s-m*1.5); g.moveTo(X+s-m*1.5,Y+m*1.5); g.lineTo(X+m*1.5,Y+s-m*1.5); g.stroke(); break;
+      case '1': { g.fillStyle='#ffd166'; g.beginPath(); g.moveTo(X+s*.5,Y+m); g.lineTo(X+s*.62,Y+s*.42); g.lineTo(X+s*.38,Y+s*.42); g.fill(); g.fillStyle='#ff8a3d'; g.beginPath(); g.ellipse(X+s*.5,Y+s*.64,s*.26,s*.28,0,0,Math.PI*2); g.fill(); g.fillStyle='#fff'; g.beginPath(); g.arc(X+s*.42,Y+s*.6,s*.07,0,7); g.arc(X+s*.58,Y+s*.6,s*.07,0,7); g.fill(); break; }
+      case '2': { g.fillStyle='#62c7c1'; g.fillRect(X+s*.22,Y+s*.3,s*.56,s*.6); g.fillStyle='#cfd8e6'; g.fillRect(X+s*.3,Y+s*.16,s*.4,s*.14); g.fillStyle='#10202a'; g.fillRect(X+s*.28,Y+s*.42,s*.44,s*.18); g.fillStyle='#9ff6ff'; g.fillRect(X+s*.34,Y+s*.46,s*.08,s*.1); g.fillRect(X+s*.58,Y+s*.46,s*.08,s*.1); break; }
+      case 'E': g.strokeStyle='#cfd8e6'; g.setLineDash([3,2]); g.lineWidth=Math.max(1,s*.06); g.strokeRect(X+m,Y+m,s-2*m,s-2*m); g.setLineDash([]); g.strokeStyle='#ff8a3d'; g.beginPath(); g.arc(X+s*.38,Y+s*.32,s*.08,0,7); g.stroke(); g.strokeStyle='#62c7c1'; g.beginPath(); g.arc(X+s*.62,Y+s*.32,s*.08,0,7); g.stroke(); break;
+      case 'p': case 'q': case 'r': case 'a': case 'b': case 'c': g.fillStyle='#3a4656'; g.fillRect(X+m,Y+s*.78,s-2*m,s*.12); g.fillStyle=c; g.fillRect(X+s*.2,Y+s*.62,s*.6,s*.18); g.fillStyle='rgba(255,255,255,.35)'; g.fillRect(X+s*.2,Y+s*.62,s*.6,s*.05); break;
+      case 'P': case 'Q': case 'R': box('rgba(0,0,0,.25)'); g.strokeStyle=c; g.lineWidth=Math.max(1.5,s*.09); for(let i=1;i<4;i++){ g.beginPath(); g.moveTo(X+i*s/4,Y+m); g.lineTo(X+i*s/4,Y+s-m); g.stroke(); } break;
+      case 'U': case 'V': case 'W': g.strokeStyle=c; g.setLineDash([4,3]); g.lineWidth=Math.max(1.5,s*.08); g.strokeRect(X+m,Y+s*.4,s-2*m,s*.22); g.setLineDash([]); break;
+      case 'G': box('#2a3445'); g.strokeStyle='#8fa3b8'; g.lineWidth=Math.max(1.5,s*.09); for(let i=1;i<4;i++){ g.beginPath(); g.moveTo(X+i*s/4,Y+m); g.lineTo(X+i*s/4,Y+s-m); g.stroke(); } break;
+      case 'g': g.strokeStyle='#8fa3b8'; g.globalAlpha=.6; g.setLineDash([3,3]); g.lineWidth=Math.max(1.5,s*.08); for(let i=1;i<4;i++){ g.beginPath(); g.moveTo(X+i*s/4,Y+m); g.lineTo(X+i*s/4,Y+s-m); g.stroke(); } break;
+      case 'k': g.strokeStyle='#ffd166'; g.lineWidth=Math.max(1.5,s*.1); g.beginPath(); g.arc(X+s*.32,Y+s*.5,s*.14,0,7); g.moveTo(X+s*.46,Y+s*.5); g.lineTo(X+s*.85,Y+s*.5); g.moveTo(X+s*.72,Y+s*.5); g.lineTo(X+s*.72,Y+s*.66); g.moveTo(X+s*.84,Y+s*.5); g.lineTo(X+s*.84,Y+s*.64); g.stroke(); break;
+      case 'X': box('#8a6420'); g.strokeStyle='#ffd166'; g.lineWidth=1; g.strokeRect(X+m*1.5,Y+m*1.5,s-3*m,s-3*m); g.fillStyle='#2a1a04'; g.beginPath(); g.arc(X+s/2,Y+s*.42,s*.1,0,7); g.fill(); g.fillRect(X+s*.46,Y+s*.45,s*.08,s*.25); break;
+      case 'h': g.fillStyle='#3a4656'; g.fillRect(X+s*.25,Y+s*.8,s*.5,s*.12); g.strokeStyle='#cfd8e6'; g.lineWidth=Math.max(1.5,s*.09); g.beginPath(); g.moveTo(X+s*.5,Y+s*.8); g.lineTo(X+s*.3,Y+s*.3); g.stroke(); g.fillStyle='#ff6b6b'; g.beginPath(); g.arc(X+s*.3,Y+s*.28,s*.11,0,7); g.fill(); break;
+      case '[': case ']': g.fillStyle=c; g.fillRect(X+m,Y+s*.3,s-2*m,s*.4); g.fillStyle='rgba(255,255,255,.3)'; g.fillRect(X+m,Y+s*.3,s-2*m,s*.1); break;
+      case 'I': { const gr=g.createLinearGradient(0,Y,0,Y+s); gr.addColorStop(0,'#e8fbff'); gr.addColorStop(1,'#4aa6c4'); g.fillStyle=gr; g.fillRect(X+m,Y+m,s-2*m,s-2*m); g.strokeStyle='#fff'; g.lineWidth=1; g.beginPath(); g.moveTo(X+s*.3,Y+s*.25); g.lineTo(X+s*.55,Y+s*.25); g.stroke(); break; }
+      case 'K': g.fillStyle='#9a6634'; g.fillRect(X+m,Y+s*.25,s-2*m,s*.35); g.strokeStyle='#4a2c12'; g.lineWidth=1; g.beginPath(); g.moveTo(X+s*.4,Y+s*.25); g.lineTo(X+s*.5,Y+s*.45); g.lineTo(X+s*.42,Y+s*.6); g.stroke(); break;
+      case 'O': case 'o': g.strokeStyle=c; g.lineWidth=Math.max(1.5,s*.1); g.beginPath(); g.ellipse(X+s/2,Y+s/2,s*.22,s*.38,0,0,7); g.stroke(); g.globalAlpha=.5; g.beginPath(); g.ellipse(X+s/2,Y+s/2,s*.1,s*.22,0,0,7); g.stroke(); break;
+      case '@wind': g.strokeStyle='#cfe8ff'; g.lineWidth=Math.max(1.5,s*.08); for(const dx of [.3,.5,.7]){ g.beginPath(); g.moveTo(X+s*dx,Y+s*.85); g.lineTo(X+s*dx,Y+s*.2); g.moveTo(X+s*dx-s*.1,Y+s*.32); g.lineTo(X+s*dx,Y+s*.2); g.lineTo(X+s*dx+s*.1,Y+s*.32); g.stroke(); } break;
+      case '@mover': g.fillStyle='#cfd8e6'; g.fillRect(X+m,Y+s*.42,s-2*m,s*.18); g.strokeStyle='#ffd166'; g.lineWidth=1; g.beginPath(); g.moveTo(X+s*.2,Y+s*.28); g.lineTo(X+s*.8,Y+s*.28); g.moveTo(X+s*.7,Y+s*.2); g.lineTo(X+s*.8,Y+s*.28); g.lineTo(X+s*.7,Y+s*.36); g.stroke(); break;
+      case '@flag': g.strokeStyle='#cfd8e6'; g.lineWidth=Math.max(1.5,s*.07); g.beginPath(); g.moveTo(X+s*.3,Y+s*.9); g.lineTo(X+s*.3,Y+s*.12); g.stroke(); g.fillStyle='#7fe08a'; g.beginPath(); g.moveTo(X+s*.3,Y+s*.12); g.lineTo(X+s*.85,Y+s*.28); g.lineTo(X+s*.3,Y+s*.46); g.fill(); break;
+      case '@trap': g.strokeStyle='#ff3b4e'; g.setLineDash([3,3]); g.lineWidth=Math.max(1.5,s*.08); g.beginPath(); g.moveTo(X+s/2,Y+m); g.lineTo(X+s/2,Y+s-m); g.stroke(); g.setLineDash([]); g.fillStyle='#ff3b4e'; g.beginPath(); g.moveTo(X+s*.5,Y+s*.3); g.lineTo(X+s*.7,Y+s*.5); g.lineTo(X+s*.5,Y+s*.7); g.fill(); break;
+      case '@crawler': case '@big': case '@shield': { const b=id==='@big'; g.fillStyle=id==='@crawler'?'#e0533f':'#c0443a'; g.beginPath(); g.ellipse(X+s/2,Y+s*(b?.55:.66),s*(b?.36:.32),s*(b?.3:.2),0,Math.PI,0); g.fill(); g.fillRect(X+s*(b?.14:.18),Y+s*(b?.55:.66),s*(b?.72:.64),s*.08);
+        g.fillStyle='#fff'; g.beginPath(); g.arc(X+s*.66,Y+s*(b?.42:.56),s*.07,0,7); g.fill(); g.strokeStyle='#2a1010'; g.lineWidth=1; for(const lx of [.3,.45,.6]){ g.beginPath(); g.moveTo(X+s*lx,Y+s*(b?.62:.74)); g.lineTo(X+s*(lx-.05),Y+s*.86); g.stroke(); }
+        if(id==='@shield'){ g.strokeStyle='#9cc3ff'; g.lineWidth=Math.max(1.5,s*.08); g.beginPath(); g.arc(X+s*.6,Y+s*.6,s*.26,-1,1); g.stroke(); } break; }
+      case '@flyer': g.fillStyle='#c79bff'; g.beginPath(); g.ellipse(X+s/2,Y+s*.55,s*.2,s*.16,0,0,7); g.fill(); g.fillStyle='rgba(255,255,255,.7)'; g.beginPath(); g.ellipse(X+s*.36,Y+s*.36,s*.14,s*.08,-.5,0,7); g.ellipse(X+s*.64,Y+s*.36,s*.14,s*.08,.5,0,7); g.fill(); break;
+      case '@turret': g.fillStyle='#5a6b85'; g.fillRect(X+s*.22,Y+s*.55,s*.56,s*.35); g.fillStyle='#9cc3ff'; g.beginPath(); g.arc(X+s/2,Y+s*.55,s*.2,Math.PI,0); g.fill(); g.fillStyle='#cfd8e6'; g.fillRect(X+s*.5,Y+s*.4,s*.38,s*.1); break;
+      case '@gear': { g.fillStyle='#e7b54a'; g.beginPath(); for(let i=0;i<16;i++){ const a=i/16*Math.PI*2, r=i%2?s*.26:s*.36; g.lineTo(X+s/2+Math.cos(a)*r,Y+s/2+Math.sin(a)*r); } g.fill(); g.fillStyle='#0b1220'; g.beginPath(); g.arc(X+s/2,Y+s/2,s*.1,0,7); g.fill(); break; }
+      case '@heart': g.fillStyle='#ff5fa2'; g.beginPath(); g.moveTo(X+s/2,Y+s*.82); g.bezierCurveTo(X+s*.05,Y+s*.5,X+s*.25,Y+s*.12,X+s/2,Y+s*.34); g.bezierCurveTo(X+s*.75,Y+s*.12,X+s*.95,Y+s*.5,X+s/2,Y+s*.82); g.fill(); break;
+      case '@pshield': g.fillStyle='#9cc3ff'; g.beginPath(); g.moveTo(X+s/2,Y+s*.12); g.lineTo(X+s*.82,Y+s*.26); g.lineTo(X+s*.74,Y+s*.66); g.lineTo(X+s/2,Y+s*.88); g.lineTo(X+s*.26,Y+s*.66); g.lineTo(X+s*.18,Y+s*.26); g.fill(); break;
+      case '@triple': g.fillStyle='#ffd166'; for(const a of [-.4,0,.4]){ g.beginPath(); g.arc(X+s*.3+Math.cos(a)*s*.4,Y+s/2+Math.sin(a)*s*.4,s*.09,0,7); g.fill(); } g.beginPath(); g.arc(X+s*.25,Y+s/2,s*.1,0,7); g.fill(); break;
+      case '@rapid': g.fillStyle='#ff8a3d'; for(const dx of [.2,.45,.7]){ g.beginPath(); g.moveTo(X+s*dx,Y+s*.3); g.lineTo(X+s*(dx+.18),Y+s*.5); g.lineTo(X+s*dx,Y+s*.7); g.fill(); } break;
+      case '@power': g.fillStyle='#c79bff'; g.beginPath(); g.arc(X+s*.42,Y+s/2,s*.22,0,7); g.fill(); g.fillStyle='#fff'; g.beginPath(); g.arc(X+s*.42,Y+s/2,s*.09,0,7); g.fill(); g.strokeStyle='#c79bff'; g.lineWidth=2; g.beginPath(); g.moveTo(X+s*.65,Y+s/2); g.lineTo(X+s*.92,Y+s/2); g.stroke(); break;
+      default: box(c);
+    }
+    g.restore(); }
   let L=null, tool='#', cell=32, el=null, cv2=null, g2=null, moverA=null, dirty=false, painting=0;
   const blankLevel=(w=32)=>{ const map=[...Array(ROWS)].map((_,y)=>[...Array(w)].map((_,x)=>(y===0||y===ROWS-1||x===0||x===w-1)?'#':'.'));
     map[16][2]='1'; map[16][3]='2'; for(const [x,y] of [[w-3,15],[w-2,15],[w-3,16],[w-2,16]]) map[y][x]='E';
@@ -64,7 +153,8 @@ const ED=(()=>{
       <label>Порядок кнопок <select id="edOrder">${['abc','acb','bac','bca','cab','cba'].map(o=>`<option value="${o}" ${o===L.order?'selected':''}>${[...o].map(c=>({a:'красная',b:'зелёная',c:'синяя'})[c]).join(' → ')}</option>`).join('')}</select></label>
       <label>Двери на время ${['P','Q','R'].map(K=>`<input type="checkbox" data-timed="${K}" ${L.timed[K]?'checked':''} title="${({P:'жёлтая',Q:'сиреневая',R:'зелёная'})[K]}">`).join('')}</label>
     </div>
-    <div class="edmain"><div class="edpal">${TOOLS.map(([gn,ts])=>`<div class="edgrp"><span>${gn}</span>${ts.map(([id,n,c])=>`<button type="button" class="edt ${id===tool?'on':''}" data-tool="${id}" title="${n}"><i style="background:${c}">${id.startsWith('@')?'':id==='.'?'':id}</i>${n}</button>`).join('')}</div>`).join('')}</div>
+    <div class="edmain"><div class="edside"><input id="edSearch" placeholder="🔍 Поиск объекта…" autocomplete="off"><div class="edpal">${TOOLS.map(([gn,ts])=>`<div class="edgrp"><span>${gn}</span>${ts.map(([id,n])=>`<button type="button" class="edt ${id===tool?'on':''}" data-tool="${id}" data-name="${(n+' '+(DESC[id]||[]).join(' ')).toLowerCase().replace(/"/g,'')}"><canvas width="28" height="28" data-ico="${id}"></canvas>${n}</button>`).join('')}</div>`).join('')}</div>
+      <div class="edinfo" id="edInfo"></div></div>
       <div class="edwrap"><canvas id="edCv"></canvas></div></div>
     <div class="edbot">
       <label>Подсказка уровня <input id="edHint" value="${(L.hint||'').replace(/"/g,'&quot;')}" placeholder="Что нужно сделать на уровне"></label>
@@ -76,13 +166,19 @@ const ED=(()=>{
       <button type="button" class="secondary" id="edExit">Выход · Esc</button>
       <span class="edhelp">ЛКМ — рисовать, ПКМ — стереть, колесо — прокрутка. Края уровня — стены.</span></div>`;
     cv2=el.querySelector('#edCv'); g2=cv2.getContext('2d');
+    el.querySelectorAll('canvas[data-ico]').forEach(c=>ico(c.getContext('2d'),c.dataset.ico,0,0,28));
+    const info=el.querySelector('#edInfo'), showInfo=id=>{ const d=DESC[id]; if(!d) return; const nm=(TOOLS.flatMap(g=>g[1]).find(t=>t[0]===id)||[])[1]||'';
+      info.innerHTML=`<div class="edih"><canvas width="40" height="40" id="edIc"></canvas><b>${nm}</b></div><p>${d[0]} ${d[1]}</p>${d[2]?`<p class="edcomb"><b>Сочетается:</b> ${d[2]}</p>`:''}`; ico(info.querySelector('#edIc').getContext('2d'),id,0,0,40); };
+    showInfo(tool);
+    el.querySelectorAll('[data-tool]').forEach(b=>{ b.onmouseenter=()=>showInfo(b.dataset.tool); b.onmouseleave=()=>showInfo(tool); });
+    el.querySelector('#edSearch').oninput=e=>{ const v=e.target.value.trim().toLowerCase(); el.querySelectorAll('.edgrp').forEach(gp=>{ let any=false; gp.querySelectorAll('.edt').forEach(b=>{ const ok=!v||b.dataset.name.includes(v); b.hidden=!ok; any=any||ok; }); gp.hidden=!any; }); };
     const q=s=>el.querySelector(s);
     q('#edName').oninput=e=>{ L.name=e.target.value; dirty=true; }; q('#edHint').oninput=e=>{ L.hint=e.target.value; dirty=true; };
     q('#edW').onchange=e=>resize(+e.target.value); q('#edMotif').onchange=e=>{ L.motif=e.target.value; dirty=true; };
     q('#edHue').oninput=e=>{ const v=+e.target.value; L.hue=v<0?null:v; dirty=true; paint(); }; q('#edDark').onchange=e=>{ L.dark=e.target.checked; dirty=true; };
     q('#edOrder').onchange=e=>{ L.order=e.target.value; dirty=true; paint(); };
     el.querySelectorAll('[data-timed]').forEach(c=>c.onchange=()=>{ L.timed[c.dataset.timed]=c.checked; dirty=true; });
-    el.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>{ tool=b.dataset.tool; moverA=null; el.querySelectorAll('.edt').forEach(x=>x.classList.toggle('on',x===b)); });
+    el.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>{ tool=b.dataset.tool; moverA=null; el.querySelectorAll('.edt').forEach(x=>x.classList.toggle('on',x===b)); showInfo(tool); });
     q('#edPlay2').onclick=()=>test(false); q('#edPlayS').onclick=()=>test('spark'); q('#edPlayB').onclick=()=>test('bolt');
     q('#edSave').onclick=()=>{ const o=list(); const nm=(L.name||'Мой уровень').trim(); o[nm]=L; saveList(o); dirty=false; toastQ.push({small:'Конструктор',title:'Сохранено: '+nm}); showToast(); build(); };
     q('#edLoad').onclick=()=>{ const k=q('#edList').value; if(!k) return; L=JSON.parse(JSON.stringify(list()[k])); build(); };
@@ -93,11 +189,12 @@ const ED=(()=>{
     q('#edExit').onclick=close;
     const wrap=q('.edwrap'); wrap.addEventListener('wheel',e=>{ if(Math.abs(e.deltaY)>Math.abs(e.deltaX)){ wrap.scrollLeft+=e.deltaY; e.preventDefault(); } },{passive:false});
     cv2.oncontextmenu=e=>e.preventDefault();
-    cv2.onpointerdown=e=>{ painting=e.button===2?2:1; apply(e); }; cv2.onpointermove=e=>{ if(painting&&!tool.startsWith('@')&&tool!=='E'&&tool!=='1'&&tool!=='2') apply(e); hover=cellAt(e); paint(); };
+    cv2.onpointerdown=e=>{ painting=e.button===2?2:1; apply(e); }; cv2.onpointermove=e=>{ if(painting&&!tool.startsWith('@')&&tool!=='E'&&tool!=='1'&&tool!=='2') apply(e); hover=cellAt(e); paint(); const [hx,hy]=hover; const id=L.enemies.find(o=>o.tx===hx&&o.ty===hy)?'@'+L.enemies.find(o=>o.tx===hx&&o.ty===hy).t:L.pickups.find(o=>o.tx===hx&&o.ty===hy)?'@'+L.pickups.find(o=>o.tx===hx&&o.ty===hy).t:(L.map[hy]&&L.map[hy][hx]); if(id&&id!=='.'&&id!==lastHov){ lastHov=id; showInfo(id); } };
+    cv2.onpointerleave=()=>{ lastHov=null; showInfo(tool); };
     addEventListener('pointerup',()=>painting=0);
     requestAnimationFrame(()=>{ fitCell(); paint(); });
   }
-  let hover=null;
+  let hover=null, lastHov=null;
   function fitCell(){ const wrap=el.querySelector('.edwrap'); cell=Math.max(14,Math.floor((wrap.clientHeight-14)/ROWS)); cv2.width=L.map[0].length*cell; cv2.height=ROWS*cell; }
   const cellAt=e=>{ const r=cv2.getBoundingClientRect(); return [Math.floor((e.clientX-r.left)/cell),Math.floor((e.clientY-r.top)/cell)]; };
   function apply(e){ const [x,y]=cellAt(e), W=L.map[0].length; if(x<0||y<0||x>=W||y>=ROWS) return; const erase=painting===2;
@@ -118,15 +215,10 @@ const ED=(()=>{
     g.strokeStyle='rgba(156,195,255,.08)'; g.lineWidth=1; for(let x=0;x<=W;x++){ g.beginPath(); g.moveTo(x*c+.5,0); g.lineTo(x*c+.5,ROWS*c); g.stroke(); } for(let y=0;y<=ROWS;y++){ g.beginPath(); g.moveTo(0,y*c+.5); g.lineTo(W*c,y*c+.5); g.stroke(); }
     for(let s=1;s*32<W;s++){ g.strokeStyle='rgba(255,209,102,.35)'; g.setLineDash([6,6]); g.beginPath(); g.moveTo(s*31*c,0); g.lineTo(s*31*c,ROWS*c); g.stroke(); g.setLineDash([]); }
     g.font=`700 ${Math.floor(c*.5)}px system-ui`; g.textAlign='center'; g.textBaseline='middle';
-    for(let y=0;y<ROWS;y++) for(let x=0;x<W;x++){ const ch=L.map[y][x]; if(ch==='.') continue; const X=x*c, Y=y*c, col=COLOR[ch]||'#888';
-      if(ch==='^'){ g.fillStyle=col; for(let i=0;i<3;i++){ g.beginPath(); g.moveTo(X+i*c/3+1,Y+c); g.lineTo(X+i*c/3+c/6,Y+c*.4); g.lineTo(X+(i+1)*c/3-1,Y+c); g.fill(); } continue; }
-      if('pqrabc'.includes(ch)){ g.fillStyle=col; g.fillRect(X+3,Y+c-8,c-6,8); continue; }
-      if('UVW'.includes(ch)){ g.strokeStyle=col; g.setLineDash([4,3]); g.strokeRect(X+2,Y+c*.35,c-4,c*.3); g.setLineDash([]); continue; }
-      if(ch==='['||ch===']'||ch==='g'){ g.strokeStyle=col; g.lineWidth=2; g.strokeRect(X+2,Y+2,c-4,c-4); g.lineWidth=1; g.fillStyle=col; g.globalAlpha=.4; g.fillRect(X+2,Y+2,c-4,c-4); g.globalAlpha=1; continue; }
-      g.fillStyle=col; g.fillRect(X+1,Y+1,c-2,c-2); if(!'#'.includes(ch)){ g.fillStyle='#0b1220'; g.fillText(ch==='E'?'':ch,X+c/2,Y+c/2+1); } }
-    const dot=(x,y,col,lab)=>{ g.fillStyle=col; g.beginPath(); g.arc(x*c+c/2,y*c+c/2,c*.38,0,Math.PI*2); g.fill(); g.fillStyle='#0b1220'; g.fillText(lab,x*c+c/2,y*c+c/2+1); };
-    for(const e of L.enemies) dot(e.tx,e.ty,COLOR['@'+e.t],({crawler:'ж',big:'Ж',flyer:'л',turret:'т',shield:'щ'})[e.t]);
-    for(const p of L.pickups) dot(p.tx,p.ty,COLOR['@'+p.t],({gear:'⚙',heart:'♥',pshield:'щ',triple:'3',rapid:'»',power:'!'})[p.t]);
+    for(let y=0;y<ROWS;y++) for(let x=0;x<W;x++){ const ch=L.map[y][x]; if(ch==='.') continue; ico(g,ch,x*c,y*c,c); }
+    { const ex=[]; L.map.forEach((r,y)=>r.forEach((ch,x)=>{ if(ch==='E') ex.push([x,y]); })); if(ex.length){ const x0=Math.min(...ex.map(e=>e[0])),y0=Math.min(...ex.map(e=>e[1])); g.fillStyle='#0a1222'; g.fillRect(x0*c,y0*c,2*c,2*c); ico(g,'E',x0*c,y0*c,2*c); } }
+    for(const e of L.enemies) ico(g,'@'+e.t,e.tx*c,e.ty*c,c);
+    for(const p of L.pickups) ico(g,'@'+p.t,p.tx*c,p.ty*c,c);
     for(const m of L.movers){ g.strokeStyle='#cfd8e6'; g.lineWidth=3; g.beginPath(); g.moveTo(m.ax*c+c,m.ay*c+c/2); g.lineTo(m.bx*c+c,m.by*c+c/2); g.stroke(); g.lineWidth=1; g.fillStyle='#cfd8e6'; g.fillRect(m.ax*c,m.ay*c+c*.3,c*2,c*.4); g.globalAlpha=.4; g.fillRect(m.bx*c,m.by*c+c*.3,c*2,c*.4); g.globalAlpha=1; }
     if(moverA){ g.strokeStyle='#ffd166'; g.strokeRect(moverA[0]*c,moverA[1]*c,c*2,c); }
     for(const w of L.winds){ g.fillStyle='rgba(207,232,255,.18)'; g.fillRect(w.tx*c,3*c,3*c,14*c); }
