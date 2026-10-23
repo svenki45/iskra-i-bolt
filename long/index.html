@@ -2418,7 +2418,7 @@ function setState(s){
     </div>`;
     $('bShop').onclick=()=>setState('custom'); $('bMode').onclick=()=>{ heroBack='menu'; if(solo){ setMode(false); loadLevel(Math.min(TOTAL-1,best)); renderLegend(true); setState('menu'); } else setState('hero'); }; $('bShopM').onclick=()=>{ shopFrom='menu'; setState('shop'); }; if($('bEditor')) $('bEditor').onclick=()=>ED.open(); $('bToTitle').onclick=()=>{ sfx('nav'); setState('title'); }; if($('bMyGame')) $('bMyGame').onclick=()=>{ ED.open(); ED.game(); }; $('bSet').onclick=()=>{ ctlBack='menu'; setState('settings'); }; $('bCtl').onclick=()=>{ if(touchUI.on){ editBack='menu'; setState('touchedit'); return; } ctlBack='menu'; setState('controls'); }; $('bAch').onclick=()=>setState('ach');
     $('bHelp').onclick=()=>{ helpBack='menu'; setState('help'); };
-    $('bNet').onclick=()=>{ if(NET.role==='host'){ startGame(Math.min(TOTAL-1,best)); return; } setState('net'); };
+    $('bNet').onclick=()=>{ audioInit(); sfx('nav'); if(NET.role==='host'&&NET.conn&&NET.conn.open){ startGame(Math.min(TOTAL-1,best)); return; } if(!NET.conn){ NET.role=null; } NET.status=''; try{ setState('net'); }catch(err){ console.error(err); toastQ.push({small:'Онлайн',title:'Ошибка: '+(err&&err.message||err)}); showToast(); } };
     if(cheatMenu) $('bCheats').onclick=()=>setState('cheats');
     $('bNew').onclick=()=>{ if(!slots.some(Boolean)){ newSlotTarget=0; setState('diffpick'); return; } slotMode='new'; slotDel=-1; setState('slots'); };
     if($('bLoad')) $('bLoad').onclick=()=>{ slotMode='load'; slotDel=-1; setState('slots'); };
