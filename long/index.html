@@ -1459,11 +1459,13 @@ let binds=(()=>{ const s=store.get('iskra-bolt-binds',null), d=clone(DEFAULT_BIN
 let swapPads=!!store.get('iskra-bolt-swappads',false);
 const saveBinds=()=>store.set('iskra-bolt-binds',binds);
 function assignKey(kind,action,code){
+  if(kind==='map'){ settings.mapKey=code; saveSettings(); return; }
   const old=binds[kind].kb[action];
   for(const k2 of ['spark','bolt']) for(const a2 of ACTIONS) if(!(k2===kind&&a2===action)&&binds[k2].kb[a2]===code) binds[k2].kb[a2]=old;
   binds[kind].kb[action]=code; saveBinds(); renderLegend();
 }
 function assignPad(kind,action,btn){
+  if(kind==='map'){ settings.mapPad=btn; saveSettings(); return; }
   const old=binds[kind].pad[action];
   for(const a2 of ['jump','ability','fire','use','next']) if(a2!==action&&binds[kind].pad[a2]===btn) binds[kind].pad[a2]=old;
   binds[kind].pad[action]=btn; saveBinds(); renderLegend();
@@ -2666,6 +2668,8 @@ function setState(s){
     overlay.innerHTML=`<div class="card wide ctl"><span class="eyebrow">Настройки</span><h2>Кнопки</h2>
       <div class="padstyle"><span class="lab">Значки геймпада</span>${[['auto','Авто'],['xbox','Xbox'],['ps','PlayStation'],['switch','Switch']].map(([k,n])=>`<button type="button" class="opt ${settings.padStyle===k?'on':''}" data-pstyle="${k}">${n}</button>`).join('')}</div>
       <div class="shop">${col('spark',0)}${col('bolt',1)}</div>
+      <div class="crow mapctl" style="max-width:640px;margin:10px auto 0"><span>🗺 Карта уровня (держать)</span><button type="button" class="opt ${capture&&capture.kind==='map'&&capture.type==='kb'?'on':''}" data-cap="kb" data-kind="map" data-act="map">${capture&&capture.kind==='map'&&capture.type==='kb'?'Нажмите клавишу…':kbd(settings.mapKey||'Tab')}</button><button type="button" class="opt padopt ${capture&&capture.kind==='map'&&capture.type==='pad'?'on':''}" data-cap="pad" data-kind="map" data-act="map">${capture&&capture.kind==='map'&&capture.type==='pad'?'Выберите…':padGlyph(glyphType(0),settings.mapPad??8)}</button></div>
+      ${capture&&capture.kind==='map'&&capture.type==='pad'?`<div class="palette"><span class="padst">Нажмите кнопку на геймпаде или выберите здесь:</span><div class="pgrid">${[3,2,1,0,4,5,6,7,8,9,10,11].map(i=>`<button type="button" class="opt pick1 ${(settings.mapPad??8)===i?'on':''}" data-padpick="${i}">${padGlyph(glyphType(0),i)}</button>`).join('')}</div></div>`:''}
       <p style="font-size:13px" id="ctlNote">${capture&&capture.msg?capture.msg:'Нажмите на клавишу или кнопку геймпада в таблице, затем новую. Если она уже занята, они поменяются местами. Esc отменяет.'}</p>
       <div class="btns"><button class="secondary" id="bSwap" type="button">Поменять геймпады местами</button><button class="secondary" id="bReset" type="button">Сбросить</button><button class="primary" id="bBack" type="button">Готово</button></div></div>`;
     overlay.querySelectorAll('[data-cap]').forEach(b=>b.onclick=()=>{
@@ -2675,7 +2679,7 @@ function setState(s){
     overlay.querySelectorAll('[data-padpick]').forEach(b=>b.onclick=()=>{ if(!capture) return; assignPad(capture.kind,capture.action,+b.dataset.padpick); capture=null; sfx('pick'); setState('controls'); });
     overlay.querySelectorAll('[data-pstyle]').forEach(b=>b.onclick=()=>{ settings.padStyle=b.dataset.pstyle; saveSettings(); legendSig=''; renderLegend(); setState('controls'); });
     $('bSwap').onclick=()=>{ swapPads=!swapPads; store.set('iskra-bolt-swappads',swapPads); renderLegend(); setState('controls'); };
-    $('bReset').onclick=()=>{ binds=clone(DEFAULT_BINDS); swapPads=false; store.set('iskra-bolt-swappads',false); saveBinds(); capture=null; renderLegend(); setState('controls'); };
+    $('bReset').onclick=()=>{ delete settings.mapKey; delete settings.mapPad; saveSettings(); binds=clone(DEFAULT_BINDS); swapPads=false; store.set('iskra-bolt-swappads',false); saveBinds(); capture=null; renderLegend(); setState('controls'); };
     $('bBack').onclick=()=>{ capture=null; setState(ctlBack); };
   } else if(s==='gameover'&&go){
     const L=getLevel(levelIdx);
@@ -3980,7 +3984,7 @@ addEventListener('pointerdown',e=>{ if(state==='title'&&!(e.target.closest&&e.ta
 function viewRect(){ const v=draw.view||{z:1,ox:0,oy:0}; return {x:-v.ox/v.z,y:-v.oy/v.z,w:VW/v.z,h:VH/v.z}; }
 function drawMiniMap(){
   if(!grid||!players||(state!=='play'&&state!=='dying')||intro||outro) return;
-  let padHold=false; try{ for(const gp of navigator.getGamepads?navigator.getGamepads():[]) if(gp&&gp.buttons[8]&&gp.buttons[8].pressed) padHold=true; }catch(_){}
+  let padHold=false; try{ for(const gp of navigator.getGamepads?navigator.getGamepads():[]) if(gp&&gp.buttons[settings.mapPad??8]&&gp.buttons[settings.mapPad??8].pressed) padHold=true; }catch(_){}
   const want=mapHold||padHold; drawMiniMap.a=(drawMiniMap.a||0)+((want?1:0)-(drawMiniMap.a||0))*.25; if(drawMiniMap.a<.02) return;
   const V=viewRect(); if(WW<=VW+2&&V.w>=VW-2) return;          // whole level already visible
   const W=Math.min(VW-160,(VH-200)*WW/VH), H=W*VH/WW, X=(VW-W)/2, Y=(VH-H)/2, k=W/WW;
@@ -4003,7 +4007,7 @@ function drawMiniMap(){
   if(boss&&!boss.dead) dot(boss.x+boss.w/2,boss.y+boss.h/2,'#ff2a2a',10,true);
   const pc=['#ff8a3d','#62c7c1'], pl=['И','Б']; players.forEach((p,i)=>{ if(!p.absent&&!p.dead){ const px=X+(p.x+p.w/2)*k, py=Y+(p.y+p.h/2)*k; dot(p.x+p.w/2,p.y+p.h/2,pc[i],8,true);
     ctx.fillStyle=pc[i]; ctx.font='bold 16px sans-serif'; ctx.textAlign='center'; ctx.fillText(pl[i],px,py-14); } });
-  ctx.globalAlpha=A; ctx.fillStyle='#ffd166'; ctx.font='bold 15px sans-serif'; ctx.textAlign='center'; ctx.fillText('КАРТА УРОВНЯ · отпустите Tab / Select',VW/2,Y-14);
+  ctx.globalAlpha=A; ctx.fillStyle='#ffd166'; ctx.font='bold 15px sans-serif'; ctx.textAlign='center'; ctx.fillText('КАРТА УРОВНЯ · отпустите '+keyLabel(settings.mapKey||'Tab'),VW/2,Y-14);
   ctx.restore(); }
 function drawBossArrow(){
   if(!boss||boss.dead||intro||outro||(state!=='play'&&state!=='dying')) return;
@@ -4016,8 +4020,8 @@ function drawBossArrow(){
   ctx.strokeStyle='#ff3b3b'; ctx.lineWidth=3; ctx.stroke(); ctx.rotate(a); ctx.fillStyle='#ff3b3b'; ctx.beginPath(); ctx.moveTo(30,0); ctx.lineTo(14,-11); ctx.lineTo(14,11); ctx.closePath(); ctx.fill();
   ctx.rotate(-a); ctx.globalAlpha=1; ctx.fillStyle='#fff'; ctx.font='bold 18px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('☠',0,1); ctx.restore(); }
 let mapHold=false;
-addEventListener('keydown',e=>{ if(e.code==='Tab'){ e.preventDefault(); if(state==='play') mapHold=true; } });
-addEventListener('keyup',e=>{ if(e.code==='Tab') mapHold=false; }); addEventListener('blur',()=>mapHold=false);
+addEventListener('keydown',e=>{ if(e.code===(settings.mapKey||'Tab')&&!capture&&(state==='play'||state==='dying')){ e.preventDefault(); mapHold=true; } });
+addEventListener('keyup',e=>{ if(e.code===(settings.mapKey||'Tab')) mapHold=false; }); addEventListener('blur',()=>mapHold=false);
 /* ================= ending cinematic ================= */
 let proT=0, proLast=0, proBolt=false;
 const PRO_LEN=30;

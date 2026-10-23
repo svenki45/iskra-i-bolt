@@ -104,11 +104,13 @@ let binds=(()=>{ const s=store.get('iskra-bolt-binds',null), d=clone(DEFAULT_BIN
 let swapPads=!!store.get('iskra-bolt-swappads',false);
 const saveBinds=()=>store.set('iskra-bolt-binds',binds);
 function assignKey(kind,action,code){
+  if(kind==='map'){ settings.mapKey=code; saveSettings(); return; }
   const old=binds[kind].kb[action];
   for(const k2 of ['spark','bolt']) for(const a2 of ACTIONS) if(!(k2===kind&&a2===action)&&binds[k2].kb[a2]===code) binds[k2].kb[a2]=old;
   binds[kind].kb[action]=code; saveBinds(); renderLegend();
 }
 function assignPad(kind,action,btn){
+  if(kind==='map'){ settings.mapPad=btn; saveSettings(); return; }
   const old=binds[kind].pad[action];
   for(const a2 of ['jump','ability','fire','use','next']) if(a2!==action&&binds[kind].pad[a2]===btn) binds[kind].pad[a2]=old;
   binds[kind].pad[action]=btn; saveBinds(); renderLegend();

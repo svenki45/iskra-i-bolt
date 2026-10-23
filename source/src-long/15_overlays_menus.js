@@ -312,6 +312,8 @@ function setState(s){
     overlay.innerHTML=`<div class="card wide ctl"><span class="eyebrow">Настройки</span><h2>Кнопки</h2>
       <div class="padstyle"><span class="lab">Значки геймпада</span>${[['auto','Авто'],['xbox','Xbox'],['ps','PlayStation'],['switch','Switch']].map(([k,n])=>`<button type="button" class="opt ${settings.padStyle===k?'on':''}" data-pstyle="${k}">${n}</button>`).join('')}</div>
       <div class="shop">${col('spark',0)}${col('bolt',1)}</div>
+      <div class="crow mapctl" style="max-width:640px;margin:10px auto 0"><span>🗺 Карта уровня (держать)</span><button type="button" class="opt ${capture&&capture.kind==='map'&&capture.type==='kb'?'on':''}" data-cap="kb" data-kind="map" data-act="map">${capture&&capture.kind==='map'&&capture.type==='kb'?'Нажмите клавишу…':kbd(settings.mapKey||'Tab')}</button><button type="button" class="opt padopt ${capture&&capture.kind==='map'&&capture.type==='pad'?'on':''}" data-cap="pad" data-kind="map" data-act="map">${capture&&capture.kind==='map'&&capture.type==='pad'?'Выберите…':padGlyph(glyphType(0),settings.mapPad??8)}</button></div>
+      ${capture&&capture.kind==='map'&&capture.type==='pad'?`<div class="palette"><span class="padst">Нажмите кнопку на геймпаде или выберите здесь:</span><div class="pgrid">${[3,2,1,0,4,5,6,7,8,9,10,11].map(i=>`<button type="button" class="opt pick1 ${(settings.mapPad??8)===i?'on':''}" data-padpick="${i}">${padGlyph(glyphType(0),i)}</button>`).join('')}</div></div>`:''}
       <p style="font-size:13px" id="ctlNote">${capture&&capture.msg?capture.msg:'Нажмите на клавишу или кнопку геймпада в таблице, затем новую. Если она уже занята, они поменяются местами. Esc отменяет.'}</p>
       <div class="btns"><button class="secondary" id="bSwap" type="button">Поменять геймпады местами</button><button class="secondary" id="bReset" type="button">Сбросить</button><button class="primary" id="bBack" type="button">Готово</button></div></div>`;
     overlay.querySelectorAll('[data-cap]').forEach(b=>b.onclick=()=>{
@@ -321,7 +323,7 @@ function setState(s){
     overlay.querySelectorAll('[data-padpick]').forEach(b=>b.onclick=()=>{ if(!capture) return; assignPad(capture.kind,capture.action,+b.dataset.padpick); capture=null; sfx('pick'); setState('controls'); });
     overlay.querySelectorAll('[data-pstyle]').forEach(b=>b.onclick=()=>{ settings.padStyle=b.dataset.pstyle; saveSettings(); legendSig=''; renderLegend(); setState('controls'); });
     $('bSwap').onclick=()=>{ swapPads=!swapPads; store.set('iskra-bolt-swappads',swapPads); renderLegend(); setState('controls'); };
-    $('bReset').onclick=()=>{ binds=clone(DEFAULT_BINDS); swapPads=false; store.set('iskra-bolt-swappads',false); saveBinds(); capture=null; renderLegend(); setState('controls'); };
+    $('bReset').onclick=()=>{ delete settings.mapKey; delete settings.mapPad; saveSettings(); binds=clone(DEFAULT_BINDS); swapPads=false; store.set('iskra-bolt-swappads',false); saveBinds(); capture=null; renderLegend(); setState('controls'); };
     $('bBack').onclick=()=>{ capture=null; setState(ctlBack); };
   } else if(s==='gameover'&&go){
     const L=getLevel(levelIdx);

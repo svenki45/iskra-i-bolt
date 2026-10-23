@@ -749,7 +749,7 @@ addEventListener('pointerdown',e=>{ if(state==='title'&&!(e.target.closest&&e.ta
 function viewRect(){ const v=draw.view||{z:1,ox:0,oy:0}; return {x:-v.ox/v.z,y:-v.oy/v.z,w:VW/v.z,h:VH/v.z}; }
 function drawMiniMap(){
   if(!grid||!players||(state!=='play'&&state!=='dying')||intro||outro) return;
-  let padHold=false; try{ for(const gp of navigator.getGamepads?navigator.getGamepads():[]) if(gp&&gp.buttons[8]&&gp.buttons[8].pressed) padHold=true; }catch(_){}
+  let padHold=false; try{ for(const gp of navigator.getGamepads?navigator.getGamepads():[]) if(gp&&gp.buttons[settings.mapPad??8]&&gp.buttons[settings.mapPad??8].pressed) padHold=true; }catch(_){}
   const want=mapHold||padHold; drawMiniMap.a=(drawMiniMap.a||0)+((want?1:0)-(drawMiniMap.a||0))*.25; if(drawMiniMap.a<.02) return;
   const V=viewRect(); if(WW<=VW+2&&V.w>=VW-2) return;          // whole level already visible
   const W=Math.min(VW-160,(VH-200)*WW/VH), H=W*VH/WW, X=(VW-W)/2, Y=(VH-H)/2, k=W/WW;
@@ -772,7 +772,7 @@ function drawMiniMap(){
   if(boss&&!boss.dead) dot(boss.x+boss.w/2,boss.y+boss.h/2,'#ff2a2a',10,true);
   const pc=['#ff8a3d','#62c7c1'], pl=['И','Б']; players.forEach((p,i)=>{ if(!p.absent&&!p.dead){ const px=X+(p.x+p.w/2)*k, py=Y+(p.y+p.h/2)*k; dot(p.x+p.w/2,p.y+p.h/2,pc[i],8,true);
     ctx.fillStyle=pc[i]; ctx.font='bold 16px sans-serif'; ctx.textAlign='center'; ctx.fillText(pl[i],px,py-14); } });
-  ctx.globalAlpha=A; ctx.fillStyle='#ffd166'; ctx.font='bold 15px sans-serif'; ctx.textAlign='center'; ctx.fillText('КАРТА УРОВНЯ · отпустите Tab / Select',VW/2,Y-14);
+  ctx.globalAlpha=A; ctx.fillStyle='#ffd166'; ctx.font='bold 15px sans-serif'; ctx.textAlign='center'; ctx.fillText('КАРТА УРОВНЯ · отпустите '+keyLabel(settings.mapKey||'Tab'),VW/2,Y-14);
   ctx.restore(); }
 function drawBossArrow(){
   if(!boss||boss.dead||intro||outro||(state!=='play'&&state!=='dying')) return;
@@ -785,5 +785,5 @@ function drawBossArrow(){
   ctx.strokeStyle='#ff3b3b'; ctx.lineWidth=3; ctx.stroke(); ctx.rotate(a); ctx.fillStyle='#ff3b3b'; ctx.beginPath(); ctx.moveTo(30,0); ctx.lineTo(14,-11); ctx.lineTo(14,11); ctx.closePath(); ctx.fill();
   ctx.rotate(-a); ctx.globalAlpha=1; ctx.fillStyle='#fff'; ctx.font='bold 18px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('☠',0,1); ctx.restore(); }
 let mapHold=false;
-addEventListener('keydown',e=>{ if(e.code==='Tab'){ e.preventDefault(); if(state==='play') mapHold=true; } });
-addEventListener('keyup',e=>{ if(e.code==='Tab') mapHold=false; }); addEventListener('blur',()=>mapHold=false);
+addEventListener('keydown',e=>{ if(e.code===(settings.mapKey||'Tab')&&!capture&&(state==='play'||state==='dying')){ e.preventDefault(); mapHold=true; } });
+addEventListener('keyup',e=>{ if(e.code===(settings.mapKey||'Tab')) mapHold=false; }); addEventListener('blur',()=>mapHold=false);
