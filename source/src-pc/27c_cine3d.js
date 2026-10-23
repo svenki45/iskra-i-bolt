@@ -7,8 +7,8 @@ const CINE3D=(()=>{
   function ensure(){
     if(!C.ok) return false; if(R) return true;
     try{
-      glc=document.createElement('canvas'); glc.id='cv3dcine'; glc.style.cssText='position:absolute;inset:0;width:100%;height:100%;display:none;z-index:1;pointer-events:none';
-      cv.parentNode.insertBefore(glc,cv.nextSibling); cv.style.position='relative'; cv.style.zIndex='2';
+      glc=document.createElement('canvas'); glc.id='cv3dcine'; glc.style.cssText='position:absolute;inset:0;width:100%;height:100%;display:none;pointer-events:none';
+      cv.parentNode.insertBefore(glc,cv); cv.style.position='relative';
       R=new THREE.WebGLRenderer({canvas:glc,antialias:true,powerPreference:'high-performance'}); R.shadowMap.enabled=true; R.shadowMap.type=THREE.PCFSoftShadowMap;
       R.setPixelRatio(Math.min(1.5,window.devicePixelRatio||1)); R.outputEncoding=THREE.sRGBEncoding;
       glc.addEventListener('webglcontextlost',e=>{ e.preventDefault(); C.ok=false; hide(); });
