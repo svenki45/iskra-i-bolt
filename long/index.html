@@ -529,7 +529,7 @@ document.addEventListener('fullscreenchange',fsLabel);
 document.addEventListener('fullscreenchange',()=>setTimeout(fit,50));
 
 // ПК: описание уровня над игрой скрыто — остаётся только название, поле игры больше
-document.head.insertAdjacentHTML('beforeend','<style>body:not(.touch) #hint{display:none!important}</style>');
+document.head.insertAdjacentHTML('beforeend','<style>body:not(.touch) #hint{display:none!important} .titlescr{padding-block:5% 2.5%!important} .tbtns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px} .tbtns button{display:flex;flex-direction:column;align-items:center;padding:8px 18px;min-width:200px} .tbtns small{margin:2px 0 0!important}</style>');
 /* ================= audio ================= */
 let actx=null;
 let masterG=null, musicG=null, sfxG=null, noiseBuf=null;
@@ -2387,7 +2387,7 @@ function setState(s){
     overlay.innerHTML=`<div class="titlescr">
       <div class="logo" aria-label="Искра и Болт">${word('ИСКРА','s',0.15)}<span class="lt amp" style="animation-delay:.6s">и</span>${word('БОЛТ','b',0.7)}<span class="beta">БЕТА</span></div>
       <p class="tag">Кооператив на двоих · 100 уровней · 10 боссов</p>
-      <div class="startwrap"><div class="modes"><button class="${solo?'primary':'secondary'} start mode" id="bOne" type="button">1 ИГРОК<small>выбрать героя</small></button><button class="${solo?'secondary':'primary'} start mode" id="bTwo" type="button">2 ИГРОКА<small>${window.MOBILE_BUILD?"на одном телефоне":"за одной клавиатурой"}</small></button></div><button class="secondary" id="bOnline" type="button" style="margin-top:10px">🌐 ОНЛАЙН<small>${window.MOBILE_BUILD?"подключиться к другу на ПК":"играть с другом по интернету"}</small></button>${window.MOBILE_BUILD?'':'<div style="display:flex;gap:10px;justify-content:center;margin-top:10px"><button class="secondary" id="tEditor" type="button">🛠 КОНСТРУКТОР<small style="margin-left:8px">свои уровни</small></button><button class="secondary" id="tMyGame" type="button">📚 МОЯ ИГРА<small style="margin-left:8px">из моих уровней</small></button></div>'}
+      <div class="startwrap"><div class="modes"><button class="${solo?'primary':'secondary'} start mode" id="bOne" type="button">1 ИГРОК<small>выбрать героя</small></button><button class="${solo?'secondary':'primary'} start mode" id="bTwo" type="button">2 ИГРОКА<small>${window.MOBILE_BUILD?"на одном телефоне":"за одной клавиатурой"}</small></button></div><div class="tbtns"><button class="secondary" id="bOnline" type="button">🌐 ОНЛАЙН<small>${window.MOBILE_BUILD?"подключиться к другу на ПК":"с другом по интернету"}</small></button>${window.MOBILE_BUILD?'':'<button class="secondary" id="tEditor" type="button">🛠 КОНСТРУКТОР<small>свои уровни</small></button><button class="secondary" id="tMyGame" type="button">📚 МОЯ ИГРА<small>из моих уровней</small></button>'}</div>
       <p class="press">Стрелки и Enter, или крестовина и A на геймпаде</p></div>
     </div>`;
     for(const [id,k] of [['bOne','one'],['bTwo','two']]){ const el=$(id); el.addEventListener('mouseenter',()=>titleFocus=k); el.addEventListener('focus',()=>titleFocus=k); }

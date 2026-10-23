@@ -23,4 +23,4 @@ document.addEventListener('fullscreenchange',fsLabel);
 document.addEventListener('fullscreenchange',()=>setTimeout(fit,50));
 
 // ПК: описание уровня над игрой скрыто — остаётся только название, поле игры больше
-document.head.insertAdjacentHTML('beforeend','<style>body:not(.touch) #hint{display:none!important}</style>');
+document.head.insertAdjacentHTML('beforeend','<style>body:not(.touch) #hint{display:none!important} .titlescr{padding-block:5% 2.5%!important} .tbtns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px} .tbtns button{display:flex;flex-direction:column;align-items:center;padding:8px 18px;min-width:200px} .tbtns small{margin:2px 0 0!important}</style>');
