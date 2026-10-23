@@ -22,3 +22,5 @@ for(const ev of ['pointerdown','keydown']) addEventListener(ev,e=>{ if(fsAuto&&!
 document.addEventListener('fullscreenchange',fsLabel);
 document.addEventListener('fullscreenchange',()=>setTimeout(fit,50));
 
+// ПК: описание уровня над игрой скрыто — остаётся только название, поле игры больше
+document.head.insertAdjacentHTML('beforeend','<style>body:not(.touch) #hint{display:none!important}</style>');
