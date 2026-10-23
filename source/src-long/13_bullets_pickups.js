@@ -29,10 +29,12 @@ function updateBullets(dt){
     if(b.life>0&&boss&&!boss.dead&&!b.hit.has(boss)&&overlap(b,boss)){ hitBoss(b.dmg,srcOf(b)); b.hit.add(boss); if(!b.pierce){ b.life=0; bulletHit(b,cx,cy); } else burst(cx,cy,5,b.c,160,.25); }
   }
   bullets=bullets.filter(b=>b.life>0);
+  // boss & enemy shots stop at walls, crates and moving platforms — players can hide behind them
+  const ebBlock=r=>{ for(const c of crates) if(overlap(c,r)) return true; for(const m of movers) if(overlap(m,r)) return true; return false; };
   for(const e of ebullets){
     e.life-=dt;
-    if(e.wave){ e.x+=e.vx*dt; if(e.x<T||e.x+e.w>VW-T) e.life=0; }
-    else { e.vy+=(e.g||0)*dt; e.x+=e.vx*dt; e.y+=e.vy*dt; if(solidPx(e.x,e.y)){ e.life=0; burst(e.x,e.y,3,'#ff6b6b',100,.2); } }
+    if(e.wave){ e.x+=e.vx*dt; if(e.x<T||e.x+e.w>WW-T||solidPx(e.vx>0?e.x+e.w:e.x,e.y+e.h*.4)||ebBlock(e)){ e.life=0; burst(e.x+e.w/2,e.y+e.h/2,6,'#ffb347',140,.25); } }
+    else { e.vy+=(e.g||0)*dt; e.x+=e.vx*dt; e.y+=e.vy*dt; if(solidPx(e.x,e.y)||ebBlock({x:e.x-e.r*.5,y:e.y-e.r*.5,w:e.r,h:e.r})){ e.life=0; burst(e.x,e.y,4,'#ff6b6b',110,.2); } }
     if(e.life<=0) continue;
     const r=e.wave?e:{x:e.x-e.r+2,y:e.y-e.r+2,w:e.r*2-4,h:e.r*2-4};
     for(const p of players) if(!p.down&&overlap(p,r)){ hurt(p); if(!e.wave) e.life=0; }
