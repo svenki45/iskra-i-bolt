@@ -227,26 +227,22 @@ function drawTitleScene(){
   let sTx, bTx, sY=fy-30, bY=fy-56, sSx=1, sSy=1, bSx=1, bSy=1, sFace=1, bFace=1, sTrail=false, bSlam=false;
   if(mode==='duo'){
     drawTitlePlatform.sp=1.8; sTx=VW/2+40; bTx=VW/2-90; sFace=1; bFace=1; TS.run=true;
-    const hop=(clock%2.6)/2.6; if(hop>.75){ const k=(hop-.75)/.25; sY=fy-30-Math.sin(k*Math.PI)*120; sTx=VW/2+40-Math.sin(k*Math.PI)*0; }
   } else if(mode==='spark'){
-    const t=clock*1.15; sTx=VW/2-12+Math.sin(t)*190; bTx=-120;
-    const jp=(clock%1.3)/1.3; sY=fy-30-Math.abs(Math.sin(jp*Math.PI*2))*(jp<.5?80:115);
-    sFace=Math.cos(t)>0?1:-1; sTrail=true; if(jp>.5&&jp<.53&&!drawTitleScene._dj){ drawTitleScene._dj=true; burst(TS.sx+12,sY+20,10,['#ffd166','#ff8a3d'],200,.4); } if(jp<.1) drawTitleScene._dj=false;
+    drawTitlePlatform.sp=1.3; sTx=VW/2-12; bTx=-140; sFace=1; TS.run=true; sY-=Math.abs(Math.sin(clock*10))*3;
   } else if(mode==='bolt'){
-    sTx=VW+120; bTx=VW/2-17; const cyc=1.7, ph=(clock%cyc)/cyc;
-    if(ph<.15){ bSx=1+ph*1.6; bSy=1-ph*1.6; }
-    else if(ph<.6){ const k=(ph-.15)/.45; bY=fy-56-Math.sin(k*Math.PI/2)*115; }
-    else if(ph<.7){ const k=(ph-.6)/.1; bY=fy-56-115*(1-k*k); bSlam=true; }
-    else { const k=(ph-.7)/.3; bSx=1.25-.25*k; bSy=.75+.25*k; if(!drawTitleScene._sl){ drawTitleScene._sl=true; shake=Math.max(shake,5); burst(VW/2,fy,22,['#9cc3ff','#62c7c1','#fff'],320,.6); rings.push({x:VW/2,y:fy,r:10,max:220,life:.5,c:'#62c7c1',w:5}); } }
-    if(ph<.6) drawTitleScene._sl=false;
+    drawTitlePlatform.sp=1.1; sTx=VW+140; bTx=VW/2-17; bFace=1; TS.run=true; bY-=Math.abs(Math.sin(clock*7))*3;
   } else { // idle: both jog on the moving platform
     drawTitlePlatform.sp=1; sTx=VW/2+36; bTx=VW/2-70; sFace=1; bFace=1; TS.run=true; const b1=Math.abs(Math.sin(clock*9))*3, b2=Math.abs(Math.sin(clock*7))*3; sY-=b1; bY-=b2;
   }
-  if(mode==='spark'||mode==='bolt'){ TS.run=false; drawTitlePlatform.sp=.35; }
   TS.sx+=(sTx-TS.sx)*Math.min(1,dt*5); TS.bx+=(bTx-TS.bx)*Math.min(1,dt*5);
   // hop physics for mouse reactions
   for(const k of ['s','b']){ const yo=k+'y0', vy=k+'vy'; TS[vy]+=2200*dt; TS[yo]+=TS[vy]*dt; if(TS[yo]>0){ TS[yo]=0; TS[vy]=0; } }
   const sCx=TS.sx+12, bCx=TS.bx+17;
+  { const SH=TS.shots||(TS.shots=[]); TS.shotCd=(TS.shotCd??1.5)-dt; if(TS.run&&TS.shotCd<=0){ TS.shotCd=1.1+Math.random()*1.4; SH.push({x:VW+20,y:fy-16,v:430+Math.random()*120}); if(Math.random()<.35) SH.push({x:VW+120,y:fy-16,v:SH[SH.length-1].v}); }
+    for(const b of SH){ b.x-=b.v*dt; for(const [cx,k,vy] of [[sCx,'s',-640],[bCx,'b',-600]]){ const d=b.x-cx; if(d>0&&d<70+b.v*.06&&TS[k+'y0']===0&&cx>0&&cx<VW) TS[k+'vy']=vy; } }
+    TS.shots=SH.filter(b=>b.x>-40);
+    ctx.save(); ctx.globalCompositeOperation='lighter'; for(const b of TS.shots){ const g=ctx.createLinearGradient(b.x,0,b.x+60,0); g.addColorStop(0,'rgba(255,90,60,.9)'); g.addColorStop(1,'rgba(255,90,60,0)'); ctx.fillStyle=g; ctx.fillRect(b.x,b.y-4,60,8);
+      ctx.fillStyle='#ffd0b0'; ctx.beginPath(); ctx.arc(b.x,b.y,6,0,Math.PI*2); ctx.fill(); ctx.fillStyle='rgba(255,60,40,.5)'; ctx.beginPath(); ctx.arc(b.x,b.y,11,0,Math.PI*2); ctx.fill(); if(Math.random()<.3) addP({x:b.x+8,y:b.y,vx:60,vy:(Math.random()-.5)*40,life:.25,max:.25,c:'#ffb347',s:2.5,g:0}); } ctx.restore(); }
   if(mode==='idle'&&near(sCx,fy-15)&&TS.sy0===0) TS.svy=-520;
   if(mode==='idle'&&near(bCx,fy-28)&&TS.by0===0) TS.bvy=-420;
   if(titleClick){ const c=titleClick; titleClick=null;
@@ -256,8 +252,8 @@ function drawTitleScene(){
   if(!TS.run){ if(M&&mode!=='spark'){ sFace=M.x>sCx?1:-1; } if(M) bFace=M.x>bCx?1:-1; }
   if(titleIntro.roar>=0&&performance.now()-titleIntro.roarT<1400){ const bx=VW*TITLE_BOSSES[titleIntro.roar].x; if(mode!=='spark') sFace=bx>sCx?1:-1; bFace=bx>bCx?1:-1; if(mode==='idle'){ const k=Math.max(0,1-(performance.now()-titleIntro.roarT)/400); sSx*=1+.15*k; sSy*=1-.15*k; bSx*=1+.1*k; bSy*=1-.1*k; } }
   const RUN=TS.run, rp=clock*(drawTitlePlatform.sp||1)*11;
-  const bolt={kind:'bolt',vx:RUN?200:undefined,wasGround:true,runPh:RUN?rp*.8:undefined,w:34,h:56,x:TS.bx,y:bY+TS.by0,sx:bSx,sy:bSy,face:bFace,blinkT:(clock%3.3)<.12?-1:1,inv:0,down:false,shield:false,dead:false,slam:bSlam};
-  const spark={kind:'spark',vx:RUN?200:undefined,wasGround:RUN?(sY>=fy-31):true,runPh:RUN?rp:undefined,w:24,h:30,x:TS.sx,y:sY+TS.sy0,sx:sSx,sy:sSy,face:sFace,blinkT:(clock%2.7)<.12?-1:1,inv:0,down:false,shield:false,dead:false};
+  const bolt={kind:'bolt',vx:RUN?200:undefined,wasGround:TS.by0>-2,runPh:RUN?rp*.8:undefined,w:34,h:56,x:TS.bx,y:bY+TS.by0,sx:bSx,sy:bSy,face:bFace,blinkT:(clock%3.3)<.12?-1:1,inv:0,down:false,shield:false,dead:false,slam:bSlam};
+  const spark={kind:'spark',vx:RUN?200:undefined,wasGround:RUN?(TS.sy0>-2&&sY>=fy-34):true,runPh:RUN?rp:undefined,w:24,h:30,x:TS.sx,y:sY+TS.sy0,sx:sSx,sy:sSy,face:sFace,blinkT:(clock%2.7)<.12?-1:1,inv:0,down:false,shield:false,dead:false};
   if(TS.run&&Math.random()<.35){ const who=Math.random()<.5?bolt:spark; addP({x:who.x+who.w/2-12,y:fy-2,vx:-80-Math.random()*60,vy:-30-Math.random()*30,life:.4,max:.4,c:'rgba(200,215,240,.7)',s:3,g:0}); }
   if(sTrail&&Math.random()<.8) addP({x:spark.x+12-sFace*10,y:spark.y+15+(Math.random()-.5)*14,vx:-sFace*60,vy:-20,life:.35,max:.35,c:Math.random()<.5?'#ffd166':'#ff8a3d',s:3,g:0});
   if(settings.glow){ ctx.save(); ctx.globalCompositeOperation='lighter'; glowAt(spark.x+12,spark.y+4,120,skinOf('spark').flame,.2); ctx.restore(); }
