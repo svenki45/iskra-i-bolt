@@ -127,6 +127,9 @@ const CINE3D=(()=>{
       const sp=S.spark, bo=S.boltH; sp.visible=t>16; bo.visible=false; sp.traverse(o=>{ if(o.isMesh) o.visible=false; });
       const sy=t<17.4?lerp(170,0,ease((t-16)/1.4)):0; sp.position.set(-45,sy+(t>17.4?Math.abs(Math.sin(t*3))*3:0),300); sp.rotation.y=t<21?.3:Math.PI*0.9;
       const fu=sp.userData; fu.flame.scale.set(1+Math.sin(t*20)*.12,1+Math.sin(t*17)*.2,1); fu.core.scale.y=1+Math.sin(t*23)*.25; fu.light.intensity=2+Math.sin(t*19)*.4;
+      // 3D-Искра из GLB (только если включено window.__hero3d и модель загрузилась; иначе — прежний 2D-спрайт)
+      if(window.__hero3d&&typeof HERO3D!=='undefined'&&HERO3D.ready){ const H3=HERO3D.spark; if(!S.h3){ S.h3=H3; scene.add(H3.group); H3.group.scale.setScalar(38); }
+        H3.group.visible=t>16; H3.group.position.copy(sp.position); H3.group.rotation.y=sp.rotation.y; H3.play(null,t); H3.flame(t,1); }
       const bx=t<19?lerp(320,45,ease((t-17)/2)):45; bo.position.set(bx,0+(t<19?Math.abs(Math.sin(t*9))*4:0),300); bo.rotation.y=t<19?-Math.PI/2:t<21?-.4:Math.PI; bo.userData.eyes.forEach(e=>e.scale.y=(t%3.1)<.12?.15:1);
       // welder sparks while Spark is born
       for(let i=0;i<S.spN;i++){ const v=S.spV[i]; if(t>15.6&&t<17.6&&v[1]<0&&Math.random()<.3){ v[0]=-45;v[1]=170;v[2]=300; v[3]=0; v.vx=(Math.random()-.5)*300; v.vy=Math.random()*250; v.vz=(Math.random()-.5)*200; }
@@ -138,7 +141,7 @@ const CINE3D=(()=>{
       cam.updateMatrixWorld(); const pr=(x,y,z,hgt)=>{ const v=new THREE.Vector3(x,y,z).project(cam), v2=new THREE.Vector3(x,y+hgt,z).project(cam); return {x:(v.x*.5+.5)*VW,y:(-v.y*.5+.5)*VH,px:Math.abs(v2.y-v.y)*.5*VH,front:v.z<1}; };
       const A=[]; const mp=S.mech.position; A.push(Object.assign({kind:'core',k:1,awake},pr(mp.x,150,mp.z,520)));
       S.guards.forEach((g,i)=>{ if(S.gk[i]>0) A.push(Object.assign({kind:'boss',type:['toad','gear','eye','queen'][i],k:S.gk[i]},pr(g.position.x,0,g.position.z,140))); });
-      if(t>16) A.push(Object.assign({kind:'spark',k:1,face:1},pr(sp.position.x,sp.position.y,sp.position.z,48)));
+      if(t>16&&!S.h3) A.push(Object.assign({kind:'spark',k:1,face:1},pr(sp.position.x,sp.position.y,sp.position.z,48)));
       if(t>17) A.push(Object.assign({kind:'bolt',k:1,face:t<19?-1:-1,walk:t<19},pr(bo.position.x,bo.position.y,bo.position.z,62)));
       C.actors=A.sort((a,b)=>b.px-a.px).reverse(); return true;
     }catch(e){ console.error('cine3d',e); C.ok=false; hide(); return false; }
@@ -155,7 +158,7 @@ const CINE3D=(()=>{
       const w=glc.clientWidth|0, h=glc.clientHeight|0; if(w&&h&&(glc.width!==Math.round(w*R.getPixelRatio())||glc.height!==Math.round(h*R.getPixelRatio()))){ R.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix(); }
       glc.style.display='block';
       // reuse the workshop: no rain, no mechanism, warm foundry light
-      S.rain.visible=false; S.mech.visible=false; S.waves.forEach(x=>x.material.opacity=0); S.guards.forEach(g=>g.visible=false); S.sparks.visible=false; S.bolt.material.opacity=0;
+      S.rain.visible=false; S.mech.visible=false; S.waves.forEach(x=>x.material.opacity=0); S.guards.forEach(g=>g.visible=false); S.sparks.visible=false; S.bolt.material.opacity=0; if(S.h3) S.h3.group.visible=false;
       if(!S.foundry){ S.foundry=new THREE.PointLight(0xff7a30,0,1400,1.4); S.foundry.position.set(150,260,200); scene.add(S.foundry); S.cool=new THREE.PointLight(0x6fd0ff,0,1200,1.6); S.cool.position.set(-260,220,320); scene.add(S.cool); }
       S.foundry.intensity=2.2+Math.sin(t*7)*.25; S.cool.intensity=1.1; S.hemi.color.setRGB(.55,.5,.6);
       S.lamps.forEach((l,i)=>l.intensity=1.2*(Math.sin(t*13+i*5)>.97?.3:1));

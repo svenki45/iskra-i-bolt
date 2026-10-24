@@ -24,6 +24,15 @@ h=h.replace('<style>\n','<style>\n'+ff+'[hidden]{display:none!important}\n',1)
 pre='<!doctype html>\n<html lang="ru">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n'
 stamp='const BUILD_STAMP="'+(datetime.datetime.utcnow()+datetime.timedelta(hours=3)).strftime('%d.%m %H:%M')+'";\n'
 wr('steam.html', pre+h.replace('<div class="app">','</head>\n<body>\n<div class="app">',1)+'<script>\n'+stamp+main+'\n</script>\n</body>\n</html>\n')
+# ТЕСТ 3D-героев в роликах (не для выпуска): steam_test3d.html — как steam.html, но с 3D-Искрой в прологе (автозапуск пролога с 14-й секунды); spark3d_preview.html — просмотр модели отдельно.
+if os.path.exists(os.path.join(D,'spark3d.b64')):
+    b64=open(os.path.join(D,'spark3d.b64')).read().strip(); PH="/*SPARK3D*/''"
+    main_t=main.replace(PH,"'"+b64+"'")
+    auto="<script>(function(){function go(){try{__ib.cine('pro');__ib.proAt(14.2);}catch(e){setTimeout(go,300);}}setTimeout(go,1500);setInterval(function(){try{if(__ib.state.state!=='prologue'){__ib.cine('pro');__ib.proAt(14.2);}}catch(e){}},1500);})();</script>\n"
+    wr('steam_test3d.html', pre+h.replace('<div class="app">','</head>\n<body>\n<div class="app">',1)+'<script>window.__ibNoSplash=true;window.__hero3d=true;</script>\n<script>\n'+stamp+main_t+'\n</script>\n'+auto+'</body>\n</html>\n')
+    hero=rd('src-pc/27b_hero3d.js').replace(PH,"'"+b64+"'")
+    wr('spark3d_preview.html', rd('preview3d.html').replace('/*THREE*/',THREE).replace('/*HERO3D*/',hero))
+    print('Тест 3D: out/steam_test3d.html, out/spark3d_preview.html')
 # Android (APK): та же Steam-сборка, но с сенсорным управлением и мобильной подгонкой экрана
 wr('android.html', pre+h.replace('<div class="app">','</head>\n<body>\n<div class="app">',1)+'<script>window.MOBILE_BUILD=true;</script>\n<script>\n'+stamp+main+'\n</script>\n</body>\n</html>\n')
 print('Готово: source/out/pc.html, mobile.html, long.html, steam.html (-> desktop-app/index.html), android.html (-> android-app/www/index.html)')
