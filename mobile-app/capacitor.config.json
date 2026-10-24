@@ -1,0 +1,8 @@
+{
+  "appId": "com.iskraibolt.game",
+  "appName": "Искра и Болт",
+  "webDir": "www",
+  "backgroundColor": "#0b1830",
+  "android": { "allowMixedContent": false, "captureInput": true, "webContentsDebuggingEnabled": false },
+  "ios": { "contentInset": "never", "backgroundColor": "#0b1830", "scrollEnabled": false }
+}

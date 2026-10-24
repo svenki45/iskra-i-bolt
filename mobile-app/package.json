@@ -1,0 +1,19 @@
+{
+  "name": "iskra-i-bolt-mobile",
+  "version": "1.28.0",
+  "private": true,
+  "description": "Искра и Болт — мобильная версия (Android APK и iOS IPA через Capacitor)",
+  "scripts": {
+    "android": "cap add android && node scripts/patch-android.js && cap sync android",
+    "ios": "cap add ios && cap sync ios"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/ios": "^6.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^6.0.0"
+  }
+}
