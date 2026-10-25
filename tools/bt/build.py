@@ -6,6 +6,10 @@
     python3 tools/bt/build.py
 """
 import re, sys, pathlib, datetime
+try:
+    sys.stdout.reconfigure(encoding='utf-8'); sys.stderr.reconfigure(encoding='utf-8')
+except Exception:
+    pass
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 src = (ROOT / 'mobile-app/www/index.html').read_text(encoding='utf-8')

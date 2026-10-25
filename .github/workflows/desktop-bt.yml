@@ -16,6 +16,7 @@ jobs:
         with: { node-version: '20' }
       - name: Build index.html from game source + tools/bt/bt.js
         shell: bash
+        env: { PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' }
         run: pip install tzdata >/dev/null 2>&1 || true; python tools/bt/build.py
       - name: Package
         working-directory: desktop-bt
