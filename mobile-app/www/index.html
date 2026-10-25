@@ -6590,7 +6590,7 @@ function randCfg(){
 }
 function mkF(i,o){
   const c=normCfg(o.cfg), H=HEROES[c.hero];
-  const f={s:i,c,lvl:o.lvl||botLvl,bot:!!o.bot,ctrl:o.ctrl==null?null:o.ctrl,me:!!o.me,name:o.name||('Боец '+(i+1)),team:o.team==null?-1:o.team,hero:c.hero,w:H.w,h:H.h,
+  const f={s:i,c,lvl:o.lvl||botLvl,bot:!!o.bot,ctrl:o.ctrl==null?null:o.ctrl,me:!!o.me,pid:o.pid||null,net:!!o.net,kseq:0,name:o.name||('Боец '+(i+1)),team:o.team==null?-1:o.team,hero:c.hero,w:H.w,h:H.h,
     x:0,y:0,vx:0,vy:0,face:1,ground:false,jumps:0,hp:100,kills:0,deaths:0,pts:0,caps:0,dead:false,respT:0,inv:0,stun:0,cd:0,abCd:0,atk:0,dash:0,slam:false,walk:0,
     sx:1,sy:1,blinkT:1+Math.random()*3,lastBy:null,lastT:-9,ai:{jt:0,at:0,think:0,dir:0,stuck:0,unst:0,ud:1,lx:0,role:i%3===2?'def':'att'}};
   const p=spawnXY(o.spawn!=null?o.spawn:i,f.hero); f.x=p.x; f.y=p.y; f.face=p.x<AW/2?1:-1;
@@ -6604,6 +6604,7 @@ function idleFighters(){
 }
 function respawn(f){
   const sp=spawnXY(pickSpawn(f),f.hero);
+  f.kseq=(f.kseq||0)+1;
   Object.assign(f,{x:sp.x,y:sp.y,vx:0,vy:0,hp:100,dead:false,inv:1.5,stun:0,atk:0,dash:0,slam:false,ground:false,jumps:0,face:sp.x<AW/2?1:-1,sx:.6,sy:1.5,lastBy:null});
   burst(f.x+f.w/2,f.y+f.h/2,f.c.accent,14);
 }
@@ -6618,7 +6619,7 @@ function checkWin(){
   else for(const t of [0,1]) if(teamScore(t)>=GOAL[mode]){ finish('Команда «'+TEAMN[t]+'»'); return; }
 }
 function kill(v){
-  v.dead=true; v.respT=RESPAWN; v.hp=0; v.atk=0; v.dash=0; v.slam=false; v.deaths++;
+  v.dead=true; v.respT=RESPAWN; v.hp=0; v.atk=0; v.dash=0; v.slam=false; v.deaths++; v.kseq=(v.kseq||0)+1;
   burst(v.x+v.w/2,Math.min(v.y,AH-20)+v.h/2,v.c.color,26); tone(180,60,.35,'sawtooth',.06);
   let w=v.lastBy&&mt-v.lastT<5?v.lastBy:null;
   if(!w&&P.length===2&&mode==='ffa') w=P.find(o=>o!==v);
@@ -6627,7 +6628,7 @@ function kill(v){
   checkWin();
 }
 function damage(o,dmg,kx,ky,by){
-  o.hp-=dmg; o.stun=STUN; o.vx=kx; o.vy=ky; o.inv=.25; o.atk=0; o.sx=1.25; o.sy=.8;
+  o.hp-=dmg; o.stun=STUN; o.vx=kx; o.vy=ky; o.inv=.25; o.atk=0; o.sx=1.25; o.sy=.8; o.kseq=(o.kseq||0)+1;
   if(by){ o.lastBy=by; o.lastT=mt; }
   burst(o.x+o.w/2,o.y+o.h*.6,'#ffd166',14); tone(320,110,.12,'square',.05);
   if(o.hp<=0) kill(o);
@@ -6786,8 +6787,9 @@ function step(dt){
     f.sx+=(1-f.sx)*Math.min(1,dt*12); f.sy+=(1-f.sy)*Math.min(1,dt*12);
     f.blinkT-=dt; if(f.blinkT<-.12) f.blinkT=2+Math.random()*3;
     if(f.dead){ f.respT-=dt; if(f.respT<=0) respawn(f); continue; }
-    const H=HEROES[f.hero], inp=f.ctrl==null?botIn(f,dt):humanIn(f);
-    const speed=H.speed*(flags&&flags.some(F=>F.carrier===f)?.85:1)*(f.ctrl==null?(BOTLV[f.lvl]||BOTLV.max).sp:1);
+    if(f.net) netPos(f);
+    const H=HEROES[f.hero], inp=f.net?netIn(f,dt):f.ctrl==null?botIn(f,dt):humanIn(f);
+    const speed=H.speed*(flags&&flags.some(F=>F.carrier===f)?.85:1)*(f.ctrl==null&&!f.net?(BOTLV[f.lvl]||BOTLV.max).sp:1);
     if(f.dash>0){ f.dash-=dt; f.vx=f.face*700; f.vy=0; }
     else if(f.stun>0) f.vx*=Math.max(0,1-dt*4);
     else if(!f.slam){ f.vx=inp.dir*speed; if(inp.dir) f.face=inp.dir; }
@@ -6842,6 +6844,77 @@ function step(dt){
   for(const q of pts){ q.x+=q.vx*dt; q.y+=q.vy*dt; q.vy+=900*dt; q.life-=dt*1.6; }
   pts=pts.filter(q=>q.life>0);
 }
+/* ---------- сетевой бой арены ----------
+   хост считает бой целиком и 20 раз в секунду рассылает состояние; игрок двигает своего бойца у себя сразу
+   (без задержки) и шлёт хосту нажатия и своё положение; удары, урон, очки, флаги и боты — у хоста.
+   Отбрасывание/оглушение/смерть/возрождение хоста игрок применяет принудительно (счётчик kseq). */
+const NIN_STALE=3000;
+function netIn(f,dt){ const R=L.inp&&L.inp[f.pid];
+  if(!R||Date.now()-R.t>NIN_STALE) return botIn(f,dt);   // игрок вышел или пропал — за него играет бот
+  const o={dir:R.dir||0,j:!!R.j,a:!!R.a,g:!!R.g}; R.j=false; R.g=false; return o; }
+function netPos(f){ const R=L.inp&&L.inp[f.pid]; if(!R||!R.p||!R.fresh||Date.now()-R.t>NIN_STALE) return; R.fresh=false;
+  if(R.k!==f.kseq||f.dead) return;   // игрок ещё не принял толчок хоста — его позиции пока не верим
+  const [x,y,vx,vy,face]=R.p; if(Math.abs(x-f.x)>400||Math.abs(y-f.y)>400) return;
+  f.x=x; f.y=y; f.vx=vx; f.vy=vy; if(face) f.face=face; }
+function fightPack(){ const ix=o=>P.indexOf(o);
+  return {t:'s',mt:Math.round(mt*100)/100,v:view,res:result,
+    F:P.map(f=>[Math.round(f.x),Math.round(f.y),Math.round(f.vx),Math.round(f.vy),f.face,Math.max(0,Math.round(f.hp)),f.dead?1:0,f.atk>0?1:0,f.dash>0?1:0,f.slam?1:0,f.kills,f.deaths,Math.round(f.pts*10)/10,f.caps,f.inv>0?1:0,Math.round(f.stun*100)/100,f.kseq||0,f.ground?1:0,f.net&&L.inp[f.pid]&&Date.now()-L.inp[f.pid].t<NIN_STALE?0:(f.net?1:0)]),
+    S:shots.map(s=>[Math.round(s.x),Math.round(s.y),Math.round(s.vx),ix(s.by)]),
+    FL:flags?flags.map(F=>[Math.round(F.x),Math.round(F.y),F.carrier?ix(F.carrier):-1,F.home?1:0]):null,
+    K:mode==='king'?kingOcc.map(ix):null}; }
+function applyFight(d){ if(!P||!L.fight||!d.F) return; mt=d.mt||mt;
+  d.F.forEach((a,i)=>{ const f=P[i]; if(!f) return;
+    const [x,y,vx,vy,face,hp,dead,atk,dash,slam,kills,deaths,pts,caps,inv,stun,kseq,ground,afk]=a;
+    if(!f.dead&&hp<f.hp&&!dead){ burst(f.x+f.w/2,f.y+f.h*.6,'#ffd166',10); tone(320,110,.1,'square',.04); }
+    if(dead&&!f.dead){ burst(f.x+f.w/2,f.y+f.h/2,f.c.color,26); tone(180,60,.3,'sawtooth',.05); }
+    if(!dead&&f.dead) burst(x+f.w/2,y+f.h/2,f.c.accent,14);
+    f.hp=hp; f.kills=kills; f.deaths=deaths; f.pts=pts; f.caps=caps; f.inv=inv?.2:0; f.afk=!!afk;
+    if(f.me){
+      if(kseq!==f.kseq){ f.kseq=kseq; f.x=x; f.y=y; f.vx=vx; f.vy=vy; f.stun=stun; f.dash=0; f.slam=false; f.ground=!!ground; f.sx=1.25; f.sy=.8; }
+      else if(!dead&&Math.hypot(x-f.x,y-f.y)>260){ f.x=x; f.y=y; }
+      f.dead=!!dead; return; }
+    if(f.tx==null||Math.abs(x-f.x)>220||Math.abs(y-f.y)>220){ f.x=x; f.y=y; }
+    f.tx=x; f.ty=y; f.vx=vx; f.vy=vy; f.face=face; f.dead=!!dead; f.atk=atk?Math.max(f.atk,.05):0; f.dash=dash?.05:0; f.slam=!!slam; f.stun=stun; f.ground=!!ground; });
+  shots=(d.S||[]).map(a=>({x:a[0],y:a[1],vx:a[2],by:P[a[3]]||P[0],life:1,dead:false}));
+  if(d.FL&&flags) d.FL.forEach((a,i)=>{ const F=flags[i]; if(!F) return; F.x=a[0]; F.y=a[1]; F.carrier=a[2]>=0?P[a[2]]:null; F.home=!!a[3]; });
+  if(d.K) kingOcc=d.K.map(i=>P[i]).filter(Boolean);
+  if(d.v==='result'&&view==='fight'){ view='result'; result=d.res; render(); } }
+function guestStep(dt){
+  mt+=dt; const me=P.find(f=>f.me), A=L.acc||(L.acc={dir:0,j:false,a:false,g:false});
+  for(const f of P){ f.sx+=(1-f.sx)*Math.min(1,dt*12); f.sy+=(1-f.sy)*Math.min(1,dt*12); f.blinkT-=dt; if(f.blinkT<-.12) f.blinkT=2+Math.random()*3; if(f.atk>0) f.atk-=dt; f.inv=Math.max(0,f.inv-dt); }
+  if(me&&!me.dead){ const H=HEROES[me.hero], inp=humanIn(me);
+    me.cd=Math.max(0,me.cd-dt); me.abCd=Math.max(0,me.abCd-dt); me.stun=Math.max(0,me.stun-dt);
+    A.dir=inp.dir; A.a=inp.a; A.j=A.j||inp.j; A.g=A.g||inp.g;
+    if(me.dash>0){ me.dash-=dt; me.vx=me.face*700; me.vy=0; }
+    else if(me.stun>0) me.vx*=Math.max(0,1-dt*4);
+    else if(!me.slam){ me.vx=inp.dir*H.speed*(flags&&flags.some(F=>F.carrier===me)?.85:1); if(inp.dir) me.face=inp.dir; }
+    if(inp.j&&me.stun<=0&&me.dash<=0&&!me.slam){
+      if(me.ground){ me.vy=-H.jump; me.jumps=1; me.ground=false; me.sx=.78; me.sy=1.25; }
+      else if(me.jumps<H.maxJ){ me.vy=-H.djump; me.jumps=Math.max(me.jumps,1)+1; me.sx=.8; me.sy=1.2; burst(me.x+me.w/2,me.y+me.h,'rgba(255,255,255,.7)',5); } }
+    if(inp.g&&me.abCd<=0&&me.stun<=0&&me.dash<=0&&!me.slam){
+      if(me.hero==='spark'){ me.dash=.16; me.abCd=1.0; me.sx=1.3; me.sy=.75; burst(me.x+me.w/2,me.y+me.h/2,me.c.accent,10); tone(560,260,.12,'triangle',.05); }
+      else if(!me.ground){ me.slam=true; me.abCd=1.2; me.vx=0; me.vy=950; me.sx=.8; me.sy=1.2; } }
+    if(inp.a&&me.cd<=0&&me.stun<=0&&me.dash<=0&&!me.slam){ if(me.hero==='spark'){ me.cd=.3; tone(700,900,.08,'square',.03); } else { me.atk=ATK_T; me.cd=ATK_CD; } me.sx=1.12; me.sy=.9; }
+    if(me.dash<=0) me.vy=Math.min(900,me.vy+GRAV*dt);
+    const wasSlam=me.slam, x0=me.x; move(me,dt);
+    if(me.ground) me.walk+=Math.abs(me.x-x0)*(me.hero==='bolt'?.09:.13);
+    if(wasSlam&&me.ground){ me.slam=false; me.sx=1.35; me.sy=.7; burst(me.x+me.w/2,me.y+me.h,'#9cc3ff',30); } }
+  for(const f of P){ if(f===me||f.tx==null) continue;
+    const k=Math.min(1,dt*14), x0=f.x; f.tx+=f.vx*dt; f.ty+=(f.ground?0:f.vy*dt);
+    f.x+=(f.tx-f.x)*k; f.y+=(f.ty-f.y)*k; if(f.ground) f.walk+=Math.abs(f.x-x0)*(f.hero==='bolt'?.09:.13); }
+  for(const sh of shots) sh.x+=sh.vx*dt;
+  L.sendT=(L.sendT||0)-dt;
+  if(L.sendT<=0&&L.mq){ L.sendT=1/30;
+    L.mq.pub(L.T+'c',{t:'in',id:L.me,i:{dir:A.dir,j:A.j,a:A.a,g:A.g},p:me&&!me.dead?[Math.round(me.x*10)/10,Math.round(me.y*10)/10,Math.round(me.vx),Math.round(me.vy),me.face]:null,k:me?me.kseq:0});
+    A.j=false; A.g=false; }
+  hits.clear();
+  for(const q of pts){ q.x+=q.vx*dt; q.y+=q.vy*dt; q.vy+=900*dt; q.life-=dt*1.6; }
+  pts=pts.filter(q=>q.life>0);
+}
+// гость: хост прислал старт боя — у всех одинаковый список, поэтому команды и точки появления совпадают
+function guestFight(d){ if(!Array.isArray(d.list)) return;
+  const list=d.list.map(o=>o.pid===L.me?{cfg:cfgs[0],name:o.name,pid:o.pid,ctrl:0,me:true}:{cfg:o.cfg,name:o.name,pid:o.pid,bot:!!o.bot});
+  L.fight=true; L.started=true; L.acc=null; L.status=''; startMatch(list,d.m); }
 // list: [{cfg,name,bot,ctrl,me,team}], m — режим
 function startMatch(list,m){
   mode=RMODES[m]?m:'ffa'; view='fight'; map=MAPS[0]; enterWorld(map); mt=0; kingOcc=[];
@@ -6859,7 +6932,8 @@ function startFight(bot){
 function tick(dt){
   clock+=dt;
   if(view!=='fight') down.clear();
-  if(view==='fight'&&P) step(dt); else { hits.clear(); if(idleF) for(const f of idleF){ f.blinkT-=dt; if(f.blinkT<-.12) f.blinkT=2+Math.random()*3; } }
+  if(view==='fight'&&P){ if(L.role==='guest'&&L.fight) guestStep(dt); else step(dt); } else { hits.clear(); if(idleF) for(const f of idleF){ f.blinkT-=dt; if(f.blinkT<-.12) f.blinkT=2+Math.random()*3; } }
+  if(L.role==='host'&&L.fight&&L.mq&&P&&(view==='fight'||view==='result')){ L.snapT=(L.snapT||0)-dt; if(L.snapT<=0){ L.snapT=1/20; L.mq.pub(L.T+'r',fightPack()); } }
   camUpdate();
   drawWorld();
   pressed.clear();   // нажатия сенсорных кнопок за кадр обработаны
@@ -6949,10 +7023,10 @@ function render(){
     const many=P.length>2||mode!=='ffa';
     const tbl=many?`<div class="arScore">${P.slice().sort((a,b)=>scoreOf(b)-scoreOf(a)).map((f,i)=>`<div class="${f.me?'me':''}"><span style="color:${f.team>=0?TEAMC[f.team]:f.c.color}">${i+1}. ${f.name}</span><b>${scoreTxt(f)}</b></div>`).join('')}</div>`:`<p class="arSub">Счёт ${P[0].kills} : ${P[1].kills}</p>`;
     const sub=teamMode()?`<p class="arSub">${TEAMN[0]} ${teamScore(0)} : ${teamScore(1)} ${TEAMN[1]}</p>`:'';
-    put(`<div class="arCard${many?' wide':''}"><h2>${result} побеждает!</h2>
+    put(`<div class="arCard${many?' wide':''}"><h2>${String(result||'')[0]==='!'?String(result).slice(1):result+' побеждает!'}</h2>
       ${sub}${tbl}
       <div class="arBtns${many?' row':''}">
-        <button class="primary" data-act="again">Реванш</button>
+        ${L.role==='guest'?'<p class="arSub">Реванш запускает хост комнаты.</p>':'<button class="primary" data-act="again">Реванш</button>'}
         <button class="secondary" data-act="build">Изменить бойца</button>
         <button class="secondary" data-act="hub">${L.role?'В комнату':'В меню арены'}</button>
       </div></div>`);
@@ -6964,7 +7038,7 @@ function onClick(e){
   sfx('nav');
   if(a==='fight'){ if(L.role){ view='room'; render(); } else startFight(vsBot); }
   else if(a==='bot') startFight(true);
-  else if(a==='again'){ if(lastStart) startMatch(lastStart.list,lastStart.m); }
+  else if(a==='again'){ if(L.role==='host'&&L.room) startOnline(); else if(!L.role&&lastStart) startMatch(lastStart.list,lastStart.m); }
   else if(a==='copy'){ copyCode(); }
   else if(a==='controls'){ openControls(); }
   else if(a==='touchedit'){ openTouchEdit(); }
@@ -6975,8 +7049,8 @@ function onClick(e){
   else if(a==='clearbots'){ if(L.role==='host'&&L.room){ for(const id in L.room.players) if(L.room.players[id].bot) delete L.room.players[id]; roomPub(); render(); } }
   else if(a==='kick'){ if(L.role==='host'&&L.room&&L.room.players[v]&&L.room.players[v].bot){ delete L.room.players[v]; roomPub(); render(); } }
   else if(a==='duel') startFight(false);
-  else if(a==='build'){ view='build'; render(); }
-  else if(a==='hub'){ view=L.role?'room':'hub'; P=null; shots=[]; pts=[]; flags=null; render(); }
+  else if(a==='build'){ if(L.fight&&L.role==='host'){ try{ L.mq.pub(L.T+'r',{t:'abort'}); }catch(e){} L.started=false; roomPub(); } L.fight=false; view='build'; render(); }
+  else if(a==='hub'){ if(view==='fight'||view==='result'){ back(); return; } view=L.role?'room':'hub'; P=null; shots=[]; pts=[]; flags=null; render(); }
   else if(a==='menu') close();
   else if(a==='pick'){ slot=+v; render(); }
   else if(a==='hero'){ const col=cfgs[slot].color, acc=cfgs[slot].accent; cfgs[slot]={hero:v,...PRESET[v],color:col,accent:acc}; saveCfg(slot); render(); }
@@ -6997,7 +7071,7 @@ function onClick(e){
   }
 }
 function back(){
-  if(view==='fight'||view==='result'){ view=L.role?'room':'hub'; P=null; shots=[]; pts=[]; flags=null; render(); }
+  if(view==='fight'||view==='result'){ if(L.role==='host'&&L.fight){ try{ L.mq.pub(L.T+'r',{t:'abort'}); }catch(e){} L.started=false; roomPub(); } L.fight=false; view=L.role?'room':'hub'; P=null; shots=[]; pts=[]; flags=null; render(); }
   else if(view==='build'){ view='hub'; render(); }
   else close();
 }
@@ -7046,7 +7120,7 @@ const RMODES={
   ctf:{n:'Захват флага',d:'Утащите чужой флаг на свою базу, пока ваш флаг на месте — до 3 захватов'}
 };
 const ROOM_MAX=12, CFG_KEYS=['hero','body','head','eyes','arms','color','accent'];
-const L={role:null,code:'',T:'',mq:null,room:null,me:'',ready:false,started:false,status:'',lastRoom:0,hbI:null,pruneI:null,joinI:null,joinTries:0};
+const L={inp:{},fight:false,acc:null,snapT:0,sendT:0,role:null,code:'',T:'',mq:null,room:null,me:'',ready:false,started:false,status:'',lastRoom:0,hbI:null,pruneI:null,joinI:null,joinTries:0};
 L.me=(()=>{ try{ let id=sessionStorage.getItem('iskra-arena-id'); if(!id){ id=Math.random().toString(36).slice(2,9); sessionStorage.setItem('iskra-arena-id',id); } return id; }catch(e){ return Math.random().toString(36).slice(2,9); } })();
 const cleanName=v=>String(v||'').replace(/<[^>]*>/g,'').replace(/[<>&"'`\\]/g,'').replace(/\s+/g,' ').trim().slice(0,16);
 const myName=()=>{ try{ return cleanName(localStorage.getItem('iskra-arena-name'))||('Игрок '+L.me.slice(0,3)); }catch(e){ return 'Игрок'; } };
@@ -7067,7 +7141,8 @@ function roomElect(old){ const R=L.room; if(!R) return null; L.gone=L.gone||new 
   if(next.id===L.me){ L.role='host'; const now=Date.now(); for(const id in R.players) R.players[id].seen=now; clearInterval(L.joinI);
     L.mq.sub(L.T+'c'); clearInterval(L.pruneI); L.pruneI=setInterval(roomPrune,2000); roomPub(); }
   L.lastRoom=Date.now(); return next; }
-function hostGone(oldName,why){ const nx=roomElect(L.room&&L.room.host); if(!nx){ roomNotice('Хост вышел. Вы остались одни.'); render(); return; }
+function hostGone(oldName,why){ if(L.fight){ L.fight=false; L.started=false; if(view==='fight'){ view='result'; result='!Хост вышел — бой окончен'; } }
+  const nx=roomElect(L.room&&L.room.host); if(!nx){ roomNotice('Хост вышел. Вы остались одни.'); render(); return; }
   roomNotice((why||'Хост вышел')+'. '+(nx.id===L.me?'Теперь хост — вы.':'Новый хост — '+nx.name+'.')); render(); }
 function netStart(isHost){
   const hb=()=>{ if(L.role==='host'){ roomPub(); } else if(L.mq){
@@ -7114,6 +7189,7 @@ function onHostMsg(topic,d){
     R.players[d.id]={id:d.id,name:cleanName(d.n)||'Игрок',cfg:sanitize(d.cfg),ready:false,seen:Date.now()};
   } else if(d.t==='upd'&&R.players[d.id]){ const p=R.players[d.id]; p.seen=Date.now(); if(d.cfg) p.cfg=sanitize(d.cfg); if(typeof d.r==='boolean') p.ready=d.r; }
   else if(d.t==='hb'&&R.players[d.id]){ R.players[d.id].seen=Date.now(); return; }
+  else if(d.t==='in'&&d.i){ if(R.players[d.id]) R.players[d.id].seen=Date.now(); const I=(L.inp||(L.inp={}))[d.id]||(L.inp[d.id]={}); I.dir=d.i.dir|0; I.a=!!d.i.a; I.j=I.j||!!d.i.j; I.g=I.g||!!d.i.g; I.p=Array.isArray(d.p)?d.p:null; I.k=d.k|0; I.fresh=true; I.t=Date.now(); return; }
   else if(d.t==='bye'){ const p=R.players[d.id]; delete R.players[d.id]; if(p){ const msg='Игрок вышел: '+p.name; try{ L.mq.pub(L.T+'r',{t:'left',msg}); }catch(e){} roomNotice(msg); } }
   else return;
   roomPub(); render();
@@ -7123,8 +7199,11 @@ function onGuestMsg(topic,d){
   if(!d||!d.t) return;
   if(d.t==='room'&&d.room&&L.gone&&L.gone.has(d.room.host)) return;   // запоздалый пакет от ушедшего хоста
   if(d.t==='left'&&d.msg){ roomNotice(d.msg); render(); return; }
+  if(d.t==='fight'){ guestFight(d); return; }
+  if(d.t==='s'){ if(L.fight) applyFight(d); return; }
+  if(d.t==='abort'){ if(L.fight&&view==='fight'){ view='result'; result='!Хост остановил бой'; render(); } L.fight=false; return; }
   if(d.t==='migrate'&&d.room){ L.room=roomFrom(d.room); hostGone(); return; }
-  if(d.t==='room'&&d.room){ L.room={host:d.room.host,mode:d.room.mode,map:d.room.map,botLvl:d.room.botLvl,players:Object.fromEntries(d.room.players.map(p=>[p.id,{id:p.id,name:p.n,cfg:p.cfg,ready:p.r,bot:!!p.b}]))}; L.lastRoom=Date.now(); const me=L.room.players[L.me]; if(me) L.ready=me.ready; if(me&&L.joinI){ clearInterval(L.joinI); L.joinI=null; L.status=''; } L.started=!!d.room.started; if(L.started){ L.status='Хост запустил бой! Сетевой бой ещё в разработке — пока у хоста за вас играет бот.'; } render(); }
+  if(d.t==='room'&&d.room){ L.room={host:d.room.host,mode:d.room.mode,map:d.room.map,botLvl:d.room.botLvl,players:Object.fromEntries(d.room.players.map(p=>[p.id,{id:p.id,name:p.n,cfg:p.cfg,ready:p.r,bot:!!p.b}]))}; L.lastRoom=Date.now(); const me=L.room.players[L.me]; if(me) L.ready=me.ready; if(me&&L.joinI){ clearInterval(L.joinI); L.joinI=null; L.status=''; } L.started=!!d.room.started; if(!L.fight) render(); }
   else if(d.t==='full'&&d.to===L.me){ L.status='Комната полная (12 игроков).'; leaveRoom(true); render(); }
   else if(d.t==='closed'){ L.status='Хост закрыл комнату.'; leaveRoom(true); render(); }
 }
@@ -7138,12 +7217,14 @@ function setReady(v){ L.ready=v; if(L.role==='host'){ const p=L.room&&L.room.pla
 function startOnline(){
   const R=L.room; if(!R||L.role!=='host') return;
   const ps=Object.values(R.players), people=ps.filter(p=>!p.bot);
-  if(people.length>1&&!people.every(p=>p.ready)){ L.status='Ждём, пока все игроки нажмут «Готов».'; render(); return; }
-  // хост играет сам; боты — боты; удалённые игроки, пока нет сетевого боя, управляются ботом у хоста
-  const list=ps.map(p=>p.id===L.me?{cfg:cfgs[0],name:p.name,ctrl:0,me:true}:{cfg:p.cfg,name:p.name+(p.bot?'':' (бот)'),bot:true});
-  if(list.length<2) list.push({cfg:randCfg(),name:'Бот',bot:true});
-  if(people.length>1){ L.started=true; L.mq.pub(L.T+'r',{t:'start',room:roomPack()}); roomPub(); }
-  L.status=''; startMatch(list,R.mode);
+  const waiting=people.filter(p=>p.id!==L.me&&!p.ready);   // хост, нажав «Старт», уже готов
+  if(waiting.length){ L.status='Ждём «Готов» от: '+waiting.map(p=>cleanName(p.name)).join(', ')+'.'; render(); return; }
+  // хост играет сам и считает бой; боты — у хоста; остальные игроки управляют своими бойцами по сети
+  const list=ps.map(p=>p.id===L.me?{cfg:cfgs[0],name:p.name,ctrl:0,me:true,pid:p.id}:p.bot?{cfg:p.cfg||randCfg(),name:p.name,bot:true,pid:p.id}:{cfg:p.cfg,name:p.name,net:true,pid:p.id});
+  if(list.length<2) list.push({cfg:randCfg(),name:'Бот',bot:true,pid:'bot-x'});
+  L.inp={}; L.fight=people.length>1; L.status=''; L.snapT=0;
+  startMatch(list,R.mode);
+  if(L.fight){ L.started=true; L.mq.pub(L.T+'r',{t:'fight',m:mode,list:list.map(o=>({cfg:o.me?sanitize(cfgs[0]):o.cfg,name:o.name,pid:o.pid,bot:!!o.bot}))}); roomPub(); }
 }
 addEventListener('keydown',e=>{
   if(!on) return;
@@ -7160,7 +7241,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.49';
+const GAME_VER='1.50';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
