@@ -18,7 +18,7 @@ SC={
    R(p=1,dir=1,until='tx(b)>=32.4',frames=600),R(p=1,dir=-1,frames=10),R(p=1,dir=1,jp=1,jump=1,frames=10),R(p=1,dir=1,until='b.onGround',frames=60),R(p=1,dir=1,frames=4),R(p=1,dir=1,jp=1,jump=1,frames=10),R(p=1,dir=1,until='b.onGround',frames=60),
    R(p=1,dir=1,until='tx(b)>=58.6',frames=800)],
  ('duo','1'):[R(p=1,dir=1,until='tx(b)>=16.2'),R(p=0,dir=1,until='tx(s)>=24.2',frames=400),R(p=1,dir=1,until='tx(b)>=26',frames=300),R(p=0,dir=-1,frames=4),R(p=0,dir=1,fire=1,until='tx(s)>=30.8',frames=200),R(p=0,fire=1,frames=40),
-   R(p=0,dir=1,until='tx(s)>=38.6',frames=300),R(p=0,dir=1,jp=1,jump=1,frames=16),R(p=0,dir=1,jp=1,jump=1,frames=30),R(p=0,dir=1,until='s.keys>0',frames=200),R(p=0,dir=1,until='tx(s)>=50.6',frames=400),R(p=0,dir=1,frames=40),
+   R(p=1,dir=1,until='tx(b)>=36',frames=400),R(p=0,dir=1,until='tx(s)>=38.0',frames=300),R(p=0,dir=0,jp=1,jump=1,frames=14),R(p=0,dir=1,jp=1,jump=1,frames=30),R(p=0,dir=1,until='s.keys>0',frames=200),R(p=0,dir=1,until='tx(s)>=50.6',frames=400),R(p=0,dir=1,frames=40),
    R(p=1,dir=1,until='tx(b)>=60.0',frames=900),R(p=0,dir=1,until='tx(s)>=60.4',frames=400)],
  ('duo','2'):[R(p=1,dir=1,until='tx(b)>=29.6',frames=600),R(p=0,dir=1,until='tx(s)>=26',frames=600),R(p=0,dir=1,jp=1,jump=1,frames=12),R(p=0,dir=1,until='s.onGround&&ty(s)<16.5',frames=120),R(p=0,dir=0,frames=10),
    R(p=1,ap=1,frames=4),R(p=0,dir=1,frames=26),R(p=0,dir=1,until='s.onGround',frames=120),R(p=0,dir=1,until='tx(s)>=35.3',frames=80),R(p=0,dir=0,frames=6),
@@ -47,15 +47,17 @@ async def main(keys):
             if NOEN: await pg.evaluate("(x)=>__T.go(x)","(enemies.length=0,1)")
             r=await pg.evaluate("(c)=>RUNLEVEL(c)", SC[(mode,num)])
             await pg.evaluate("(x)=>__T.go(x)","draw()"); await pg.screenshot(path=f'/tmp/claude-0/lv/shot_{mode}{num}.png')
-            ok=r['state']=='done'
+            ok=r['state']=='done' and not r.get('tele')
+            if r.get('tele'): print('   ТЕЛЕПОРТ:',r['tele'][:3])
             print(mode,num,info,'=>',r['state'],'frames',r['frames'],'OK' if ok else 'FAIL', errs[:2])
-            if not ok:
+            if not ok or VERB:
                 for l in r['log']: print('   ',l)
             await pg.close()
         await b.close()
-DIFF='normal'; NOEN=False
+DIFF='normal'; NOEN=False; VERB=False
 args=sys.argv[1:]
 if args and args[0]=='noen': NOEN=True; args=args[1:]
+if args and args[0]=='v': VERB=True; args=args[1:]
 if args and args[0].startswith('diff='): DIFF=args[0][5:]; args=args[1:]
 keys=[tuple(a.split(':')) for a in args] if args else list(SC.keys())
 asyncio.run(main(keys))
