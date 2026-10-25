@@ -719,7 +719,10 @@ function setLang(l){ try{ localStorage.setItem('iskra-bolt-lang',l); sessionStor
 TUTORIAL[0].hint += ' Кнопки стрельбы и всего остального показаны внизу.';
 const TOTAL=100;
 const T=40, ROWS=18, VW=32*T, VH=ROWS*T, G=2200, FLOOR_Y=17*T;
-let WH=VH, openBottom=false;   // WH — высота мира (уровни из конструктора могут быть выше экрана); openBottom — ниже нижнего края пропасть
+let WH=VH, openBottom=false;
+// герои стоят чуть глубже переднего края блоков: 2D-спрайт проецируется как точка 3D-мира на глубине HERO_D
+const HERO_D=T*0.5, R3_DIST=(VH/2)/Math.tan(38*Math.PI/360);
+function heroDepth(c,z,ox,oy){ const D0=R3_DIST/(z||1), k=D0/(D0+HERO_D), cx=(VW/2-ox)/(z||1), cy=(VH/2-oy)/(z||1); c.translate(cx,cy); c.scale(k,k); c.translate(-cx,-cy); }   // WH — высота мира (уровни из конструктора могут быть выше экрана); openBottom — ниже нижнего края пропасть
 let COLS=32, WW=VW;  // COLS/WW = width of the current level (long levels are wider than one screen)
 const KEYC=new Proxy({P:'#e7b54a',Q:'#c79bff',R:'#7fe08a'},{get:(o,k)=>o[k]||o[String(k)[0]]});
 const BRIDGE={U:'P',V:'Q',W:'R'};
@@ -4316,7 +4319,7 @@ function draw(){
   if(outro) drawOutroWorld();
   if(settings.glow) drawLights();
   drawDark();
-  drawWaterFire(); drawBolt(players[1]); drawSpark(players[0]); drawAtoms(); drawDecor(true); drawAirBars();
+  drawWaterFire(); ctx.save(); if(r3) heroDepth(ctx,z,ox+sx,oy+sy); drawBolt(players[1]); drawSpark(players[0]); ctx.restore(); drawAtoms(); drawDecor(true); drawAirBars();
   if(false){ const p=players[active], bob=Math.sin(clock*6)*3, x=p.x+p.w/2, y=p.y-(p.kind==='spark'?30:14)+bob;
     ctx.fillStyle=p.kind==='spark'?'#ff8a3d':'#62c7c1'; ctx.beginPath(); ctx.moveTo(x-7,y-10); ctx.lineTo(x+7,y-10); ctx.lineTo(x,y-2); ctx.closePath(); ctx.fill();
     const o=players[1-active]; if(follow&&!o.down){ ctx.globalAlpha=.7; ctx.fillStyle='#9cc3ff'; ctx.font="700 9px Unbounded, sans-serif"; ctx.textAlign='center'; ctx.fillText('ЗА МНОЙ',o.x+o.w/2,o.y-(o.kind==='spark'?26:10)); ctx.globalAlpha=1; } }
@@ -5409,7 +5412,7 @@ const R3D=(()=>{
     if(!p||p.absent||p.dead){ g.visible=false; return; }
     g.visible=!(p.inv>0&&Math.floor(clock*18)%2&&!p.down);
     const inner=g.userData.inner;
-    g.position.set(p.x+p.w/2,-(p.y+p.h/2),CZ);
+    g.position.set(p.x+p.w/2,-(p.y+p.h/2),CZ-HERO_D);
     inner.scale.set(p.sx||1,p.sy||1,1);
     const target=p.down?0:(p.face||1)*0.45; inner.rotation.y+=(target-inner.rotation.y)*0.25;
     inner.rotation.z=p.down?(p.kind==='spark'?1.2:-1.2):((p.vx||0)/-2400);
@@ -6439,8 +6442,10 @@ function drawWorld(){
   g.setTransform(s*cam.z,0,0,s*cam.z,s*cam.ox,s*cam.oy);
   if(!r3){ g.drawImage(staticLayer,0,0,WW,VH); if(LIVE&&settings.ambient) drawLive(); g.drawImage(wallLayer,0,0,WW,VH); }
   drawModeWorld(g);
+  g.save(); if(r3) heroDepth(g,cam.z,cam.ox,cam.oy);
   if(many){ g.fillStyle='rgba(0,0,0,.28)'; for(const f of F) if(!f.dead&&f.ground){ g.beginPath(); g.ellipse(f.x+f.w/2,f.y+f.h,f.w*.6,4,0,0,TAU); g.fill(); } }
   for(const f of F) drawFighter(g,f,f.c);
+  g.restore();
   for(const sh of shots){ g.fillStyle=sh.by.c.accent; g.globalAlpha=.35; g.beginPath(); g.arc(sh.x-sh.vx*.02,sh.y,9,0,TAU); g.fill(); g.globalAlpha=1; circle(g,sh.x,sh.y,4,'#fff3c4'); }
   for(const q of pts){ g.globalAlpha=Math.max(0,q.life); circle(g,q.x,q.y,2+q.life*3,q.c); }
   g.globalAlpha=1;
@@ -7052,7 +7057,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.41';
+const GAME_VER='1.42';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 window.__ib={proTest:()=>{proT=0;storyNext=null;setState("prologue");},proAt:x=>{proT=x;},cine:m=>{proMode=m||'pro';proT=0;proLast=0;storyNext=null;setState('prologue');},endTest:()=>{endT=0;setState("ending");},net:{NET,netApply,netSnap},getLevel,startGame,dmgE:(e,d)=>damageEnemy(e,d),complete:()=>complete(),hurt:i=>hurt(players[i]),setState:x=>setState(x),startDemo:()=>startDemo(),stopDemo:()=>stopDemo(),get demo(){return demo},tr:x=>tr(x),demoAt:i=>{ lastIntro=-1; loadLevel(i); follow=true; demoT=0; setState('play'); },get combo(){return combo},openSecret,nextLevel,hitBoss:(d)=>hitBoss(d),get outro(){return outro},get state(){return {state,levelIdx,boss,players,enemies,pickups,arena,run,movers,grid,ebullets,bullets}}};
 const hot=window.claude&&window.claude.hot;
