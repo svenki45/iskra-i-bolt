@@ -5785,10 +5785,7 @@ const ED=(()=>{
       for(const w of Lp.winds||[]) N.winds.push({tx:Math.round(w.x/T)+dx});
       for(const z of Lp.pz||[]){ if(z.type==='order') N.order=z.order; if(z.type==='trap') N.trapX=Math.round(z.trigX/T)+dx; if(z.type==='timed'){ const [x,y]=z.cells.door[0]; const K=gm[y][x]; if('PQR'.includes(K)) N.timed[K]=true; } } });
     N.map=rows; N.decor=[]; N.lamps=[]; N.darkA=.94;
-    { const Wd=rows[0].length, fl=['barrel','crates','bucket','anvil','oil','wrench','machine'], wl=['pipeh','panel','clock','poster','shelf','vent','window','valve'], cl=['chain','hanglamp','hook','web'];
-      for(let i=0;i<o.screens*3;i++){ const x=3+Math.floor(Rr()*(Wd-6)); if(rows[16][x]==='.'&&rows[17][x]==='#') N.decor.push({t:pick(fl),tx:x,ty:16,sc:1,fl:Rr()<.5?1:0,fr:0}); }
-      for(let i=0;i<o.screens*2;i++){ const x=3+Math.floor(Rr()*(Wd-6)), y=3+Math.floor(Rr()*6); if(rows[y][x]==='.') N.decor.push({t:pick(wl),tx:x,ty:y,sc:1,fl:0,fr:0}); }
-      for(let i=0;i<o.screens*2;i++){ const x=3+Math.floor(Rr()*(Wd-6)); if(rows[1][x]==='.'&&rows[0][x]==='#') N.decor.push({t:pick(cl),tx:x,ty:1,sc:1,fl:0,fr:0}); } }
+    // фоновый декор в случайном уровне не добавляем: он появляется только если поставлен вручную
     if(o.foes==='few') N.enemies=N.enemies.filter((e,i)=>i%2===0);
     if(o.foes==='many'){ const W=rows[0].length; for(let i=0;i<o.screens*2;i++){ const x=6+Math.floor(Rr()*(W-12)); if(rows[16][x]==='.'&&rows[15][x]==='.'&&!N.enemies.some(e=>Math.abs(e.tx-x)<2)) N.enemies.push({t:Rr()<.7?'crawler':'flyer',tx:x,ty:Rr()<.7?16:9}); } }
     L=N; dirty=true; build(); toastQ.push({small:'Конструктор',title:'🎲 Готово! Жмите ещё раз или правьте.'}); showToast(); }
