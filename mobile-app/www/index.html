@@ -5420,12 +5420,15 @@ const R3D=(()=>{
     const k=window.MOBILE_BUILD?Math.min(1,1.5*cv.clientWidth/Math.max(1,cv.width)):1, w=Math.round(cv.width*k),h=Math.round(cv.height*k); if(glc.width!==w||glc.height!==h){ renderer.setSize(w,h,false); }
     const lvlKey=levelIdx+'|'+(arena?arena.type:'')+'|'+gridVer;
     if(lvlKey!==tileKey){ tileKey=lvlKey; buildTiles(); }
-    if(lastStaticGen!==staticGen){ lastStaticGen=staticGen; backTex.needsUpdate=true; }
+    if(lastStaticGen!==staticGen){ lastStaticGen=staticGen;
+      // если размер фона изменился (другой уровень), GPU-текстуру нужно пересоздать, иначе новый рисунок ляжет в угол старой
+      if(backTex.userData.w!==staticLayer.width||backTex.userData.h!==staticLayer.height){ backTex.dispose(); backTex=new THREE.CanvasTexture(staticLayer); backMat.map=backTex; backMat.needsUpdate=true; }
+      backTex.userData.w=staticLayer.width; backTex.userData.h=staticLayer.height; backTex.needsUpdate=true; }
     // camera matches the 2D transform: screen = game*z + o
     const cx=(VW/2-ox)/z, cy=(VH/2-oy)/z;
     cam.position.set(cx,-cy,DIST/z); cam.lookAt(cx,-cy,0); cam.updateProjectionMatrix();
     // back wall + shadow catcher: sized so their projection equals the 2D canvas exactly at any zoom
-    { const D0=DIST/z, bk=(D0+DEPTH+1)/D0; for(const m of [R.back,R.sh]){ m.scale.set(WW/VW*bk,bk,1); m.position.x=WW/2; } }
+    { const D0=DIST/z, bk=(D0+DEPTH+1)/D0; for(const m of [R.back,R.sh]){ m.scale.set(WW/VW*bk,bk,1); m.position.x=cx+(WW/2-cx)*bk; m.position.y=-(cy+(VH/2-cy)*bk); } }
     lightDir.position.set(cx-VW*0.25,-VH*0.1+900,900); lightDir.target.position.set(cx,-VH/2,0);
     placeHero(sparkG,players[0]); placeHero(boltG,players[1]);
     const s=players[0]; if(s&&!s.absent&&!s.dead){ sparkLight.visible=true; sparkLight.position.set(s.x+s.w/2,-(s.y),CZ+30); sparkLight.intensity=darkLvl?2.2:1.1; } else sparkLight.visible=false;
@@ -7019,7 +7022,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.39';
+const GAME_VER='1.40';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 window.__ib={proTest:()=>{proT=0;storyNext=null;setState("prologue");},proAt:x=>{proT=x;},cine:m=>{proMode=m||'pro';proT=0;proLast=0;storyNext=null;setState('prologue');},endTest:()=>{endT=0;setState("ending");},net:{NET,netApply,netSnap},getLevel,startGame,dmgE:(e,d)=>damageEnemy(e,d),complete:()=>complete(),hurt:i=>hurt(players[i]),setState:x=>setState(x),startDemo:()=>startDemo(),stopDemo:()=>stopDemo(),get demo(){return demo},tr:x=>tr(x),demoAt:i=>{ lastIntro=-1; loadLevel(i); follow=true; demoT=0; setState('play'); },get combo(){return combo},openSecret,nextLevel,hitBoss:(d)=>hitBoss(d),get outro(){return outro},get state(){return {state,levelIdx,boss,players,enemies,pickups,arena,run,movers,grid,ebullets,bullets}}};
 const hot=window.claude&&window.claude.hot;
