@@ -1692,7 +1692,7 @@ const HATS=[{id:'none',n:'Без шапки'},{id:'cap',n:'Кепка'},{id:'bow
 const LIMBS=[{id:'on',n:'Ручки и ножки'},{id:'off',n:'Без них'}];
 const TRAILS=[{id:'none',n:'Нет'},{id:'sparkle',n:'Блёстки'},{id:'hearts',n:'Сердечки'},{id:'stars',n:'Звёзды'},{id:'rainbow',n:'Радуга'},{id:'notes',n:'Ноты'},{id:'smoke',n:'Дымок'}];
 const EYES=[{id:'normal',n:'Обычные'},{id:'happy',n:'Довольные'},{id:'angry',n:'Сердитые'},{id:'sleepy',n:'Сонные'},{id:'stars',n:'Звёздочки'}];
-const DEF_SETTINGS={res:'auto',win:'full',r3d:true,padStyle:'auto',master:0.8,music:0.6,sfx:0.8,mute:false,quality:'high',particles:1,shake:true,glow:true,ambient:true,vignette:true,trails:true,flash:true,retro:false};
+const DEF_SETTINGS={res:'auto',win:'full',r3d:true,padStyle:'auto',master:0.8,music:0.6,sfx:0.8,mute:false,quality:'high',particles:1,shake:true,glow:true,ambient:true,vignette:true,trails:true,flash:true,retro:false,perf:false};
 const PRESETS={low:{particles:0.35,glow:false,ambient:false,vignette:false,trails:false},medium:{particles:0.7,glow:true,ambient:true,vignette:true,trails:false},high:{particles:1,glow:true,ambient:true,vignette:true,trails:true}};
 let demo=false;
 const store={get(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:JSON.parse(v); }catch(e){ return d; } }, set(k,v){ if(demo) return; try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }};
@@ -3023,7 +3023,7 @@ function setState(s){
           <div class="srow2"><span class="lab">Разрешение</span><select class="optsel" id="selRes" aria-label="Разрешение">${RES_LIST.map(([k,n])=>`<option value="${k}" ${(settings.res||'auto')===k?'selected':''}>${n}</option>`).join('')}</select></div>
           ${window.desk?`<div class="srow2"><span class="lab">Режим экрана</span><select class="optsel" id="selWin" aria-label="Режим экрана">${SCREEN_MODES.map(([k,n])=>`<option value="${k}" ${(settings.win||'full')===k?'selected':''}>${n}</option>`).join('')}</select></div><p class="optnote">«Окно без рамки» растягивает игру на весь экран без рамки окна. При переходе в этот режим и обратно окно игры открывается заново.</p>`:''}
           ${sl('particles','Частицы',settings.particles)}
-          <div class="tgrid">${tg('glow','Свечение','Свет от Искры, кнопок, выхода')}${tg('ambient','Фон мастерской','Шестерни и пыль на заднем плане')}${tg('trails','Следы','Хвосты за пулями и пыль из-под ног')}${tg('vignette','Виньетка','Затемнение по краям экрана')}${tg('shake','Тряска экрана','При ударах и взрывах')}${tg('flash','Вспышки экрана','При уроне и победе над боссом')}${tg('retro','Ретро-экран','Полосы как на старом мониторе')}</div></div>
+          <div class="tgrid">${tg('glow','Свечение','Свет от Искры, кнопок, выхода')}${tg('ambient','Фон мастерской','Шестерни и пыль на заднем плане')}${tg('trails','Следы','Хвосты за пулями и пыль из-под ног')}${tg('vignette','Виньетка','Затемнение по краям экрана')}${tg('shake','Тряска экрана','При ударах и взрывах')}${tg('flash','Вспышки экрана','При уроне и победе над боссом')}${tg('retro','Ретро-экран','Полосы как на старом мониторе')}${tg('perf','Счётчик FPS и сети','FPS, фризы, нагрузка, пинг и потери пакетов (F3)')}</div></div>
       <div class="btns"><button class="primary" id="bCatBack" type="button">Назад · Esc</button></div>`;
     } else if(setCat==='lang'){
       body=`<div class="mgrid lgrid">${LANGS.map(([k,n])=>`<button type="button" class="${LANG===k?'primary':'secondary'}" data-lang="${k}">${n}</button>`).join('')}</div>
@@ -3041,7 +3041,7 @@ function setState(s){
     overlay.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{ sfx('nav'); setCat=b.dataset.cat; reSet(); });
     if($('bCatBack')) $('bCatBack').onclick=()=>{ setCat=null; reSet(); };
     for(const id of ['master','music','sfx','particles']){ const el=$(id); if(!el) continue; el.oninput=()=>{ settings[id]=el.value/100; $(id+'O').textContent=el.value+'%'; if(id==='particles') settings.quality='custom'; saveSettings(); applyVolumes(); if(id==='sfx'||id==='master') sfx('gear'); }; }
-    for(const id of ['mute','glow','ambient','trails','vignette','shake','flash','retro']){ const el=$(id); if(!el) continue; el.onchange=()=>{ settings[id]=el.checked; if(!['mute','shake','flash','retro'].includes(id)) settings.quality='custom'; saveSettings(); applyVolumes(); reSet(); }; }
+    for(const id of ['mute','glow','ambient','trails','vignette','shake','flash','retro','perf']){ const el=$(id); if(!el) continue; el.onchange=()=>{ settings[id]=el.checked; if(!['mute','shake','flash','retro','perf'].includes(id)) settings.quality='custom'; saveSettings(); applyVolumes(); perfShow(); reSet(); }; }
     overlay.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{ settings.quality=b.dataset.q; Object.assign(settings,PRESETS[b.dataset.q]); saveSettings(); fit(); reSet(); });
     if($('selRes')) $('selRes').onchange=e=>{ settings.res=e.target.value; saveSettings(); applyScreen(); fit(); sfx('nav'); };
     if($('selWin')) $('selWin').onchange=e=>{ settings.win=e.target.value; saveSettings(); applyScreen(); setTimeout(fit,400); sfx('nav'); };
@@ -3584,6 +3584,7 @@ let last=performance.now(), hudT=0, padCheckT=0;
 function frame(now){
   if(now-last<15.5&&last){ requestAnimationFrame(frame); return; }
   const dt=Math.min(0.05,Math.max(0,(now-last)/1000)); last=now;
+  perfFrame(now);
   if(state==='arena'){ ARENA.tick(dt); requestAnimationFrame(frame); return; }
   pollPadNav(dt);
   handleMeta();
@@ -5139,7 +5140,7 @@ function netFail(msg){ NET.creating=false; NET.status='⚠ '+msg; try{ NET.mq&&N
 function netCode(){ const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let c=''; for(let i=0;i<5;i++) c+=A[Math.floor(Math.random()*A.length)]; return c; }
 function netWatch(){ NET.lastRx=performance.now(); clearInterval(NET.watch); clearInterval(NET.hb);
   // сигнал «я на связи» раз в секунду в любом состоянии (меню, лавка, пауза, итоги) — раньше гость молчал вне игры и хост его отключал
-  NET.hb=setInterval(()=>{ try{ NET.conn&&NET.conn.open&&NET.conn.send({t:'hb'}); }catch(e){} },1000);
+  NET.hb=setInterval(()=>{ try{ NET.conn&&NET.conn.open&&NET.conn.send({t:'hb',ts:performance.now()}); }catch(e){} },1000); PERF.rtt=null; PERF.rq=null; PERF.loss=null;
   NET.watch=setInterval(()=>{ if(NET.role&&performance.now()-NET.lastRx>15000) netLost(NET.role==='host'?'Игрок пропал из сети':'Хост пропал из сети'); },1000); }
 function netHost(){
   NET.creating=true; NET.code=netCode(); const T='iskrabolt/'+NET.code; setState('net');
@@ -5150,8 +5151,9 @@ function netHost(){
         NET.conn={open:true,send:o=>{ o.v=NET_VER; if(!rtcSend(o)) NET.mq.pub(T+'/h',o); },close:()=>{ try{ NET.mq&&NET.mq.pub(T+'/h',{t:'bye',v:NET_VER}); }catch(e){} rtcClose(); }}; netWatch(); NET.onMsg=onH; rtcStart(true,o=>NET.mq.pub(T+'/h',o));
         sfx('pick'); NET.prev={one:solo,hero:soloHero}; setMode(false); toastQ.push({small:'Онлайн',title:'Друг подключился — он играет за Болта',icon:'first'}); showToast(); startGame(Math.min(TOTAL-1,best)); }
       else if(d.t==='cmd'&&NET.role==='host'){ NET.lastRx=performance.now(); if(d.c==='pause'&&state==='play'){ pauseOwner=1; setState('pause'); } else if(d.c==='resume'&&state==='pause'&&pauseOwner===1){ pauseOwner=null; setState('play'); } }
-      else if(d.t==='in'&&NET.role==='host'){ NET.lastRx=performance.now(); if(d.p&&d.lv===levelIdx) NET.rpos=d.p; const r=NET.rin, i=d.i; r.dir=i.dir; r.jump=i.jump; r.ab=i.ab; r.fire=i.fire; r.jp=r.jp||i.jp; r.ap=r.ap||i.ap; r.use=r.use||i.use; r.nx=r.nx||i.nx; }
-      else if(d.t==='hb'&&NET.role==='host') NET.lastRx=performance.now();
+      else if(d.t==='in'&&NET.role==='host'){ NET.lastRx=performance.now(); perfSeq(d.q); if(d.p&&d.lv===levelIdx) NET.rpos=d.p; const r=NET.rin, i=d.i; r.dir=i.dir; r.jump=i.jump; r.ab=i.ab; r.fire=i.fire; r.jp=r.jp||i.jp; r.ap=r.ap||i.ap; r.use=r.use||i.use; r.nx=r.nx||i.nx; }
+      else if(d.t==='hb'&&NET.role==='host'){ NET.lastRx=performance.now(); if(d.ts!=null) try{ NET.conn.send({t:'pong',ts:d.ts}); }catch(e){} }
+      else if(d.t==='pong'&&NET.role==='host'){ const r=performance.now()-d.ts; PERF.rtt=PERF.rtt==null?r:PERF.rtt*.7+r*.3; }
       else if(d.t==='bye'&&NET.role==='host') netLost('Игрок вышел из игры'); };
   NET.mq=mqttClient(onH,
     ()=>{ NET.creating=false; NET.mq.sub(T+'/g'); NET.waiting=true; NET.status='Комната создана. Скажите другу код и ждите подключения.'; if(state==='net') setState('net'); },
@@ -5166,8 +5168,9 @@ function netJoin(code){ NET.creating=false;
       if(d.v!==NET_VER) return;
       if(d.t==='welcome'&&!NET.role){ clearInterval(NET.hello); NET.role='guest'; NET.code=code; NET.hostState='';
         NET.conn={open:true,send:o=>{ o.v=NET_VER; if(!rtcSend(o)) NET.mq.pub(T+'/g',o); },close:()=>{ NET.mq.pub(T+'/g',{t:'bye',v:NET_VER}); rtcClose(); }}; netWatch(); NET.onMsg=onG; NET.rtcPub=o=>NET.mq.pub(T+'/g',o); NET.prev={one:solo,hero:soloHero}; setMode(false); sfx('pick'); setState('netwait'); }
-      else if(d.t==='s'&&NET.role==='guest'){ NET.lastRx=performance.now(); netApply(d); }
-      else if(d.t==='hb'&&NET.role==='guest') NET.lastRx=performance.now();
+      else if(d.t==='s'&&NET.role==='guest'){ NET.lastRx=performance.now(); perfSeq(d.q); netApply(d); }
+      else if(d.t==='hb'&&NET.role==='guest'){ NET.lastRx=performance.now(); if(d.ts!=null) try{ NET.conn.send({t:'pong',ts:d.ts}); }catch(e){} }
+      else if(d.t==='pong'&&NET.role==='guest'){ const r=performance.now()-d.ts; PERF.rtt=PERF.rtt==null?r:PERF.rtt*.7+r*.3; }
       else if(d.t==='bye'&&NET.role==='guest') netLost('Хост вышел из игры'); };
   NET.mq=mqttClient(onG,
     ()=>{ NET.mq.sub(T+'/h'); NET.status='Ищем комнату '+code+'…'; if(state==='net') setState('net');
@@ -5187,7 +5190,7 @@ const NO_SET=(k,v)=>v instanceof Set?undefined:(k==='hit'?undefined:v);
 function netSend(dt){
   if(NET.role!=='host'||!NET.conn||!NET.conn.open) return;
   NET.snapT-=dt; if(NET.snapT>0) return; NET.snapT=NET.direct?1/30:1/20;
-  try{ NET.conn.send(netSnap()); }catch(e){}
+  try{ const sn=netSnap(); sn.q=++PERF.sq; NET.conn.send(sn); }catch(e){}
 }
 function netSnap(){
   const gs=grid?grid.map(r=>r.join('')).join('|'):''; const gch=gs!==NET.lastG; NET.lastG=gs;
@@ -5236,11 +5239,36 @@ function netSmooth(dt){
   for(const en of enemies||[]) en.t=(en.t||0)+dt;
   if(boss) boss.t=(boss.t||0)+dt;
 }
+/* ===== оверлей производительности (F3): FPS, кадры, фризы, память, нагрузка ПК, пинг, потери пакетов ===== */
+const PERF={last:0,n:0,t0:0,sum:0,max:0,frz:[],fps:0,avg:0,mx:0,el:null,sq:0,rq:null,got:0,lost:0,loss:null,rtt:null,sys:null,sysT:0,winT:0};
+function perfShow(){ if(!PERF.el){ const d=document.createElement('div'); d.id='perfHud';
+    d.style.cssText='position:fixed;top:6px;right:8px;z-index:99999;pointer-events:none;font:12px/1.35 ui-monospace,Consolas,monospace;color:#d8f5d0;background:rgba(5,12,24,.78);border:1px solid rgba(156,195,255,.25);border-radius:6px;padding:5px 8px;white-space:pre';
+    document.body.appendChild(d); PERF.el=d; }
+  PERF.el.style.display=settings.perf?'block':'none'; }
+function perfSeq(q){ if(typeof q!=='number') return; if(PERF.rq!=null&&q>PERF.rq+1) PERF.lost+=q-PERF.rq-1; if(PERF.rq==null||q>PERF.rq) PERF.rq=q; PERF.got++; }
+function perfFrame(now){
+  if(PERF.last){ const ms=now-PERF.last; PERF.n++; PERF.sum+=ms; if(ms>PERF.max) PERF.max=ms; if(ms>50) PERF.frz.push(now); }
+  PERF.last=now; if(!settings.perf) return;
+  if(now-PERF.t0<500) return;
+  const el=now-PERF.t0; PERF.t0=now; if(PERF.n){ PERF.fps=Math.round(PERF.n*1000/el); PERF.avg=PERF.sum/PERF.n; PERF.mx=PERF.max; } PERF.n=0; PERF.sum=0; PERF.max=0;
+  PERF.frz=PERF.frz.filter(t=>now-t<10000);
+  if(now-PERF.winT>5000){ PERF.winT=now; const tot=PERF.got+PERF.lost; PERF.loss=tot?PERF.lost/tot*100:null; PERF.got=0; PERF.lost=0; }
+  if(window.ibSys&&now-PERF.sysT>1000){ PERF.sysT=now; window.ibSys.metrics().then(m=>PERF.sys=m).catch(()=>{}); }
+  perfShow();
+  const L=[`FPS ${PERF.fps}   кадр ${PERF.avg.toFixed(1)} мс (макс ${PERF.mx.toFixed(0)})`,`фризы >50 мс за 10 с: ${PERF.frz.length}`];
+  const mem=performance.memory; if(mem) L.push(`память игры (JS) ${Math.round(mem.usedJSHeapSize/1048576)} МБ`);
+  const S=PERF.sys; if(S) L.push(`CPU игры ${S.gameCpu}%   CPU ПК ${S.sysCpu==null?'…':S.sysCpu+'%'}`,`ОЗУ игры ${S.gameRamMB} МБ   ОЗУ ПК ${S.sysRamUsedGB}/${S.sysRamGB} ГБ`);
+  L.push(`${R3D&&R3D.on?'3D':'2D'}   ${cv.width}×${cv.height}`);
+  if(NET.role){ L.push(`онлайн: ${NET.role==='host'?'хост':'гость'}, ${NET.direct?'напрямую (P2P)':'через сервер'}`);
+    L.push(`пинг ${PERF.rtt==null?'…':Math.round(PERF.rtt)+' мс'}   потери ${PERF.loss==null?'…':PERF.loss.toFixed(1)+'%'}`); }
+  PERF.el.textContent=L.join('\n');
+}
+addEventListener('keydown',e=>{ if(e.code==='F3'){ e.preventDefault(); settings.perf=!settings.perf; saveSettings(); perfShow(); } },true);
 function netGuestInput(){
   const i=soloInput(); const a=NET.acc; const me=NET.me;
   a.jp=a.jp||i.jp; a.ap=a.ap||i.ap; a.use=a.use||i.use; a.nx=a.nx||i.nx;
   NET.inT=(NET.inT||0)+1; if(!NET.direct&&NET.inT%2) return i;
-  if(NET.conn&&NET.conn.open){ try{ NET.conn.send({t:'in',lv:levelIdx,p:me?[Math.round(me.x*10)/10,Math.round(me.y*10)/10,Math.round(me.vx),Math.round(me.vy),me.face]:null,i:{dir:i.dir,jump:i.jump,ab:i.ab,fire:i.fire,jp:a.jp,ap:a.ap,use:a.use,nx:a.nx}}); }catch(e){} NET.acc={}; }
+  if(NET.conn&&NET.conn.open){ try{ NET.conn.send({t:'in',q:++PERF.sq,lv:levelIdx,p:me?[Math.round(me.x*10)/10,Math.round(me.y*10)/10,Math.round(me.vx),Math.round(me.vy),me.face]:null,i:{dir:i.dir,jump:i.jump,ab:i.ab,fire:i.fire,jp:a.jp,ap:a.ap,use:a.use,nx:a.nx}}); }catch(e){} NET.acc={}; }
   return i;
 }
 /* ===== attract mode (demo) and splash ===== */
@@ -7090,7 +7118,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.45';
+const GAME_VER='1.46';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 window.__ib={proTest:()=>{proT=0;storyNext=null;setState("prologue");},proAt:x=>{proT=x;},cine:m=>{proMode=m||'pro';proT=0;proLast=0;storyNext=null;setState('prologue');},endTest:()=>{endT=0;setState("ending");},net:{NET,netApply,netSnap},getLevel,startGame,dmgE:(e,d)=>damageEnemy(e,d),complete:()=>complete(),hurt:i=>hurt(players[i]),setState:x=>setState(x),startDemo:()=>startDemo(),stopDemo:()=>stopDemo(),get demo(){return demo},tr:x=>tr(x),demoAt:i=>{ lastIntro=-1; loadLevel(i); follow=true; demoT=0; setState('play'); },get combo(){return combo},openSecret,nextLevel,hitBoss:(d)=>hitBoss(d),get outro(){return outro},get state(){return {state,levelIdx,boss,players,enemies,pickups,arena,run,movers,grid,ebullets,bullets}}};
 const hot=window.claude&&window.claude.hot;
