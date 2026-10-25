@@ -191,6 +191,9 @@ L['duo']['3'] = lvl(g, 'Разные пути', 'Искра — наверх, Б
        'hard': {'en': [{'t': 'crawler', 'tx': 50, 'ty': 16}, {'t': 'crawler', 'tx': 22, 'ty': 7}]},
        'nightmare': {'en': [{'t': 'crawler', 'tx': 50, 'ty': 16}, {'t': 'crawler', 'tx': 22, 'ty': 7}, {'t': 'flyer', 'tx': 62, 'ty': 10}], 'spAdd': [[18, 16], [19, 16]]}})
 
+import levels2
+levels2.build(G, lvl, L)
+
 if __name__ == '__main__':
     out = json.dumps(L, ensure_ascii=False, separators=(',', ':'))
     if len(sys.argv) > 1:

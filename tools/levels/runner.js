@@ -6,7 +6,7 @@ window.RUNLEVEL=function(cmds,opt){ opt=opt||{};
   window.__noLoop=true;
   const log=[]; let frames=0;
   const P=()=>G.go('players'), st=()=>G.go('state');
-  const ev=e=>{ const s=P()[0], b=P()[1]; const tx=p=>(p.x+p.w/2)/40, ty=p=>(p.y+p.h)/40; return Function('s','b','tx','ty','return ('+e+')')(s,b,tx,ty); };
+  const ev=e=>{ const s=P()[0], b=P()[1]; const tx=p=>(p.x+p.w/2)/40, ty=p=>(p.y+p.h)/40, C=G.go('crates'), M=G.go('movers'); return Function('s','b','tx','ty','C','M','return ('+e+')')(s,b,tx,ty,C,M); };
   for(let ci=0;ci<cmds.length;ci++){ const c=cmds[ci]; const max=c.frames||(c.until?900:1); let ok=!c.until, f=0;
     for(;f<max;f++){
       if(st()!=='play') break;
