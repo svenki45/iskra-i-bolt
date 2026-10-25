@@ -3109,8 +3109,8 @@ function setState(s){
       <div class="rest b" ${solo&&soloHero!=='bolt'?'hidden':''}><canvas id="pvB" width="160" height="160"></canvas><span>z</span><span>z</span><span>Z</span></div></div>`;
     overlay.innerHTML=deco+`<div class="card"><span class="eyebrow">${own==null?'Пауза':'Пауза · поставил'+(own===1?'':'а')+' '+PNAME[own]}</span><h2>Перерыв</h2>
       ${own==null?'':`<p class="padst" id="pauseNote" style="color:${own?'#62c7c1':'#ff8a3d'}">Снять паузу может только ${PNAME[own]}: ${PKEY[own]} или Start на своём геймпаде.</p>`}
-      <div class="mgrid pgrid2">${own==null?'<button class="primary wide2" id="bRes" type="button">Продолжить · Esc</button>':''}<button class="secondary" id="bRe" type="button">Уровень заново</button><button class="secondary" id="bShopP" type="button">Лавка</button><button class="secondary" id="bHelpP" type="button">Помощь</button><button class="secondary" id="bSet2" type="button">Настройки</button><button class="secondary wide2" id="bMenu" type="button">В меню</button></div></div>`;
-    if($('bRes')) $('bRes').onclick=()=>{ pauseOwner=null; setState('play'); }; $('bSet2').onclick=()=>{ setBack='pause'; setCat=null; setState('settings'); }; $('bShopP').onclick=()=>{ shopFrom='pause'; setState('shop'); }; $('bHelpP').onclick=()=>{ helpBack='pause'; setState('help'); }; $('bRe').onclick=()=>{ loadingTo(levelIdx,true); }; $('bMenu').onclick=()=>{loadLevel(levelIdx);setState('menu');};
+      <div class="mgrid pgrid2">${own==null?'<button class="primary wide2" id="bRes" type="button">Продолжить · Esc</button>':''}${cheat&&!NET.role&&!edTest?`<button class="secondary" id="bChPrev" type="button" ${levelIdx>0?'':'disabled'}>◀ Уровень ${levelIdx}<small>чит</small></button><button class="secondary" id="bChNext" type="button" ${levelIdx<TOTAL-1?'':'disabled'}>Уровень ${levelIdx+2} ▶<small>чит</small></button>`:''}<button class="secondary" id="bRe" type="button">Уровень заново</button><button class="secondary" id="bShopP" type="button">Лавка</button><button class="secondary" id="bHelpP" type="button">Помощь</button><button class="secondary" id="bSet2" type="button">Настройки</button><button class="secondary wide2" id="bMenu" type="button">В меню</button></div></div>`;
+    if($('bRes')) $('bRes').onclick=()=>{ pauseOwner=null; setState('play'); }; if($('bChPrev')) $('bChPrev').onclick=()=>{ if(levelIdx>0){ runClean=false; pauseOwner=null; loadLevel(levelIdx-1); setState('play'); } }; if($('bChNext')) $('bChNext').onclick=()=>{ if(levelIdx<TOTAL-1){ runClean=false; pauseOwner=null; loadLevel(levelIdx+1); setState('play'); } }; $('bSet2').onclick=()=>{ setBack='pause'; setCat=null; setState('settings'); }; $('bShopP').onclick=()=>{ shopFrom='pause'; setState('shop'); }; $('bHelpP').onclick=()=>{ helpBack='pause'; setState('help'); }; $('bRe').onclick=()=>{ loadingTo(levelIdx,true); }; $('bMenu').onclick=()=>{loadLevel(levelIdx);setState('menu');};
   } else if(s==='done'){
     const L=getLevel(levelIdx), nextBoss=(levelIdx+2)%10===0;
     overlay.innerHTML=`<div class="card"><span class="eyebrow">Уровень ${levelIdx+1} из ${TOTAL} готов</span><h2>${L.boss?'Босс повержен':L.name}</h2>
@@ -7153,8 +7153,15 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.47';
+const GAME_VER='1.48';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
+// меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
+(()=>{ let n=0, t0=0;
+  addEventListener('pointerdown',e=>{ const v=document.getElementById('verTag'); if(!v||!['menu','title','cheats','settings','modes'].includes(state)) return;
+    const r=v.getBoundingClientRect(); if(!r.width||e.clientX<r.left-24||e.clientX>r.right+24||e.clientY<r.top-24||e.clientY>r.bottom+24) return;
+    const now=performance.now(); if(now-t0>4000) n=0; t0=now; n++;
+    if(n>=7){ n=0; unlockCheatMenu(); toastQ.push({small:'Тест',title:cheatMenu?'Меню читов открыто':'Меню читов скрыто',icon:'first'}); showToast(); }
+    else if(n>=4){ toastQ.push({small:'Тест',title:'Ещё '+(7-n)+'…'}); showToast(); } },true); })();
 window.__ib={proTest:()=>{proT=0;storyNext=null;setState("prologue");},proAt:x=>{proT=x;},cine:m=>{proMode=m||'pro';proT=0;proLast=0;storyNext=null;setState('prologue');},endTest:()=>{endT=0;setState("ending");},net:{NET,netApply,netSnap},getLevel,startGame,dmgE:(e,d)=>damageEnemy(e,d),complete:()=>complete(),hurt:i=>hurt(players[i]),setState:x=>setState(x),startDemo:()=>startDemo(),stopDemo:()=>stopDemo(),get demo(){return demo},tr:x=>tr(x),demoAt:i=>{ lastIntro=-1; loadLevel(i); follow=true; demoT=0; setState('play'); },get combo(){return combo},openSecret,nextLevel,hitBoss:(d)=>hitBoss(d),get outro(){return outro},get state(){return {state,levelIdx,boss,players,enemies,pickups,arena,run,movers,grid,ebullets,bullets}}};
 const hot=window.claude&&window.claude.hot;
 if(hot&&hot.snapshot) hot.snapshot(()=>({levelIdx,deaths,totalTime,gears,state:(state==='play'||state==='dying')?'play':'menu'}));
