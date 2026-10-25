@@ -1,0 +1,31 @@
+name: Desktop BT (тест «Испытания»)
+on:
+  push:
+    paths: ['desktop-bt/**', 'tools/bt/**', '.github/workflows/desktop-bt.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: Build index.html from game source + tools/bt/bt.js
+        shell: bash
+        run: pip install tzdata >/dev/null 2>&1 || true; python tools/bt/build.py
+      - name: Package
+        working-directory: desktop-bt
+        shell: bash
+        run: |
+          npx --yes @electron/packager@18.3.6 . "Iskra i Bolt BT" --platform=win32 --arch=x64 --electron-version=33.2.1 --icon=icon.ico --out=dist --overwrite --asar --app-copyright="Edward Dergachev" --win32metadata.ProductName="Iskra i Bolt BT" --win32metadata.FileDescription="Iskra i Bolt BT"
+          cd dist && 7z a -tzip ../../iskra-i-bolt-bt.zip "Iskra i Bolt BT-win32-x64"
+      - name: Publish release
+        shell: bash
+        env: { GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}' }
+        run: |
+          gh release delete desktop-bt -y --cleanup-tag || true
+          gh release create desktop-bt iskra-i-bolt-bt.zip --title "Искра и Болт — Испытания (тест в духе старых аркад)" --notes "Отдельная тестовая сборка: гонка на доске и спуск на тросе. Сохранения отдельно от основной игры."
