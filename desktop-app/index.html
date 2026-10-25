@@ -25,6 +25,8 @@
   color-scheme:dark;
 }
 html,body{height:100%}
+/* iPhone «на экране Домой»: height:100% бывает меньше экрана и низ игры обрезается — растягиваем страницу на весь экран */
+@media (display-mode: standalone){ html{height:100vh;height:100dvh} body{position:fixed;top:0;left:0;right:0;bottom:0;height:auto;width:auto} }
 body{margin:0;background:var(--night);color:var(--ink);font-family:var(--body);font-size:15px;overflow:hidden;box-sizing:border-box;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .app{height:100%;display:flex;flex-direction:column;gap:10px;padding-block:12px;box-sizing:border-box;max-width:1400px;margin:0 auto}
@@ -753,6 +755,11 @@ function fit(){
   scale=cv.width/VW;
 }
 addEventListener('resize',fit);
+// iOS (особенно с экрана Домой) отдаёт верный размер окна не сразу после запуска и поворота — пересчитываем несколько раз
+{ const refitAll=()=>{ fit(); try{ typeof fitOverlay==='function'&&fitOverlay(); }catch(e){} }, later=()=>{ for(const t of [60,250,600,1200]) setTimeout(refitAll,t); };
+  addEventListener('orientationchange',later); addEventListener('pageshow',later); addEventListener('load',later);
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) later(); });
+  try{ window.visualViewport&&visualViewport.addEventListener('resize',refitAll); }catch(e){} }
 // режим экрана при запуске выставляет сама программа (она его запоминает); здесь только сверяем подпись в настройках
 setTimeout(()=>{ try{ window.desk&&window.desk.screenInfo().then(i=>{ if(i&&i.mode&&settings.win!==i.mode){ settings.win=i.mode; saveSettings(); } }); }catch(e){} },300);
 // рамка с временем и падениями поверх игры — повторяет счётчики игры
@@ -762,7 +769,7 @@ setTimeout(()=>{ try{ window.desk&&window.desk.screenInfo().then(i=>{ if(i&&i.mo
 try{ new ResizeObserver(()=>fit()).observe($('stage')); }catch(e){}
 let fsAuto=true;
 function goFs(){ const el=document.documentElement; if(document.fullscreenElement||!el.requestFullscreen) return;
-  el.requestFullscreen({navigationUI:'hide'}).then(()=>{ try{ navigator.keyboard&&navigator.keyboard.lock&&navigator.keyboard.lock(['Escape']); }catch(e){} }).catch(()=>{}); }
+  el.requestFullscreen({navigationUI:'hide'}).then(()=>{ try{ navigator.keyboard&&navigator.keyboard.lock&&Promise.resolve(navigator.keyboard.lock(['Escape'])).catch(()=>{}); }catch(e){} }).catch(()=>{}); }
 function fsLabel(){ const b=$('fsBtn'); if(b) b.textContent=document.fullscreenElement?'Выйти из полного экрана':'На весь экран'; }
 $('fsBtn').addEventListener('click',e=>{ e.stopPropagation();
   try{ if(document.fullscreenElement){ fsAuto=false; try{ navigator.keyboard&&navigator.keyboard.unlock&&navigator.keyboard.unlock(); }catch(_){} document.exitFullscreen(); } else { fsAuto=true; goFs(); } }catch(e){} });
@@ -7153,7 +7160,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.48';
+const GAME_VER='1.49';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
