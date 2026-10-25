@@ -1263,6 +1263,7 @@ function aiInput(p,leader){
 function readInput(pi){
   if(demo&&players) return pi===0?demoLead(players[0]):aiInput(players[1],players[0]);
   if(NET.role==='host'&&pi===1){ const r=NET.rin, out=Object.assign({},r); r.jp=false; r.ap=false; r.use=false; r.nx=false; return out; }
+  if(NET.role==='host'&&pi===0) return soloInput();
   if(solo){ if(players&&players[pi]&&players[pi].absent) return {dir:0,jump:false,jp:false,ab:false,ap:false,fire:false}; return soloInput(); }
   const kind=pi===0?'spark':'bolt', k=binds[kind].kb, pb=binds[kind].pad;
   let left=down.has(k.left), right=down.has(k.right), jump=down.has(k.jump), ab=down.has(k.ability), fire=down.has(k.fire), jp=pressed.has(k.jump), ap=pressed.has(k.ability), use=pressed.has(k.use), nx=pressed.has(k.next);
@@ -5088,7 +5089,7 @@ if(isTouchDev()||window.MOBILE_BUILD) setTimeout(()=>setTouch(true),0);
 /* ================= online co-op (PeerJS, host-authoritative) ================= */
 const NET={role:null,peer:null,conn:null,code:'',status:'',rin:{dir:0,jump:false,jp:false,ab:false,ap:false,fire:false,use:false,nx:false},acc:{},snapT:0,lastG:'',hostState:'',ping:0};
 // --- online via public MQTT brokers (works through any router/mobile network, no direct connection needed) ---
-const NET_VER=3, MQTT_BROKERS=['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://test.mosquitto.org:8081/mqtt'];
+const NET_VER=4, MQTT_BROKERS=['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://test.mosquitto.org:8081/mqtt'];
 const te=new TextEncoder(), td=new TextDecoder();
 function mqttStr(s){ const b=te.encode(s); return [b.length>>8,b.length&255,...b]; }
 function mqttLen(n){ const o=[]; do{ let d=n%128; n=Math.floor(n/128); if(n>0) d|=128; o.push(d); }while(n>0); return o; }
@@ -5132,9 +5133,12 @@ async function rtcOnSig(d){
     else if(d.sdp.type==='answer'&&NET.pc) await NET.pc.setRemoteDescription(d.sdp); }catch(e){} }
 function rtcSend(o){ const c=NET.dcs&&NET.dcs[o.t==='s'?'g':'r']; if(c&&c.readyState==='open'){ try{ const s=JSON.stringify(o); if(s.length<60000){ c.send(s); return true; } }catch(e){} } return false; }
 function rtcClose(){ try{ for(const k in NET.dcs||{}) NET.dcs[k].close(); }catch(e){} NET.dcs={}; try{ NET.pc&&NET.pc.close(); }catch(e){} NET.dc=null; NET.pc=null; NET.direct=false; }
-function netFail(msg){ NET.creating=false; NET.status='⚠ '+msg; try{ NET.mq&&NET.mq.close(); }catch(e){} NET.mq=null; NET.conn=null; NET.role=null; NET.waiting=false; clearInterval(NET.hello); clearInterval(NET.watch); if(['net','netwait','play','dying'].includes(state)) setState('net'); }
+function netFail(msg){ NET.creating=false; NET.status='⚠ '+msg; try{ NET.mq&&NET.mq.close(); }catch(e){} NET.mq=null; NET.conn=null; NET.role=null; NET.waiting=false; clearInterval(NET.hello); clearInterval(NET.watch); clearInterval(NET.hb); if(['net','netwait','play','dying'].includes(state)) setState('net'); }
 function netCode(){ const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let c=''; for(let i=0;i<5;i++) c+=A[Math.floor(Math.random()*A.length)]; return c; }
-function netWatch(){ NET.lastRx=performance.now(); clearInterval(NET.watch); NET.watch=setInterval(()=>{ if(NET.role&&performance.now()-NET.lastRx>9000) netLost(NET.role==='host'?'Друг пропал из сети':'Хост пропал из сети'); },1000); }
+function netWatch(){ NET.lastRx=performance.now(); clearInterval(NET.watch); clearInterval(NET.hb);
+  // сигнал «я на связи» раз в секунду в любом состоянии (меню, лавка, пауза, итоги) — раньше гость молчал вне игры и хост его отключал
+  NET.hb=setInterval(()=>{ try{ NET.conn&&NET.conn.open&&NET.conn.send({t:'hb'}); }catch(e){} },1000);
+  NET.watch=setInterval(()=>{ if(NET.role&&performance.now()-NET.lastRx>15000) netLost(NET.role==='host'?'Друг пропал из сети':'Хост пропал из сети'); },1000); }
 function netHost(){
   NET.creating=true; NET.code=netCode(); const T='iskrabolt/'+NET.code; setState('net');
   const onH=(topic,d)=>{
@@ -5142,9 +5146,10 @@ function netHost(){
       if(d.v!==NET_VER){ if(d.t==='hello') NET.mq.pub(T+'/h',{t:'oldver',v:NET_VER}); return; }
       if(d.t==='hello'&&!NET.role){ NET.mq.pub(T+'/h',{t:'welcome',v:NET_VER}); NET.role='host'; NET.waiting=false; NET.lastG='';
         NET.conn={open:true,send:o=>{ o.v=NET_VER; if(!rtcSend(o)) NET.mq.pub(T+'/h',o); },close:()=>{ rtcClose(); }}; netWatch(); NET.onMsg=onH; rtcStart(true,o=>NET.mq.pub(T+'/h',o));
-        sfx('pick'); setMode(false); toastQ.push({small:'Онлайн',title:'Друг подключился — он играет за Болта',icon:'first'}); showToast(); startGame(Math.min(TOTAL-1,best)); }
+        sfx('pick'); NET.prev={one:solo,hero:soloHero}; setMode(false); toastQ.push({small:'Онлайн',title:'Друг подключился — он играет за Болта',icon:'first'}); showToast(); startGame(Math.min(TOTAL-1,best)); }
       else if(d.t==='cmd'&&NET.role==='host'){ NET.lastRx=performance.now(); if(d.c==='pause'&&state==='play'){ pauseOwner=1; setState('pause'); } else if(d.c==='resume'&&state==='pause'&&pauseOwner===1){ pauseOwner=null; setState('play'); } }
       else if(d.t==='in'&&NET.role==='host'){ NET.lastRx=performance.now(); if(d.p&&d.lv===levelIdx) NET.rpos=d.p; const r=NET.rin, i=d.i; r.dir=i.dir; r.jump=i.jump; r.ab=i.ab; r.fire=i.fire; r.jp=r.jp||i.jp; r.ap=r.ap||i.ap; r.use=r.use||i.use; r.nx=r.nx||i.nx; }
+      else if(d.t==='hb'&&NET.role==='host') NET.lastRx=performance.now();
       else if(d.t==='bye'&&NET.role==='host') netLost('Друг вышел из игры'); };
   NET.mq=mqttClient(onH,
     ()=>{ NET.creating=false; NET.mq.sub(T+'/g'); NET.waiting=true; NET.status='Комната создана. Скажите другу код и ждите подключения.'; if(state==='net') setState('net'); },
@@ -5158,16 +5163,19 @@ function netJoin(code){ NET.creating=false;
       if(d.t==='oldver') return netFail('У друга другая версия игры. Обновите игру на обоих устройствах.');
       if(d.v!==NET_VER) return;
       if(d.t==='welcome'&&!NET.role){ clearInterval(NET.hello); NET.role='guest'; NET.code=code; NET.hostState='';
-        NET.conn={open:true,send:o=>{ o.v=NET_VER; if(!rtcSend(o)) NET.mq.pub(T+'/g',o); },close:()=>{ NET.mq.pub(T+'/g',{t:'bye',v:NET_VER}); rtcClose(); }}; netWatch(); NET.onMsg=onG; NET.rtcPub=o=>NET.mq.pub(T+'/g',o); setMode(false); sfx('pick'); setState('netwait'); }
-      else if(d.t==='s'&&NET.role==='guest'){ NET.lastRx=performance.now(); netApply(d); } };
+        NET.conn={open:true,send:o=>{ o.v=NET_VER; if(!rtcSend(o)) NET.mq.pub(T+'/g',o); },close:()=>{ NET.mq.pub(T+'/g',{t:'bye',v:NET_VER}); rtcClose(); }}; netWatch(); NET.onMsg=onG; NET.rtcPub=o=>NET.mq.pub(T+'/g',o); NET.prev={one:solo,hero:soloHero}; setMode(false); sfx('pick'); setState('netwait'); }
+      else if(d.t==='s'&&NET.role==='guest'){ NET.lastRx=performance.now(); netApply(d); }
+      else if(d.t==='hb'&&NET.role==='guest') NET.lastRx=performance.now(); };
   NET.mq=mqttClient(onG,
     ()=>{ NET.mq.sub(T+'/h'); NET.status='Ищем комнату '+code+'…'; if(state==='net') setState('net');
       let tries=0; clearInterval(NET.hello); NET.hello=setInterval(()=>{ if(NET.role){ clearInterval(NET.hello); return; } if(++tries>14){ clearInterval(NET.hello); netFail('Комната '+code+' не отвечает. Проверьте код: комната должна быть создана и открыта на втором устройстве.'); return; } NET.mq.pub(T+'/g',{t:'hello',v:NET_VER}); },800); },
     e=>NET.role?netLost(e):netFail(e));
 }
-function netLost(msg){ const was=NET.role; try{ NET.conn&&NET.conn.close(); }catch(e){} try{ NET.mq&&NET.mq.close(); }catch(e){} NET.conn=null; NET.mq=null; NET.role=null; NET.waiting=false; clearInterval(NET.watch); clearInterval(NET.hello);
+function netLost(msg){ const was=NET.role; try{ NET.conn&&NET.conn.close(); }catch(e){} try{ NET.mq&&NET.mq.close(); }catch(e){} NET.conn=null; NET.mq=null; NET.role=null; NET.waiting=false; clearInterval(NET.watch); clearInterval(NET.hello); clearInterval(NET.hb);
+  // вернуть режим, который был до онлайна (иначе ПК остаётся в игре «вдвоём на одном компьютере»)
+  if(NET.prev){ const pv=NET.prev; NET.prev=null; setMode(pv.one,pv.hero); }
   toastQ.push({small:'Онлайн',title:msg,icon:'first'}); showToast();
-  if(was==='guest'){ NET.status=msg; setState('net'); } else if(was==='host'&&state==='play'){ pauseOwner=null; setState('pause'); } }
+  if(was==='guest'){ NET.status=msg; setState('net'); } else if(was==='host'&&['play','pause','dying','gameover','done','shop'].includes(state)){ pauseOwner=null; NET.status=msg; setState('net'); } }
 function guestPause(){ try{ NET.conn&&NET.conn.send({t:'cmd',c:'pause'}); }catch(e){} setState('netleave'); }
 function guestResume(){ try{ NET.conn&&NET.conn.send({t:'cmd',c:'resume'}); }catch(e){} setState(NET.hostState==='play'||NET.hostState==='pause'?'play':'netwait'); }
 function netLeave(){ netLost('Вы вышли из онлайн-игры'); setState('menu'); }
@@ -7057,7 +7065,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.42';
+const GAME_VER='1.43';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 window.__ib={proTest:()=>{proT=0;storyNext=null;setState("prologue");},proAt:x=>{proT=x;},cine:m=>{proMode=m||'pro';proT=0;proLast=0;storyNext=null;setState('prologue');},endTest:()=>{endT=0;setState("ending");},net:{NET,netApply,netSnap},getLevel,startGame,dmgE:(e,d)=>damageEnemy(e,d),complete:()=>complete(),hurt:i=>hurt(players[i]),setState:x=>setState(x),startDemo:()=>startDemo(),stopDemo:()=>stopDemo(),get demo(){return demo},tr:x=>tr(x),demoAt:i=>{ lastIntro=-1; loadLevel(i); follow=true; demoT=0; setState('play'); },get combo(){return combo},openSecret,nextLevel,hitBoss:(d)=>hitBoss(d),get outro(){return outro},get state(){return {state,levelIdx,boss,players,enemies,pickups,arena,run,movers,grid,ebullets,bullets}}};
 const hot=window.claude&&window.claude.hot;
