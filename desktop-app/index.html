@@ -5138,19 +5138,19 @@ function netCode(){ const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let c=''; for(le
 function netWatch(){ NET.lastRx=performance.now(); clearInterval(NET.watch); clearInterval(NET.hb);
   // сигнал «я на связи» раз в секунду в любом состоянии (меню, лавка, пауза, итоги) — раньше гость молчал вне игры и хост его отключал
   NET.hb=setInterval(()=>{ try{ NET.conn&&NET.conn.open&&NET.conn.send({t:'hb'}); }catch(e){} },1000);
-  NET.watch=setInterval(()=>{ if(NET.role&&performance.now()-NET.lastRx>15000) netLost(NET.role==='host'?'Друг пропал из сети':'Хост пропал из сети'); },1000); }
+  NET.watch=setInterval(()=>{ if(NET.role&&performance.now()-NET.lastRx>15000) netLost(NET.role==='host'?'Игрок пропал из сети':'Хост пропал из сети'); },1000); }
 function netHost(){
   NET.creating=true; NET.code=netCode(); const T='iskrabolt/'+NET.code; setState('net');
   const onH=(topic,d)=>{
       if(d.t==='rtc'){ rtcOnSig(d); return; }
       if(d.v!==NET_VER){ if(d.t==='hello') NET.mq.pub(T+'/h',{t:'oldver',v:NET_VER}); return; }
       if(d.t==='hello'&&!NET.role){ NET.mq.pub(T+'/h',{t:'welcome',v:NET_VER}); NET.role='host'; NET.waiting=false; NET.lastG='';
-        NET.conn={open:true,send:o=>{ o.v=NET_VER; if(!rtcSend(o)) NET.mq.pub(T+'/h',o); },close:()=>{ rtcClose(); }}; netWatch(); NET.onMsg=onH; rtcStart(true,o=>NET.mq.pub(T+'/h',o));
+        NET.conn={open:true,send:o=>{ o.v=NET_VER; if(!rtcSend(o)) NET.mq.pub(T+'/h',o); },close:()=>{ try{ NET.mq&&NET.mq.pub(T+'/h',{t:'bye',v:NET_VER}); }catch(e){} rtcClose(); }}; netWatch(); NET.onMsg=onH; rtcStart(true,o=>NET.mq.pub(T+'/h',o));
         sfx('pick'); NET.prev={one:solo,hero:soloHero}; setMode(false); toastQ.push({small:'Онлайн',title:'Друг подключился — он играет за Болта',icon:'first'}); showToast(); startGame(Math.min(TOTAL-1,best)); }
       else if(d.t==='cmd'&&NET.role==='host'){ NET.lastRx=performance.now(); if(d.c==='pause'&&state==='play'){ pauseOwner=1; setState('pause'); } else if(d.c==='resume'&&state==='pause'&&pauseOwner===1){ pauseOwner=null; setState('play'); } }
       else if(d.t==='in'&&NET.role==='host'){ NET.lastRx=performance.now(); if(d.p&&d.lv===levelIdx) NET.rpos=d.p; const r=NET.rin, i=d.i; r.dir=i.dir; r.jump=i.jump; r.ab=i.ab; r.fire=i.fire; r.jp=r.jp||i.jp; r.ap=r.ap||i.ap; r.use=r.use||i.use; r.nx=r.nx||i.nx; }
       else if(d.t==='hb'&&NET.role==='host') NET.lastRx=performance.now();
-      else if(d.t==='bye'&&NET.role==='host') netLost('Друг вышел из игры'); };
+      else if(d.t==='bye'&&NET.role==='host') netLost('Игрок вышел из игры'); };
   NET.mq=mqttClient(onH,
     ()=>{ NET.creating=false; NET.mq.sub(T+'/g'); NET.waiting=true; NET.status='Комната создана. Скажите другу код и ждите подключения.'; if(state==='net') setState('net'); },
     e=>NET.role?netLost(e):netFail(e));
@@ -5165,7 +5165,8 @@ function netJoin(code){ NET.creating=false;
       if(d.t==='welcome'&&!NET.role){ clearInterval(NET.hello); NET.role='guest'; NET.code=code; NET.hostState='';
         NET.conn={open:true,send:o=>{ o.v=NET_VER; if(!rtcSend(o)) NET.mq.pub(T+'/g',o); },close:()=>{ NET.mq.pub(T+'/g',{t:'bye',v:NET_VER}); rtcClose(); }}; netWatch(); NET.onMsg=onG; NET.rtcPub=o=>NET.mq.pub(T+'/g',o); NET.prev={one:solo,hero:soloHero}; setMode(false); sfx('pick'); setState('netwait'); }
       else if(d.t==='s'&&NET.role==='guest'){ NET.lastRx=performance.now(); netApply(d); }
-      else if(d.t==='hb'&&NET.role==='guest') NET.lastRx=performance.now(); };
+      else if(d.t==='hb'&&NET.role==='guest') NET.lastRx=performance.now();
+      else if(d.t==='bye'&&NET.role==='guest') netLost('Хост вышел из игры'); };
   NET.mq=mqttClient(onG,
     ()=>{ NET.mq.sub(T+'/h'); NET.status='Ищем комнату '+code+'…'; if(state==='net') setState('net');
       let tries=0; clearInterval(NET.hello); NET.hello=setInterval(()=>{ if(NET.role){ clearInterval(NET.hello); return; } if(++tries>14){ clearInterval(NET.hello); netFail('Комната '+code+' не отвечает. Проверьте код: комната должна быть создана и открыта на втором устройстве.'); return; } NET.mq.pub(T+'/g',{t:'hello',v:NET_VER}); },800); },
@@ -6981,14 +6982,28 @@ function addBot(){ const R=L.room; if(!R||L.role!=='host'||Object.keys(R.players
 function copyCode(){ const done=()=>{ L.status='Код '+L.code+' скопирован — отправьте его друзьям.'; render(); setTimeout(()=>{ if(L.status.startsWith('Код ')){ L.status=''; render(); } },2500); };
   try{ navigator.clipboard.writeText(L.code).then(done,()=>{ L.status='Код комнаты: '+L.code; render(); }); }catch(e){ L.status='Код комнаты: '+L.code; render(); } }
 function roomPub(){ if(L.role==='host'&&L.mq) L.mq.pub(L.T+'r',{t:'room',room:roomPack()}); }
+function roomNotice(msg){ L.status=msg; try{ toastQ.push({small:'Арена',title:msg,icon:'first'}); showToast(); }catch(e){} }
+function roomPrune(){ const R=L.room; if(!R||L.role!=='host') return; const now=Date.now(), gone=[];
+  for(const id in R.players){ const p=R.players[id]; if(id!==L.me&&!p.bot&&now-p.seen>8000){ gone.push(p.name); delete R.players[id]; } }
+  if(gone.length){ const msg=(gone.length>1?'Игроки вышли: ':'Игрок вышел: ')+gone.join(', '); roomPub(); try{ L.mq.pub(L.T+'r',{t:'left',msg}); }catch(e){} roomNotice(msg); render(); } }
+// хост ушёл: хостом становится следующий живой игрок по порядку входа (у всех одинаковый порядок — из последнего состава комнаты)
+function roomElect(old){ const R=L.room; if(!R) return null; L.gone=L.gone||new Set(); L.gone.add(old); delete R.players[old];
+  const next=Object.values(R.players).find(p=>!p.bot); if(!next) return null; R.host=next.id;
+  if(next.id===L.me){ L.role='host'; const now=Date.now(); for(const id in R.players) R.players[id].seen=now; clearInterval(L.joinI);
+    L.mq.sub(L.T+'c'); clearInterval(L.pruneI); L.pruneI=setInterval(roomPrune,2000); roomPub(); }
+  L.lastRoom=Date.now(); return next; }
+function hostGone(oldName,why){ const nx=roomElect(L.room&&L.room.host); if(!nx){ roomNotice('Хост вышел. Вы остались одни.'); render(); return; }
+  roomNotice((why||'Хост вышел')+'. '+(nx.id===L.me?'Теперь хост — вы.':'Новый хост — '+nx.name+'.')); render(); }
 function netStart(isHost){
-  const hb=()=>{ if(isHost){ roomPub(); } else if(L.mq){ L.mq.pub(L.T+'c',{t:'hb',id:L.me}); } };
-  L.mq=mqttClient(isHost?onHostMsg:onGuestMsg,
+  const hb=()=>{ if(L.role==='host'){ roomPub(); } else if(L.mq){
+      if(L.room&&L.room.players[L.me]&&Date.now()-L.lastRoom>6000) hostGone('', 'Хост пропал из сети');
+      if(L.role==='guest') L.mq.pub(L.T+'c',{t:'hb',id:L.me}); } };
+  L.mq=mqttClient((t,d)=>(L.role==='host'?onHostMsg:onGuestMsg)(t,d),
     ()=>{
       if(isHost){ L.mq.sub(L.T+'c'); roomPub(); render(); }
       else { L.mq.sub(L.T+'r'); L.status='Подключаемся к комнате '+L.code+'…'; tryJoin(); render(); }
-      clearInterval(L.hbI); L.hbI=setInterval(hb,isHost?1000:2000);
-      if(isHost){ clearInterval(L.pruneI); L.pruneI=setInterval(()=>{ const now=Date.now(); let ch=false; for(const id in L.room.players){ if(id!==L.me&&!L.room.players[id].bot&&now-L.room.players[id].seen>8000){ delete L.room.players[id]; ch=true; } } if(ch){ roomPub(); render(); } },2000); }
+      clearInterval(L.hbI); L.hbI=setInterval(hb,1000);
+      if(isHost){ clearInterval(L.pruneI); L.pruneI=setInterval(roomPrune,2000); }
     },
     e=>{ L.status=e; leaveRoom(true); view='online'; render(); });
 }
@@ -7010,7 +7025,8 @@ function joinRoom(code){
   view='room'; netStart(false); render();
 }
 function leaveRoom(silent){
-  try{ if(L.mq){ if(L.role==='host') L.mq.pub(L.T+'r',{t:'closed'}); else L.mq.pub(L.T+'c',{t:'bye',id:L.me}); L.mq.close(); } }catch(e){}
+  try{ if(L.mq){ if(L.role==='host'){ const others=L.room&&Object.values(L.room.players).some(p=>!p.bot&&p.id!==L.me); L.mq.pub(L.T+'r',others?{t:'migrate',room:roomPack(),old:L.me}:{t:'closed'}); } else L.mq.pub(L.T+'c',{t:'bye',id:L.me}); L.mq.close(); } }catch(e){}
+  L.gone=null;
   clearInterval(L.hbI); clearInterval(L.pruneI); clearInterval(L.joinI);
   L.mq=null; L.role=null; L.room=null; L.started=false; L.ready=false; L.code='';
   if(!silent){ L.status=''; view='online'; render(); }
@@ -7023,13 +7039,17 @@ function onHostMsg(topic,d){
     R.players[d.id]={id:d.id,name:String(d.n||'Игрок').slice(0,16),cfg:sanitize(d.cfg),ready:false,seen:Date.now()};
   } else if(d.t==='upd'&&R.players[d.id]){ const p=R.players[d.id]; p.seen=Date.now(); if(d.cfg) p.cfg=sanitize(d.cfg); if(typeof d.r==='boolean') p.ready=d.r; }
   else if(d.t==='hb'&&R.players[d.id]){ R.players[d.id].seen=Date.now(); return; }
-  else if(d.t==='bye'){ delete R.players[d.id]; }
+  else if(d.t==='bye'){ const p=R.players[d.id]; delete R.players[d.id]; if(p){ const msg='Игрок вышел: '+p.name; try{ L.mq.pub(L.T+'r',{t:'left',msg}); }catch(e){} roomNotice(msg); } }
   else return;
   roomPub(); render();
 }
+function roomFrom(r){ return {host:r.host,mode:r.mode,map:r.map,botLvl:r.botLvl,players:Object.fromEntries(r.players.map(p=>[p.id,{id:p.id,name:p.n,cfg:p.cfg,ready:p.r,bot:!!p.b}]))}; }
 function onGuestMsg(topic,d){
   if(!d||!d.t) return;
-  if(d.t==='room'&&d.room){ L.room={host:d.room.host,mode:d.room.mode,map:d.room.map,botLvl:d.room.botLvl,players:Object.fromEntries(d.room.players.map(p=>[p.id,{id:p.id,name:p.n,cfg:p.cfg,ready:p.r,bot:!!p.b}]))}; L.lastRoom=Date.now(); const me=L.room.players[L.me]; if(me) L.ready=me.ready; if(me){ clearInterval(L.joinI); L.status=''; } L.started=!!d.room.started; if(L.started){ L.status='Хост запустил бой! Сетевой бой ещё в разработке — пока у хоста за вас играет бот.'; } render(); }
+  if(d.t==='room'&&d.room&&L.gone&&L.gone.has(d.room.host)) return;   // запоздалый пакет от ушедшего хоста
+  if(d.t==='left'&&d.msg){ roomNotice(d.msg); render(); return; }
+  if(d.t==='migrate'&&d.room){ L.room=roomFrom(d.room); hostGone(); return; }
+  if(d.t==='room'&&d.room){ L.room={host:d.room.host,mode:d.room.mode,map:d.room.map,botLvl:d.room.botLvl,players:Object.fromEntries(d.room.players.map(p=>[p.id,{id:p.id,name:p.n,cfg:p.cfg,ready:p.r,bot:!!p.b}]))}; L.lastRoom=Date.now(); const me=L.room.players[L.me]; if(me) L.ready=me.ready; if(me&&L.joinI){ clearInterval(L.joinI); L.joinI=null; L.status=''; } L.started=!!d.room.started; if(L.started){ L.status='Хост запустил бой! Сетевой бой ещё в разработке — пока у хоста за вас играет бот.'; } render(); }
   else if(d.t==='full'&&d.to===L.me){ L.status='Комната полная (12 игроков).'; leaveRoom(true); render(); }
   else if(d.t==='closed'){ L.status='Хост закрыл комнату.'; leaveRoom(true); render(); }
 }
@@ -7065,7 +7085,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.43';
+const GAME_VER='1.44';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 window.__ib={proTest:()=>{proT=0;storyNext=null;setState("prologue");},proAt:x=>{proT=x;},cine:m=>{proMode=m||'pro';proT=0;proLast=0;storyNext=null;setState('prologue');},endTest:()=>{endT=0;setState("ending");},net:{NET,netApply,netSnap},getLevel,startGame,dmgE:(e,d)=>damageEnemy(e,d),complete:()=>complete(),hurt:i=>hurt(players[i]),setState:x=>setState(x),startDemo:()=>startDemo(),stopDemo:()=>stopDemo(),get demo(){return demo},tr:x=>tr(x),demoAt:i=>{ lastIntro=-1; loadLevel(i); follow=true; demoT=0; setState('play'); },get combo(){return combo},openSecret,nextLevel,hitBoss:(d)=>hitBoss(d),get outro(){return outro},get state(){return {state,levelIdx,boss,players,enemies,pickups,arena,run,movers,grid,ebullets,bullets}}};
 const hot=window.claude&&window.claude.hot;
