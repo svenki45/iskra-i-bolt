@@ -444,6 +444,8 @@ body.b3d .overlay .tog{padding:3px 0}
 #arUI .arBtns .arLvl .arChips{justify-content:center}
 #arUI .arBtns .arLvl button.arChip{font-family:var(--body);font-size:13px;padding:6px 12px}
 #arUI .arBtns .arLvl button.arChip.on{color:var(--brass)}
+#arUI .arName{display:flex;align-items:center;gap:10px;justify-content:center;font-size:14px;color:#93a9cb}
+#arUI .arName input{width:200px;font:inherit;font-size:15px;color:var(--ink);background:var(--panel);border:1px solid rgba(156,195,255,.35);border-radius:8px;padding:8px 10px}
 #arUI .arCode{display:flex;align-items:center;justify-content:center;gap:14px;margin:4px auto 6px;padding:10px 16px;border-radius:14px;background:rgba(255,209,102,.1);border:1px dashed rgba(255,209,102,.6);width:max-content;max-width:100%}
 #arUI .arCode span{font-size:13px;color:#93a9cb;text-transform:uppercase;letter-spacing:.08em}
 #arUI .arCode b{font-family:var(--display);font-size:30px;letter-spacing:.22em;color:#ffd166}
@@ -6839,13 +6841,14 @@ function render(){
     put(`<div class="arCard"><h2>ОНЛАЙН-КОМНАТА</h2>
       <p class="arSub">${L.status?L.status:'Создайте комнату и отправьте код друзьям, или войдите по коду. До 12 игроков.'}</p>
       <div class="arBtns">
+        <label class="arName"><span>Ваше имя</span><input id="arName" maxlength="16" placeholder="Как вас называть" autocomplete="off" value="${cleanName((()=>{ try{ return localStorage.getItem('iskra-arena-name'); }catch(e){ return ''; } })())}"></label>
         <button class="primary" data-act="create">Создать комнату<small>вы — хост</small></button>
         <div class="arJoin"><input id="arCode" maxlength="5" placeholder="КОД" autocomplete="off"><button class="secondary" data-act="join">Войти</button></div>
         <button class="secondary" data-act="hub">Назад</button>
       </div></div>`);
   } else if(view==='room'){
     const R=L.room, ps=R?Object.values(R.players):[], host=R&&R.host===L.me, full=ps.length>=ROOM_MAX;
-    const row=p=>`<div class="arRow${p.id===L.me?' me':''}"><span class="arDot${p.ready||p.bot?' on':''}"></span><b>${p.name}</b><span class="arHero" style="color:${p.cfg&&p.cfg.color||'#e8effa'}">${p.cfg&&p.cfg.hero==='bolt'?'Болт':'Искра'}</span>${p.id===R.host?'<em>хост</em>':''}${p.bot?'<em class="bot">бот</em>':''}${host&&p.bot?`<button class="arX" data-act="kick" data-v="${p.id}" aria-label="Убрать бота">×</button>`:''}</div>`;
+    const row=p=>`<div class="arRow${p.id===L.me?' me':''}"><span class="arDot${p.ready||p.bot?' on':''}"></span><b>${cleanName(p.name)}</b><span class="arHero" style="color:${p.cfg&&p.cfg.color||'#e8effa'}">${p.cfg&&p.cfg.hero==='bolt'?'Болт':'Искра'}</span>${p.id===R.host?'<em>хост</em>':''}${p.bot?'<em class="bot">бот</em>':''}${host&&p.bot?`<button class="arX" data-act="kick" data-v="${p.id}" aria-label="Убрать бота">×</button>`:''}</div>`;
     const modes=Object.keys(RMODES).map(m=>`<button class="opt arChip${R&&R.mode===m?' on':''}" data-act="mode" data-v="${m}" ${host?'':'disabled'}>${RMODES[m].n}</button>`).join('');
     put(`<div class="arCard wide">
       <h2>ОНЛАЙН-КОМНАТА</h2>
@@ -6910,8 +6913,8 @@ function onClick(e){
   else if(a==='preset'){ Object.assign(cfgs[slot],PRESET[cfgs[slot].hero]); saveCfg(slot); render(); }
   else if(a==='set'){ cfgs[slot][k]=v; saveCfg(slot); render(); }
   else if(a==='online'){ view='online'; L.status=''; render(); }
-  else if(a==='create'){ createRoom(); }
-  else if(a==='join'){ joinRoom((document.getElementById('arCode')||{}).value); }
+  else if(a==='create'){ const ni=document.getElementById('arName'); if(ni) setMyName(ni.value); createRoom(); }
+  else if(a==='join'){ const ni=document.getElementById('arName'); if(ni) setMyName(ni.value); joinRoom((document.getElementById('arCode')||{}).value); }
   else if(a==='leave'){ leaveRoom(false); }
   else if(a==='ready'){ setReady(!L.ready); }
   else if(a==='start'){ startOnline(); }
@@ -6975,7 +6978,9 @@ const RMODES={
 const ROOM_MAX=12, CFG_KEYS=['hero','body','head','eyes','arms','color','accent'];
 const L={role:null,code:'',T:'',mq:null,room:null,me:'',ready:false,started:false,status:'',lastRoom:0,hbI:null,pruneI:null,joinI:null,joinTries:0};
 L.me=(()=>{ try{ let id=sessionStorage.getItem('iskra-arena-id'); if(!id){ id=Math.random().toString(36).slice(2,9); sessionStorage.setItem('iskra-arena-id',id); } return id; }catch(e){ return Math.random().toString(36).slice(2,9); } })();
-const myName=()=>{ try{ return (localStorage.getItem('iskra-arena-name')||'Игрок '+L.me.slice(0,3)).slice(0,16); }catch(e){ return 'Игрок'; } };
+const cleanName=v=>String(v||'').replace(/<[^>]*>/g,'').replace(/[<>&"'`\\]/g,'').replace(/\s+/g,' ').trim().slice(0,16);
+const myName=()=>{ try{ return cleanName(localStorage.getItem('iskra-arena-name'))||('Игрок '+L.me.slice(0,3)); }catch(e){ return 'Игрок'; } };
+function setMyName(v){ const n=cleanName(v); try{ if(n) localStorage.setItem('iskra-arena-name',n); else localStorage.removeItem('iskra-arena-name'); }catch(e){} }
 const sanitize=c=>{ const o={}; for(const k of CFG_KEYS) if(c&&k in c) o[k]=c[k]; return o; };
 function roomPack(){ const R=L.room; return {host:R.host,mode:R.mode,map:R.map,botLvl:R.botLvl||botLvl,started:L.started,players:Object.values(R.players).map(p=>({id:p.id,n:p.name,cfg:p.cfg,r:p.ready,b:p.bot?1:0}))}; }
 function addBot(){ const R=L.room; if(!R||L.role!=='host'||Object.keys(R.players).length>=ROOM_MAX) return false; const used=new Set(Object.values(R.players).map(p=>p.name)); let n=1; while(used.has('Бот '+n)) n++; const id='bot-'+Math.random().toString(36).slice(2,8); R.players[id]={id,name:'Бот '+n,cfg:sanitize(randCfg()),ready:true,bot:true,seen:Date.now()}; return true; }
@@ -7036,7 +7041,7 @@ function onHostMsg(topic,d){
   if(d.t==='join'){
     if(L.started) return;
     if(!R.players[d.id]&&Object.keys(R.players).length>=ROOM_MAX){ const b=Object.values(R.players).find(p=>p.bot); if(b) delete R.players[b.id]; else { L.mq.pub(L.T+'r',{t:'full',to:d.id}); return; } }
-    R.players[d.id]={id:d.id,name:String(d.n||'Игрок').slice(0,16),cfg:sanitize(d.cfg),ready:false,seen:Date.now()};
+    R.players[d.id]={id:d.id,name:cleanName(d.n)||'Игрок',cfg:sanitize(d.cfg),ready:false,seen:Date.now()};
   } else if(d.t==='upd'&&R.players[d.id]){ const p=R.players[d.id]; p.seen=Date.now(); if(d.cfg) p.cfg=sanitize(d.cfg); if(typeof d.r==='boolean') p.ready=d.r; }
   else if(d.t==='hb'&&R.players[d.id]){ R.players[d.id].seen=Date.now(); return; }
   else if(d.t==='bye'){ const p=R.players[d.id]; delete R.players[d.id]; if(p){ const msg='Игрок вышел: '+p.name; try{ L.mq.pub(L.T+'r',{t:'left',msg}); }catch(e){} roomNotice(msg); } }
@@ -7085,7 +7090,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.44';
+const GAME_VER='1.45';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 window.__ib={proTest:()=>{proT=0;storyNext=null;setState("prologue");},proAt:x=>{proT=x;},cine:m=>{proMode=m||'pro';proT=0;proLast=0;storyNext=null;setState('prologue');},endTest:()=>{endT=0;setState("ending");},net:{NET,netApply,netSnap},getLevel,startGame,dmgE:(e,d)=>damageEnemy(e,d),complete:()=>complete(),hurt:i=>hurt(players[i]),setState:x=>setState(x),startDemo:()=>startDemo(),stopDemo:()=>stopDemo(),get demo(){return demo},tr:x=>tr(x),demoAt:i=>{ lastIntro=-1; loadLevel(i); follow=true; demoT=0; setState('play'); },get combo(){return combo},openSecret,nextLevel,hitBoss:(d)=>hitBoss(d),get outro(){return outro},get state(){return {state,levelIdx,boss,players,enemies,pickups,arena,run,movers,grid,ebullets,bullets}}};
 const hot=window.claude&&window.claude.hot;
