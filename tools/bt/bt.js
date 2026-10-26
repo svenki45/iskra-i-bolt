@@ -9,7 +9,8 @@ const FL=17, TOP=6;        // гонка: ряд пола и последний 
 const H0={spark:30,bolt:56}, HD={spark:15,bolt:20};   // рост стоя / пригнувшись
 const JV=760, JV2=700, GX=0.45;   // гонка: скорость прыжка и добавка к тяжести (прыжок короче и резче)
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-const speedMul=()=>{ const D=diffLv(); return D<0?0.86:D===0?1:D===1?1.08:1.15; };
+const PACE=1.5;
+const speedMul=()=>{ const D=diffLv(); return PACE*(D<0?0.86:D===0?1:D===1?1.08:1.15); };
 const warnTime=()=>{ const D=diffLv(); return D<0?2.1:D===0?1.6:D===1?1.25:1.0; };
 const live=()=>(players||[]).filter(p=>!p.absent&&!p.dead);
 const pidx=p=>players.indexOf(p);
@@ -145,7 +146,7 @@ function chasePost(dt){
   if(P.wait>0){ P.wait-=dt; if(P.wait<=0){ sfx('slam'); shake=Math.max(shake,8); banner('ПРЕСС ПОШЁЛ!','#ff6b6b',1); } }
   else { P.t+=dt; const top=Math.min(...L.map(p=>p.y));
     const D=diffLv(); const cm=D<0?0.8:1+0.05*D; let v=Math.min(72*cm,38+P.t*0.5)*cm; const gap=top-P.y; if(gap>9*T) v+=Math.min((gap-9*T)*0.5,v*0.3);
-    P.y+=v*dt; if(Math.random()<dt*3) shake=Math.max(shake,1.5); }
+    P.y+=v*PACE*dt; if(Math.random()<dt*3) shake=Math.max(shake,1.5); }
   for(const p of L){ if(p.y<P.y-4&&state==='play'){ burst(p.x+p.w/2,p.y+p.h/2,24,['#ff6b6b','#fff'],380,.6); texts.push({x:p.x+p.w/2,y:p.y-20,t:'РАЗДАВИЛО!',life:1.2,c:'#ff6b6b',pop:true}); die(p,'crush'); return; } }
   for(const f of B.flags){ if(f.on) continue; const ly=B.layers[f.i]; if(L.some(p=>p.y>ly.y*T)){ f.on=true; S.cp={lvl:levelIdx,i:f.i+1<B.layers.length?f.i+1:f.i}; sfx('pk_shield'); texts.push({x:VW/2,y:ly.y*T+40,t:'ФЛАЖОК!',life:1.4,c:'#7fe08a',pop:true}); } }
   platformPost(dt);
@@ -264,13 +265,13 @@ function liftLevel(D){
     bt:{kind:'lift',dur:D.dur}};
 }
 function genHaz(dur){
-  const R=rng(4242), D=diffLv(), out=[]; let t=3.6; const v0=250+25*D, g0=D<0?2.6:D===0?2.3:D===1?2.0:1.8, order=['low','floor','high','wall','pair','low','floor','wall','high','pair'];
+  const R=rng(4242), D=diffLv(), out=[]; let t=3.6; const v0=(250+25*D)*PACE, g0=D<0?2.6:D===0?2.3:D===1?2.0:1.8, gk=1/1.25, order=['low','floor','high','wall','pair','low','floor','wall','high','pair'];
   let i=0; while(t<dur-5){ const k=order[i++%order.length], pr=t/dur, v=v0*(1+0.25*pr), side=R()<.5?-1:1, mk=(sd,hi,tt)=>({k:'saw',hi,x0:sd<0?LX0-18:LX1+18,vx:(sd<0?1:-1)*v,y:LFL-(hi?100:17),t0:tt-0.9,t1:tt,side:sd});
     if(k==='low') out.push(mk(side,false,t)); else if(k==='high') out.push(mk(side,true,t));
     else if(k==='pair'){ out.push(mk(side,false,t)); out.push(mk(-side,true,t+0.8)); }
     else if(k==='floor'){ const cx=(8+R()*16)*T; out.push({k:'floor',cx,w:3.4*T,t0:t-0.9,t1:t,t2:t+0.9}); if(pr>.45){ const c2=cx+(cx>16*T?-1:1)*7*T; out.push({k:'floor',cx:c2,w:3.4*T,t0:t-0.9,t1:t,t2:t+0.9}); } }
     else out.push({k:'wall',side,w:3.4*T,t0:t-0.9,t1:t,t2:t+1.0});
-    t+=g0*(1-0.3*pr); }
+    t+=g0*gk*(1-0.3*pr); }
   return out;
 }
 function setupLift(L){ BTX.z=1.5; S.lt=0; S.haz=genHaz(L.bt.dur); exitLocked=true; S.opened=false; S.hintT=7; banner('ПОДЪЁМ!','#c79bff',1.3); }
@@ -313,7 +314,7 @@ function rocketPre(dt){
   const B=S.L.bt, L=live(); if(!L.length) return;
   if(S.freeze>0){ S.freeze-=dt; S.v=0; if(S.freeze<=0){ banner('ПОЛЕТЕЛИ!','#ffd166',.9); sfx('boost'); } return; }
   const lead=Math.max(...L.map(p=>p.x)), prog=clamp(lead/T/B.finishX,0,1);
-  S.v=approach(S.v,(B.base+(B.top-B.base)*prog)*speedMul(),500*dt); S.gt=(S.gt||0)+dt; if(B.tube) S.fuel=100;
+  S.v=approach(S.v,(B.base+(B.top-B.base)*prog)*speedMul()/PACE*1.25,500*dt); S.gt=(S.gt||0)+dt; if(B.tube) S.fuel=100;
   const D=diffLv(); S.fuel=Math.max(0,S.fuel-(D<0?2.4:D===0?3.2:D===1?3.8:4.4)*dt);
 }
 function rocketPhys(p,h){
@@ -495,7 +496,7 @@ control=function(p,inp,dt){
     return;
   }
   if(S.kind==='rocket'&&p.rocket){
-    const up=inp.jump||padUp(pi), dn=inp.ab||padDn(pi); let want=up?-300:dn?300:0; if(S.fuel<=0) want=230; if(S.freeze>0) want=0;
+    const up=inp.jump||padUp(pi), dn=inp.ab||padDn(pi); const VY=300*1.12; let want=up?-VY:dn?VY:0; if(S.fuel<=0) want=230; if(S.freeze>0) want=0;
     p.rocket.vy=approach(p.rocket.vy,want,1800*dt);
     _control(p,{dir:0,jump:false,jp:false,ab:false,ap:false,fire:inp.fire,use:inp.use,nx:inp.nx},dt); p.face=1; return;
   }
@@ -520,7 +521,7 @@ function ropePhys(p,h){
   if(p.vy<-420){ R.vy=-300; }                     // отскок: прыжок на врага / шипы
   const L=Math.max(160,p.y-R.ay), dx=p.x+p.w/2-R.ax;
   R.vx+=(R.in.dir*1500-dx*(G/L)*0.5)*h; R.vx*=1-1.1*h; R.vx=clamp(R.vx,-430,430);
-  let want=R.in.dn?300:R.in.up?-150:70;
+  let want=R.in.dn?300:R.in.up?-150:70*PACE;
   if(!solo){ const o=players.find(q=>q!==p&&!q.absent&&!q.dead); if(o&&want>0&&p.y>o.y+7*T) want=0; }
   R.vy=approach(R.vy,want,1500*h);
   const nx=p.x+R.vx*h;
