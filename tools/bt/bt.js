@@ -298,15 +298,18 @@ function genHaz(dur){
     t+=g0*gk*(1-0.3*pr); }
   return out;
 }
-function setupLift(L){ BTX.z=1.5; S.lt=0; S.haz=genHaz(L.bt.dur); exitLocked=true; S.opened=false; S.hintT=7; banner('ПОДЪЁМ!','#c79bff',1.3); }
+function setupLift(L){ BTX.z=1.5; S.lt=0; S.haz=genHaz(L.bt.dur); S.pidle=new Map(); exitLocked=true; S.opened=false; S.hintT=7; banner('ПОДЪЁМ!','#c79bff',1.3); }
 function hazRect(h){
   if(h.k==='saw') return {x:h.x-15,y:h.y-15,w:30,h:30};
   if(h.k==='floor') return {x:h.cx-h.w/2,y:LFL-28,w:h.w,h:28};
+  if(h.k==='col') return {x:h.cx-h.w/2,y:3*T,w:h.w,h:LFL-3*T};
   return {x:h.side<0?LX0:LX1-h.w,y:3*T,w:h.w,h:LFL-3*T};
 }
 function liftPost(dt){
   S.hintT=Math.max(0,S.hintT-dt); S.lt+=dt; const dur=S.L.bt.dur;
   for(const h of S.haz){ if(h.k==='saw'){ if(S.lt<h.t1) continue; h.x=h.x0+h.vx*(S.lt-h.t1); if(h.dead) continue; if(h.x<LX0-60||h.x>LX1+60) h.dead=true; } }
+  for(const p of live()){ const fy=p.y+p.h, hi=!p.down&&fy<LFL-T*2&&p.onGround, c=p.x+p.w/2; let q=S.pidle.get(p); if(!q){ q={a:c,t:0}; S.pidle.set(p,q); }
+    if(!hi||Math.abs(c-q.a)>T*1.2){ q.a=c; q.t=0; } else { q.t+=dt; if(q.t>2.2){ q.t=-0.6; S.haz.push({k:'col',cx:c,w:T*2.6,t0:S.lt,t1:S.lt+0.9,t2:S.lt+1.8}); } } }
   for(const p of live()){ if(p.down||p.inv>0) continue; for(const h of S.haz){ if(h.dead) continue;
       const act=h.k==='saw'?S.lt>=h.t1:(S.lt>=h.t1&&S.lt<=h.t2); if(!act) continue; const r=hazRect(h);
       if(h.k==='saw'?(h.hi?(p.y<h.y+15&&p.y+p.h>h.y-15):true)&&overlap(p,r):overlap(p,r)){ _hurt(p); p.vy=-360; p.vx=(p.x+p.w/2<(r.x+r.w/2)?-1:1)*260; texts.push({x:p.x+p.w/2,y:p.y-30,t:h.k==='saw'?'ПИЛА!':'ШИПЫ!',life:1,c:'#ff6b6b',pop:true}); sfx('hit'); shake=Math.max(shake,6); break; } } }
@@ -324,6 +327,7 @@ function drawLift(){
       else if(t>=h.t1){ ctx.save(); ctx.translate(h.x,h.y); ctx.rotate(t*14*(h.vx>0?1:-1)); ctx.fillStyle='#cfd8e0'; ctx.beginPath(); for(let k=0;k<16;k++){ const a=k/16*Math.PI*2, r=k%2?12:19; ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r); } ctx.closePath(); ctx.fill(); ctx.fillStyle='#5b6b7a'; ctx.beginPath(); ctx.arc(0,0,6,0,7); ctx.fill(); ctx.restore(); if(h.hi){ ctx.strokeStyle='rgba(207,216,224,.35)'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(h.x0,h.y); ctx.lineTo(h.x,h.y); ctx.stroke(); } }
     } else if(t>=h.t0&&t<=h.t2){ const r=hazRect(h), warn=t<h.t1;
       if(warn){ ctx.globalAlpha=fl?.5:.25; ctx.fillStyle='#ff4d5e'; ctx.fillRect(r.x,h.k==='floor'?LFL-8:r.y,r.w,h.k==='floor'?8:r.h); ctx.globalAlpha=1; label('ШИПЫ!',r.x+r.w/2,h.k==='floor'?LFL-40:LFL-120,12,'#ff6b6b'); }
+      else if(h.k==='col'){ ctx.fillStyle='#e6edf3'; const n=Math.round(r.w/22); for(let k=0;k<n;k++){ const x=r.x+k*r.w/n; ctx.beginPath(); ctx.moveTo(x,r.y); ctx.lineTo(x+r.w/n/2,r.y+r.h); ctx.lineTo(x+r.w/n,r.y); ctx.closePath(); ctx.fill(); } }
       else { ctx.fillStyle='#e6edf3'; const n=Math.round(r.w/22); if(h.k==='floor'){ for(let k=0;k<n;k++){ const x=r.x+k*r.w/n; ctx.beginPath(); ctx.moveTo(x,LFL); ctx.lineTo(x+r.w/n/2,LFL-28); ctx.lineTo(x+r.w/n,LFL); ctx.closePath(); ctx.fill(); } }
         else { const m=Math.round(r.h/26); for(let k=0;k<m;k++){ const y=r.y+k*r.h/m; ctx.beginPath(); if(h.side<0){ ctx.moveTo(r.x,y); ctx.lineTo(r.x+r.w,y+r.h/m/2); ctx.lineTo(r.x,y+r.h/m); } else { ctx.moveTo(r.x+r.w,y); ctx.lineTo(r.x,y+r.h/m/2); ctx.lineTo(r.x+r.w,y+r.h/m); } ctx.closePath(); ctx.fill(); } } } } }
   ctx.restore();
