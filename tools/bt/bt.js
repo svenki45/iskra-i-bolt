@@ -1433,7 +1433,6 @@ const DORDER=['easy','normal','hard','nightmare'];
 const _setState=setState;
 setState=function(s){
   if(CAMPAIGN){ _setState(s);
-    if(s==='title'){ for(const id of ['bOnline','tArena','tEditor','tMyGame']){ const el=document.getElementById(id); if(el) el.remove(); } }
     return; }
   if(s==='ending'){ _setState('btend');
     overlay.innerHTML=`<div class="card"><span class="eyebrow">Испытания пройдены</span><h2><span class="s">Искра</span> и <span class="b">Болт</span> справились!</h2>

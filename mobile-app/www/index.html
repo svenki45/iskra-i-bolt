@@ -1705,7 +1705,7 @@ const HATS=[{id:'none',n:'Без шапки'},{id:'cap',n:'Кепка'},{id:'bow
 const LIMBS=[{id:'on',n:'Ручки и ножки'},{id:'off',n:'Без них'}];
 const TRAILS=[{id:'none',n:'Нет'},{id:'sparkle',n:'Блёстки'},{id:'hearts',n:'Сердечки'},{id:'stars',n:'Звёзды'},{id:'rainbow',n:'Радуга'},{id:'notes',n:'Ноты'},{id:'smoke',n:'Дымок'}];
 const EYES=[{id:'normal',n:'Обычные'},{id:'happy',n:'Довольные'},{id:'angry',n:'Сердитые'},{id:'sleepy',n:'Сонные'},{id:'stars',n:'Звёздочки'}];
-const DEF_SETTINGS={res:'auto',win:'full',r3d:true,padStyle:'auto',master:0.8,music:0.6,sfx:0.8,mute:false,quality:'high',particles:1,shake:true,glow:true,ambient:true,vignette:true,trails:true,flash:true,retro:false,perf:false};
+const DEF_SETTINGS={res:'auto',win:'full',r3d:true,padStyle:'auto',master:0.8,music:0.6,sfx:0.8,mute:false,quality:'high',particles:1,shake:true,glow:true,ambient:true,vignette:true,trails:true,flash:true,retro:false,perf:false,hints:true};
 const PRESETS={low:{particles:0.35,glow:false,ambient:false,vignette:false,trails:false},medium:{particles:0.7,glow:true,ambient:true,vignette:true,trails:false},high:{particles:1,glow:true,ambient:true,vignette:true,trails:true}};
 let demo=false;
 const store={get(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:JSON.parse(v); }catch(e){ return d; } }, set(k,v){ if(demo) return; try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }};
@@ -1806,6 +1806,7 @@ function showToast(){
   setTimeout(()=>{ el.classList.remove('show'); setTimeout(()=>{ toastBusy=false; showToast(); },400); },2600);
 }
 function unlock(id){
+  if(typeof HINT_ACH!=='undefined'&&HINT_ACH[id]) HINT_ACH[id].forEach(learnHint);
   if(demo||achGot[id]) return; if(id!=='cheater'&&anyCheat()) return; const a=ACH.find(a=>a.id===id); if(!a) return;
   achGot[id]=Date.now(); store.set('iskra-bolt-ach',achGot); snapSlot(); toastQ.push({small:'Достижение',title:a.n,icon:a.id}); showToast();
 }
@@ -2781,6 +2782,7 @@ function setState(s){
     for(const [id,k] of [['bOne','one'],['bTwo','two']]){ const el=$(id); el.addEventListener('mouseenter',()=>titleFocus=k); el.addEventListener('focus',()=>titleFocus=k); }
     $('bOne').onclick=()=>{ audioInit(); sfx('nav'); heroBack='title'; setState('hero'); };
     if($('tArena')) $('tArena').onclick=()=>{ audioInit(); sfx('nav'); ARENA.open('title'); }; $('bOnline').onclick=()=>{ audioInit(); sfx('nav'); NET.status=''; netBack='title'; setState('net'); }; $('tSet').onclick=()=>{ audioInit(); sfx('nav'); setBack='title'; setCat=null; setState('settings'); }; if($('tEditor')){ $('tEditor').onclick=()=>{ audioInit(); sfx('nav'); ED.open(); }; $('tMyGame').onclick=()=>{ audioInit(); sfx('nav'); ED.open(); ED.game(); }; } $('bTwo').onclick=()=>{ setMode(false); goMenuFromTitle(); };
+    if(window.ibSys&&ibSys.quit){ const tb=overlay.querySelector('.tbtns'); if(tb){ tb.insertAdjacentHTML('beforeend','<button class="secondary" id="tQuit" type="button">⏻ ВЫХОД<small>закрыть игру</small></button>'); $('tQuit').onclick=()=>ibSys.quit(); } }
     setTimeout(()=>{ try{ $(solo?'bOne':'bTwo').focus({preventScroll:true}); }catch(e){} },0);
   } else if(s==='menu'){
     const cont=best>0&&best<TOTAL, got=Object.keys(achGot).length, LS=latestSlot();
@@ -3050,6 +3052,7 @@ function setState(s){
         ${touchUI.on?'<button class="secondary" id="bTedit3" type="button">Сенсорные кнопки<small>двигать и менять размер</small></button>':''}
         <button class="secondary" id="bCtlPad" type="button">${touchUI.on?'Геймпад':'Клавиатура и геймпад'}<small>переназначить кнопки</small></button>
       </div>
+      <div class="spanel">${tg('hints','Подсказки','Показывать, как работают механики, пока их не освоишь')}</div>
       <div class="btns"><button class="primary" id="bCatBack" type="button">Назад · Esc</button></div>`;
     }
     const titles={sound:'Звук',gfx:'Графика',lang:'Язык · Мова · Language',ctl:'Управление'};
@@ -3058,7 +3061,7 @@ function setState(s){
     overlay.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{ sfx('nav'); setCat=b.dataset.cat; reSet(); });
     if($('bCatBack')) $('bCatBack').onclick=()=>{ setCat=null; reSet(); };
     for(const id of ['master','music','sfx','particles']){ const el=$(id); if(!el) continue; el.oninput=()=>{ settings[id]=el.value/100; $(id+'O').textContent=el.value+'%'; if(id==='particles') settings.quality='custom'; saveSettings(); applyVolumes(); if(id==='sfx'||id==='master') sfx('gear'); }; }
-    for(const id of ['mute','glow','ambient','trails','vignette','shake','flash','retro','perf']){ const el=$(id); if(!el) continue; el.onchange=()=>{ settings[id]=el.checked; if(!['mute','shake','flash','retro','perf'].includes(id)) settings.quality='custom'; saveSettings(); applyVolumes(); perfShow(); reSet(); }; }
+    for(const id of ['mute','glow','ambient','trails','vignette','shake','flash','retro','perf','hints']){ const el=$(id); if(!el) continue; el.onchange=()=>{ settings[id]=el.checked; if(!['mute','shake','flash','retro','perf','hints'].includes(id)) settings.quality='custom'; saveSettings(); applyVolumes(); perfShow(); reSet(); }; }
     overlay.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{ settings.quality=b.dataset.q; Object.assign(settings,PRESETS[b.dataset.q]); saveSettings(); fit(); reSet(); });
     if($('selRes')) $('selRes').onchange=e=>{ settings.res=e.target.value; saveSettings(); applyScreen(); fit(); sfx('nav'); };
     if($('selWin')) $('selWin').onchange=e=>{ settings.win=e.target.value; saveSettings(); applyScreen(); setTimeout(fit,400); sfx('nav'); };
@@ -3127,7 +3130,7 @@ function setState(s){
     overlay.innerHTML=deco+`<div class="card"><span class="eyebrow">${own==null?'Пауза':'Пауза · поставил'+(own===1?'':'а')+' '+PNAME[own]}</span><h2>Перерыв</h2>
       ${own==null?'':`<p class="padst" id="pauseNote" style="color:${own?'#62c7c1':'#ff8a3d'}">Снять паузу может только ${PNAME[own]}: ${PKEY[own]} или Start на своём геймпаде.</p>`}
       <div class="mgrid pgrid2">${own==null?'<button class="primary wide2" id="bRes" type="button">Продолжить · Esc</button>':''}${cheat&&!NET.role&&!edTest?`<button class="secondary" id="bChPrev" type="button" ${levelIdx>0?'':'disabled'}>◀ Уровень ${levelIdx}<small>чит</small></button><button class="secondary" id="bChNext" type="button" ${levelIdx<TOTAL-1?'':'disabled'}>Уровень ${levelIdx+2} ▶<small>чит</small></button>`:''}<button class="secondary" id="bRe" type="button">Уровень заново</button><button class="secondary" id="bShopP" type="button">Лавка</button><button class="secondary" id="bHelpP" type="button">Помощь</button><button class="secondary" id="bSet2" type="button">Настройки</button><button class="secondary wide2" id="bMenu" type="button">В меню</button></div></div>`;
-    if($('bRes')) $('bRes').onclick=()=>{ pauseOwner=null; setState('play'); }; if($('bChPrev')) $('bChPrev').onclick=()=>{ if(levelIdx>0){ runClean=false; pauseOwner=null; loadLevel(levelIdx-1); setState('play'); } }; if($('bChNext')) $('bChNext').onclick=()=>{ if(levelIdx<TOTAL-1){ runClean=false; pauseOwner=null; loadLevel(levelIdx+1); setState('play'); } }; $('bSet2').onclick=()=>{ setBack='pause'; setCat=null; setState('settings'); }; $('bShopP').onclick=()=>{ shopFrom='pause'; setState('shop'); }; $('bHelpP').onclick=()=>{ helpBack='pause'; setState('help'); }; $('bRe').onclick=()=>{ loadingTo(levelIdx,true); }; $('bMenu').onclick=()=>{loadLevel(levelIdx);setState('menu');};
+    if($('bRes')) $('bRes').onclick=()=>{ pauseOwner=null; setState('play'); }; if($('bChPrev')) $('bChPrev').onclick=()=>{ if(levelIdx>0){ runClean=false; pauseOwner=null; loadLevel(levelIdx-1); setState('play'); } }; if($('bChNext')) $('bChNext').onclick=()=>{ if(levelIdx<TOTAL-1){ runClean=false; pauseOwner=null; loadLevel(levelIdx+1); setState('play'); } }; $('bSet2').onclick=()=>{ setBack='pause'; setCat=null; setState('settings'); }; $('bShopP').onclick=()=>{ shopFrom='pause'; setState('shop'); }; $('bHelpP').onclick=()=>{ helpBack='pause'; setState('help'); }; $('bRe').onclick=()=>{ loadingTo(levelIdx,true); }; $('bMenu').onclick=()=>{loadLevel(levelIdx);setState('menu');}; if(window.ibSys&&ibSys.quit){ const g=overlay.querySelector('.pgrid2'); if(g){ g.insertAdjacentHTML('beforeend','<button class="secondary wide2" id="bQuitP" type="button">Выйти из игры</button>'); $('bQuitP').onclick=()=>ibSys.quit(); } }
   } else if(s==='done'){
     const L=getLevel(levelIdx), nextBoss=(levelIdx+2)%10===0;
     overlay.innerHTML=`<div class="card"><span class="eyebrow">Уровень ${levelIdx+1} из ${TOTAL} готов</span><h2>${L.boss?'Босс повержен':L.name}</h2>
@@ -3325,7 +3328,7 @@ function startNGPlus(){
 }
 // удалили сохранение: текущий прогресс (ачивки, статистика, уровни, награды) сбрасывается как при первом запуске; если слотов не осталось — стираются и звёзды/рекорды
 function wipeProgress(all){
-  achGot={}; store.set('iskra-bolt-ach',achGot); stats={gears:0,kills:0,stomps:0,bosses:[],pw:[]}; saveStats();
+  achGot={}; store.set('iskra-bolt-ach',achGot); stats={gears:0,kills:0,stomps:0,bosses:[],pw:[]}; saveStats(); hintsLearned={}; store.set('iskra-bolt-hints',hintsLearned);
   best=0; for(const sf of ['','-spark','-bolt']){ try{ localStorage.setItem('iskra-bolt-sheet'+sf,'0'); localStorage.removeItem('iskra-bolt-run'+sf); }catch(e){} }
   run={score:0,wallet:0,up:{},offer:[],refresh:0,reward:null,inv:{},diff:'normal',ng:0};
   if(all){ for(const sf of ['','-spark','-bolt']){ try{ localStorage.removeItem('iskra-bolt-stars'+sf); localStorage.removeItem('iskra-bolt-bt-best'+sf); }catch(e){} } LVS={}; try{ localStorage.removeItem('iskra-bolt-lvlstats'); }catch(e){} }
@@ -3334,7 +3337,7 @@ function wipeProgress(all){
 function doNewGame(slotIdx){
   if(slotIdx==null) slotIdx=newSlotTarget>=0?newSlotTarget:Math.max(0,slots.findIndex(x=>!x));
   slots[slotIdx]=null; activeSlot=slotIdx; store.set('iskra-bolt-slot',slotIdx);
-  achGot={}; store.set('iskra-bolt-ach',achGot); stats={gears:0,kills:0,stomps:0,bosses:[],pw:[]}; saveStats();
+  achGot={}; store.set('iskra-bolt-ach',achGot); stats={gears:0,kills:0,stomps:0,bosses:[],pw:[]}; saveStats(); hintsLearned={}; store.set('iskra-bolt-hints',hintsLearned);
   best=0; try{ localStorage.setItem('iskra-bolt-sheet'+modeSuffix(),'0'); }catch(e){}
   for(const k in cache) delete cache[k];
   run={score:0,wallet:0,up:{},offer:[],refresh:0,reward:null,inv:{},diff:pendingDiff||'normal',ng:0};
@@ -3480,7 +3483,7 @@ function updatePz(dt){
   }
   for(const p of live){ const x0=Math.floor((p.x-3)/T), x1=Math.floor((p.x+p.w+3)/T), y0=Math.floor((p.y-3)/T), y1=Math.floor((p.y+p.h+2)/T); let lv=false;
     for(let ty=y0;ty<=y1;ty++) for(let tx=x0;tx<=x1;tx++){ const c=grid[ty]&&grid[ty][tx];
-      if(c==='k'&&overlap(p,{x:tx*T+6,y:ty*T+6,w:T-12,h:T-12})){ grid[ty][tx]='.'; gridVer++; p.keys=(p.keys||0)+1; sfx('gear'); texts.push({x:tx*T+T/2,y:ty*T-10,t:'КЛЮЧ!',life:1,c:'#ffd166',pop:true}); }
+      if(c==='k'&&overlap(p,{x:tx*T+6,y:ty*T+6,w:T-12,h:T-12})){ grid[ty][tx]='.'; gridVer++; p.keys=(p.keys||0)+1; learnHint('key'); sfx('gear'); texts.push({x:tx*T+T/2,y:ty*T-10,t:'КЛЮЧ!',life:1,c:'#ffd166',pop:true}); }
       else if(c==='h'&&overlap(p,{x:tx*T+8,y:ty*T,w:T-16,h:T})) lv=true;
       else if(c==='X'&&(p.keys||0)>0){ const st=[[tx,ty]]; while(st.length){ const [x,y]=st.pop(); if(!grid[y]||grid[y][x]!=='X') continue; grid[y][x]='.'; burst(x*T+T/2,y*T+T/2,8,['#e7b54a','#fff3c4'],180,.4); st.push([x+1,y],[x-1,y],[x,y+1],[x,y-1]); }
         gridVer++; p.keys--; sfx('boost'); texts.push({x:tx*T+T/2,y:ty*T-20,t:'ОТКРЫТО!',life:1.2,c:'#ffd166',pop:true}); unlock('key'); } }
@@ -3488,7 +3491,7 @@ function updatePz(dt){
 }
 function toggleLever(){ const nx=!leverOn, ch=nx?']':'[';
   const blocked=players.concat(crates).some(e=>!e.absent&&!e.dead&&(()=>{ for(let ty=Math.floor(e.y/T);ty<=Math.floor((e.y+e.h-.01)/T);ty++) for(let tx=Math.floor(e.x/T);tx<=Math.floor((e.x+e.w-.01)/T);tx++) if(grid[ty]&&grid[ty][tx]===ch) return true; return false; })());
-  if(blocked){ sfx('hurt'); return; } leverOn=nx; gridVer++; sfx('on'); flash(nx?'#6aa8ff':'#ff6b6b',.12); }
+  if(blocked){ sfx('hurt'); return; } leverOn=nx; learnHint('lever'); gridVer++; sfx('on'); flash(nx?'#6aa8ff':'#ff6b6b',.12); }
 function drawPz(){
   const TM=tilesOf(), r3a=R3D.active(), t=clock, each=(ch,f)=>{ const a=TM[ch]; if(a) for(let i=0;i<a.length;i+=2){ const x=a[i], y=a[i+1]; if(grid[y][x]===ch) f(x*T,y*T,x,y); } };
   const PC={a:'#ff6b6b',b:'#7fe08a',c:'#6aa8ff'};
@@ -3541,36 +3544,73 @@ const TUT_TEXT={
   flyer:'Летающий враг: стреляйте в него, он не падает от прыжка.',
   turret:'Турель: прячьтесь за ящиками или перепрыгивайте её выстрелы.',
   water:'Вода: держите прыжок, чтобы плыть вверх. Под водой тратится воздух — выныривайте, пока полоска не пуста.',
-  fire:'Огонь: касание ранит, как шипы. Зато огонь светит и открывает тёмные уровни.'
+  fire:'Огонь: касание ранит, как шипы. Зато огонь светит и открывает тёмные уровни.',
+  key:'Ключ: подберите его — потом подойдите с ним к золотому замку, и замок откроется.',
+  lock:'Замок: нужен ключ. Найдите его на уровне и подойдите с ним к замку.',
+  lever:'Рычаг: встаньте на него — красные и синие блоки поменяются местами (решётки уйдут, ступени появятся).',
+  portal:'Портал: шагните в него — выйдете из парного портала в другом месте.',
+  wind:'Воздушный поток: встаньте в него — он поднимет вас вверх.',
+  order:'Три кнопки: нажимайте их в правильном порядке, ошибётесь — всё сбросится.',
+  ice:'Лёд: скользко — разгоняешься и тормозишь не сразу. Тормозите заранее.'
 };
-let tutMarks=[], tutSeen={}, tutQ=[], tutShow=null, tutT=0, tutCd=0;
+// какие достижения означают «механику освоили»
+var HINT_ACH={crate:['crate','plate'],key:['key','lock'],slam:['crumble'],boost:[],portal:['portal'],wind:['wind'],order:['order']};
+var hintsLearned=store.get('iskra-bolt-hints',{});
+function learnHint(k){ if(!k||hintsLearned[k]) return; hintsLearned[k]=1; store.set('iskra-bolt-hints',hintsLearned);
+  if(typeof tutShow!=='undefined'&&tutShow&&tutShow.k===k){ tutShow=null; const el=document.getElementById('tutTip'); if(el) el.hidden=true; } }
+let tutMarks=[], tutSeen={}, tutQ=[], tutShow=null, tutT=0, tutCd=0, tutK0=0;
 function tutorInit(i){
-  tutMarks=[]; tutSeen={}; tutQ=[]; tutShow=null; tutCd=0;
+  tutMarks=[]; tutSeen={}; tutQ=[]; tutShow=null; tutCd=0; tutK0=(stats&&stats.kills)||0;
   let el=document.getElementById('tutTip');
   if(!el){ el=document.createElement('div'); el.id='tutTip'; el.setAttribute('role','status'); el.hidden=true; document.getElementById('screen').appendChild(el); }
   el.hidden=true;
-  if(i>=9||boss||(typeof edTest!=='undefined'&&edTest)) return;
+  if(boss||(typeof edTest!=='undefined'&&edTest)) return;
   const add=(k,x,y)=>tutMarks.push({k,x,y,t:TUT_TEXT[k]});
+  const once=(k,x,y)=>{ if(!tutMarks.some(m=>m.k===k)) add(k,x,y); };
   for(let y=0;y<grid.length;y++) for(let x=0;x<grid[y].length;x++){ const c=grid[y][x];
     if(c==='^'&&!tutMarks.some(m=>m.k==='spikes'&&Math.abs(m.x-x*T)<4*T&&Math.abs(m.y-y*T)<3*T)) add('spikes',x*T+T/2,y*T);
     if(c==='x'&&!tutMarks.some(m=>m.k==='crumble'&&Math.abs(m.x-x*T)<4*T)) add('crumble',x*T+T/2,y*T);
-    if(c==='~'&&!tutMarks.some(m=>m.k==='water')) add('water',x*T+T/2,y*T);
-    if(c==='*'&&!tutMarks.some(m=>m.k==='fire')) add('fire',x*T+T/2,y*T); }
+    if(c==='~') once('water',x*T+T/2,y*T);
+    if(c==='*') once('fire',x*T+T/2,y*T);
+    if(c==='k') once('key',x*T+T/2,y*T);
+    if(c==='X') once('lock',x*T+T/2,y*T);
+    if(c==='h') once('lever',x*T+T/2,y*T);
+    if(c==='O'||c==='o') once('portal',x*T+T/2,y*T);
+    if(c==='a') once('order',x*T+T/2,y*T);
+    if(c==='I') once('ice',x*T+T/2,y*T); }
+  for(const w of winds||[]) once('wind',w.x+w.w/2,w.y+w.h-T);
   for(const c of crates) add('crate',c.x+c.w/2,c.y);
   for(const p of plates) add('plate',p.x*T+T/2,p.y*T);
   for(const m of movers) add(Math.abs(m.bx-m.ax)<2*T?'lift':'mover',(m.ax+m.bx)/2+m.w/2,Math.min(m.ay,m.by));
   for(const e of enemies){ if(e.x===undefined) continue; const k=e.type==='flyer'?'flyer':e.type==='turret'?'turret':'crawler'; add(k,e.x+(e.w||T)/2,e.y); }
 }
+// «освоил»: механику уже применили на деле
+function hintUsed(m){
+  const P=players.filter(p=>!p.absent&&!p.dead), cellOf=(p,dy)=>{ const r=grid[Math.floor((p.y+p.h/2)/T)+(dy||0)]; return r?r[Math.floor((p.x+p.w/2)/T)]:'.'; };
+  switch(m.k){
+    case 'spikes': case 'fire': case 'crumble': return P.some(p=>p.x>m.x+3*T&&Math.abs(p.y-m.y)<5*T);
+    case 'water': return P.some(p=>cellOf(p)==='~');
+    case 'mover': case 'lift': return P.some(p=>p.ground&&movers.includes(p.ground));
+    case 'crawler': case 'flyer': case 'turret': return ((stats&&stats.kills)||0)>tutK0;
+    case 'plate': return plates.some(q=>q.on);
+    case 'ice': return P.some(p=>p.onGround&&cellOf(p,1)==='I'&&Math.abs(p.vx)>60);
+    case 'wind': return P.some(p=>winds.some(w=>p.x+p.w>w.x&&p.x<w.x+w.w&&p.y+p.h>w.y&&p.y<w.y+w.h));
+    case 'key': return P.some(p=>(p.keys||0)>0);
+    case 'portal': return P.some(p=>p.portLock);
+    case 'lever': return !!leverOn;
+  }
+  return false;
+}
 function tutorTick(dt){
   const el=document.getElementById('tutTip');
   if(!el){ return; }
-  if(state!=='play'||!tutMarks.length){ el.hidden=true; return; }
-  if(tutShow){ tutT-=dt; if(tutT<=0){ tutShow=null; el.hidden=true; } }
+  if(state!=='play'||!tutMarks.length||settings.hints===false){ el.hidden=true; tutShow=null; return; }
   tutCd-=dt; if(tutCd>0) return; tutCd=0.15;
+  for(const m of tutMarks) if(!hintsLearned[m.k]&&hintUsed(m)) learnHint(m.k);
+  const near=m=>!hintsLearned[m.k]&&players.some(p=>!p.absent&&!p.dead&&Math.abs(p.x+p.w/2-m.x)<6*T&&Math.abs(p.y+p.h/2-m.y)<4*T);
+  if(tutShow&&!near(tutShow)){ tutShow=null; el.hidden=true; }
   if(!tutShow){
-    for(const m of tutMarks){ if(tutSeen[m.k+'@'+Math.round(m.x)+','+Math.round(m.y)]) continue;
-      if(players.some(p=>!p.absent&&!p.dead&&Math.abs(p.x+p.w/2-m.x)<6*T&&Math.abs(p.y+p.h/2-m.y)<4*T)){
-        tutSeen[m.k+'@'+Math.round(m.x)+','+Math.round(m.y)]=1; tutSeen['k:'+m.k]=1; tutShow=m; tutT=7; el.textContent=m.t; el.hidden=false; sfx('pick'); break; } }
+    for(const m of tutMarks){ if(near(m)){ tutShow=m; el.textContent=m.t; el.hidden=false; sfx('pick'); break; } }
   }
 }
 function step(dt){
