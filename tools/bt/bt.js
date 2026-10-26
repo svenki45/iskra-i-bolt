@@ -1,7 +1,7 @@
 /* ===== ИСПЫТАНИЯ (тестовая Steam-сборка desktop-bt): уровни-аттракционы в духе старых аркад =====
    Вставляется сборщиком tools/bt/build.py внутрь кода игры (перед const GAME_VER) — только в копию desktop-bt.
    Основная игра этот файл не видит. Механики свои: доска, трос, пресс, змеи, канал, драка, ракета, погоня за Механиком. */
-/*BT_N=20*/
+/*BT_N=40*/
 var BTX={z:0,lx:0,ly:0,fy:null};   // подсказки камере (читаются в draw)
 const BT=(()=>{
 const S={on:false,kind:null,L:null,cp:null,v:0,boost:0,freeze:0,banner:null,warnBeep:-1,hintT:0,padCd:{}};
@@ -12,7 +12,7 @@ const JV=760, JV2=700, GX=0.45;   // гонка: скорость прыжка �
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 // темп растёт от уровня к уровню: 1-е испытание спокойное (×0.9), дальше плавно до ×1.35 к последним
 let PACE=0.9;
-const paceFor=i=>0.9+0.45*Math.min(1,Math.max(0,i)/Math.max(1,DEFS.length-1));
+const paceFor=i=>0.9+0.45*Math.min(1,Math.max(0,(typeof ORD!=='undefined'&&ORD[i]!=null?ORD[i]:0))/Math.max(1,DEFS.length-1));
 const paceRamp=()=>clamp((PACE-0.9)/0.45,0,1);
 const speedMul=()=>{ const D=diffLv(); return PACE*(D<0?0.86:D===0?1:D===1?1.08:1.15); };
 const warnTime=()=>{ const D=diffLv(); return D<0?2.1:D===0?1.6:D===1?1.25:1.0; };
@@ -932,9 +932,22 @@ function rotHud(B,L){
 const BUILD={cart:D=>cartLevel(D),rope:D=>ropeLevel(D),chase:D=>chaseLevel(D),snake:D=>snakeLevel(D),rocket:D=>rocketLevel(D),lift:D=>liftLevel(D),mag:D=>magLevel(D),relay:D=>relayLevel(D),boss:D=>bossLevel(D),tube:D=>tubeLevel(D),brawl:D=>brawlLevel(D),wire:D=>wireLevel(D),maze:D=>mazeLevel(D),ice:D=>iceLevel(D),rot:D=>rotLevel(D)};
 const LEVELS=DEFS.map(D=>BUILD[D.kind](D));
 
+/* ---------------- кампания: 40 уровней = логика + испытания + боссы ---------------- */
+const CAMPAIGN=true;
+// места логики пока занимают уровни старой игры (номера с 0); их заменят 17 новых
+const PUZ=[0,1,2,3,4,5,6,7,8,10,11,12,13,14,15,16,17];
+const ACT_T=[[0,1,2,3,4],[5,6,7,8,9],[11,12,13,14,15],[16,17,18,19]];   // какие испытания в каком акте
+const CAMP=[], ORD=[];
+{ let pz=0, nt=0;
+  for(let a=0;a<4;a++){ const Tt=ACT_T[a]; let ti=0;
+    for(const c of (a<3?'LTLTLTLTTB':'LTLTLTLTLK')){
+      if(c==='L') CAMP.push({k:'p',m:PUZ[pz++]});
+      else if(c==='B') CAMP.push({k:'b',m:CAMP.length});
+      else CAMP.push({k:'t',t:c==='K'?10:Tt[ti++]});
+      ORD[CAMP.length-1]=CAMP[CAMP.length-1].k==='t'?nt++:0; } } }
 /* ---------------- перехваты движка ---------------- */
 const _getLevel=getLevel;
-getLevel=function(i){ if(edTest&&edLevel) return edLevel; return LEVELS[i]||LEVELS[LEVELS.length-1]; };
+getLevel=function(i){ if(edTest&&edLevel) return edLevel; const e=CAMP[Math.max(0,Math.min(i,CAMP.length-1))]; return e.k==='t'?LEVELS[e.t]:_getLevel(e.m); };
 
 const _loadLevel=loadLevel;
 loadLevel=function(i,keepHp){
@@ -948,7 +961,7 @@ loadLevel=function(i,keepHp){
   if(S.kind==='cart'){ setupCart(L); cartExtraSetup(L); } else if(S.kind==='rope') setupRope(L); else if(S.kind==='chase') setupChase(L); else if(S.kind==='snake') setupSnake(L); else if(S.kind==='brawl') setupBrawl(L); else if(S.kind==='rocket') setupRocket(L); else if(S.kind==='lift') setupLift(L); else if(S.kind==='boss') setupBoss(L); else if(S.kind==='mag') setupMag(L); else if(S.kind==='relay') setupRelay(L); else if(S.kind==='wire') setupWire(L); else if(S.kind==='maze') setupMaze(L); else if(S.kind==='ice') setupIce(L); else if(S.kind==='rot') setupRot(L);
 };
 const _tutorInit=tutorInit;
-tutorInit=function(i){ _tutorInit(i); if(getLevel(i)&&getLevel(i).bt) tutMarks=[]; };
+tutorInit=function(i){ const e=CAMP[i]; _tutorInit(e&&e.k!=='t'?e.m:99); if(getLevel(i)&&getLevel(i).bt) tutMarks=[]; };
 
 function placeCart(x){ for(const p of players){ if(p.absent) continue; setDuck(p,false,true);
   const off=solo?0:(p.kind==='bolt'?2:0); p.x=(x+off)*T+(T-p.w)/2; p.y=FL*T-p.h; p.vx=0; p.vy=0; p.dash=0; p.slam=false; p.onGround=true; p.wasGround=true; } }
@@ -1419,6 +1432,9 @@ function startBt(i){ S.cp=null; cpSave=null; sfx('pick'); startGame(i,true); }
 const DORDER=['easy','normal','hard','nightmare'];
 const _setState=setState;
 setState=function(s){
+  if(CAMPAIGN){ _setState(s);
+    if(s==='title'){ for(const id of ['bOnline','tArena','tEditor','tMyGame']){ const el=document.getElementById(id); if(el) el.remove(); } }
+    return; }
   if(s==='ending'){ _setState('btend');
     overlay.innerHTML=`<div class="card"><span class="eyebrow">Испытания пройдены</span><h2><span class="s">Искра</span> и <span class="b">Болт</span> справились!</h2>
       <p style="max-width:46ch">Это тестовая версия: девять испытаний в духе старых аркад. Напишите, что понравилось и что поправить — по ним будем решать, брать ли такие уровни в основную игру.</p>
@@ -1488,6 +1504,6 @@ setState=function(s){
 const _handleMeta=handleMeta;
 handleMeta=function(){ if((state==='bthelp'||state==='btend')&&pressed.has('Escape')){ setState('menu'); return; } return _handleMeta(); };
 
-return {S,LEVELS,DEFS,setDuck,crash};
+return {S,LEVELS,DEFS,CAMP,setDuck,crash};
 })();
 /* ===== /ИСПЫТАНИЯ ===== */

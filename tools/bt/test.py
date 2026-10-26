@@ -6,6 +6,7 @@ from playwright.sync_api import sync_playwright
 HERE = pathlib.Path(__file__).resolve().parent
 args = sys.argv[1:]
 lvl = int(args[0]) - 1
+CAMP_RAW = any(a=='camp' for a in args[1:])
 modes = [a for a in args[1:] if a in ('duo', 'spark', 'bolt')] or ['duo', 'spark', 'bolt']
 diffs = [a for a in args[1:] if a in ('easy', 'normal', 'hard', 'nightmare')] or ['normal']
 kind = 'cart'
@@ -22,8 +23,9 @@ with sync_playwright() as p:
             pg = b.new_page(viewport={'width': 1280, 'height': 720}); errs = []
             pg.on('pageerror', lambda e: errs.append(str(e)))
             pg.goto('file:///tmp/claude-0/bt/test.html'); time.sleep(1.5)
+            CI = lvl if CAMP_RAW else pg.evaluate(f"__T.go('BT.CAMP.findIndex(e=>e.k===\"t\"&&e.t=={lvl})')")
             setm = "setMode(false)" if m == 'duo' else f"setMode(true,'{m}')"
-            pg.evaluate(f"__T.go(\"{setm}; run.diff='{d}'; saveRun(); BT.S.cp=null; startGame({lvl},true)\")")
+            pg.evaluate(f"__T.go(\"{setm}; run.diff='{d}'; saveRun(); BT.S.cp=null; startGame({CI},true)\")")
             for _ in range(60):
                 time.sleep(0.4)
                 if pg.evaluate("__T.go('state')") == 'play': break
