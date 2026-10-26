@@ -1,7 +1,7 @@
 /* ===== ИСПЫТАНИЯ (тестовая Steam-сборка desktop-bt): уровни-аттракционы в духе старых аркад =====
    Вставляется сборщиком tools/bt/build.py внутрь кода игры (перед const GAME_VER) — только в копию desktop-bt.
    Основная игра этот файл не видит. Механики свои: доска, трос, пресс, змеи, канал, драка, ракета, погоня за Механиком. */
-/*BT_N=10*/
+/*BT_N=11*/
 var BTX={z:0,lx:0,ly:0};   // подсказки камере (читаются в draw)
 const BT=(()=>{
 const S={on:false,kind:null,L:null,cp:null,v:0,boost:0,freeze:0,banner:null,warnBeep:-1,hintT:0,padCd:{}};
@@ -43,6 +43,8 @@ const DEFS=[
    hint:'Ракета летит сама. Прыжок (W / ↑) — вверх, способность (S / ↓) — вниз. Не задевай стены, сбивай дронов, собирай шестерёнки — это топливо.'},
   {kind:'tube',name:'Труба',desc:'скольжение по трубе · заслонки с «окошком»',motif:'Медный тоннель',hue:160,par:55,base:290,top:380,
    hint:'Вы скользите по извилистой трубе. Прыжок (W / ↑) — вверх, способность (S / ↓) — вниз. В заслонках ходит «окошко» — подгадай и пролети через него.'},
+  {kind:'lift',name:'Лифт-шахта',desc:'платформа едет вверх · пилы и шипы',motif:'Масляный подвал',hue:265,par:75,dur:60,
+   hint:'Лифт поднимается по шахте. Низкие пилы — прыгай, высокие — не прыгай, красные шипы на полу и стенах — отойди заранее. Болт: способность на земле сбивает пилы и прикрывает Искру.'},
   {kind:'cart',name:'Погоня за Механиком',desc:'гонка на доске · сбей Механика до финиша',motif:'Ржавый цех',hue:20,par:50,base:330,top:420,boost:130,lead:16,rival:12,
    hint:'Механик удирает на своей доске и бросает мины. Стреляй в него и сбей до финиша! Мины перепрыгивай.',
    track:'r14 w r12 g r12 w r10 p2 r12 g r12 f r10 w r12 g r10 b r18 w r10 p2 r12 g r12 h w r12 f r10 g r12 w r10 p3 r12 g r10 w r12 b r18 w r12 g r12 w r14'}
@@ -109,7 +111,7 @@ function ropeLevel(D){
 }
 
 /* ================= испытания 4–9 ================= */
-const PLATF={chase:1,snake:1,brawl:1};
+const PLATF={chase:1,snake:1,brawl:1,lift:1};
 // ---------- погоня вниз: пресс сверху ----------
 function chaseLevel(D){
   const W=32, H=104, A=3, B=28;
@@ -132,7 +134,7 @@ function chaseLevel(D){
     bt:{kind:'chase',H,A,B,layers,flags}};
 }
 function setupChase(L){
-  const B=L.bt; BTX.z=1.3; BTX.ly=VH*0.2/1.3; for(const f of B.flags) f.on=!!(S.cp&&S.cp.i>=f.i);
+  const B=L.bt; BTX.z=1.6; BTX.ly=VH*0.2/1.6; for(const f of B.flags) f.on=!!(S.cp&&S.cp.i>=f.i);
   let top=7;
   if(S.cp){ const ly=B.layers[S.cp.i]; top=ly.y; for(const p of players){ if(p.absent) continue; const x=(ly.land[0]+(p.kind==='bolt'&&!solo?2:0))*T+4; p.x=x; p.y=ly.y*T-p.h; p.vx=p.vy=0; } }
   S.press={y:(top-8)*T,t:0,wait:S.cp?1.2:2.2}; S.hintT=S.cp?0:5; banner(S.cp?'С ФЛАЖКА':'БЕГИ ВНИЗ!','#ff9a8a',1.2);
@@ -249,9 +251,61 @@ function tubeHits(){
   const B=S.L.bt; if(!B.gates||S.freeze>0) return;
   for(const p of live()){ if(!p.rocket) continue; for(const q of B.gates){ const x=q.x*T-10; if(p.x+p.w<x||p.x>x+T*1.5) continue; const [a,b]=gateGap(q,S.gt||0); if(p.y+3<a||p.y+p.h-3>b) p.rocket.crash=true; } }
 }
+
+// ---------- лифт-шахта: арена, лифт «едет вверх», с боков вылетают пилы и шипы ----------
+const LX0=6*T, LX1=26*T, LFL=17*T;
+function liftLevel(D){
+  const W=32,H=18,g=[...Array(H)].map(()=>Array(W).fill('.'));
+  for(let x=0;x<W;x++){ g[0][x]='#'; g[17][x]='#'; } for(let y=0;y<H;y++){ for(let x=0;x<6;x++){ g[y][x]='#'; g[y][W-1-x]='#'; } }
+  for(let x=8;x<=11;x++) g[13][x]='#'; for(let x=20;x<=23;x++) g[13][x]='#';
+  for(let x=14;x<=17;x++){ g[15][x]='E'; g[16][x]='E'; }
+  g[16][10]='1'; g[16][21]='2';
+  return {name:D.name,motif:D.motif,hue:D.hue,dark:false,hint:D.hint,map:g.map(r=>r.join('')),enemies:[],pickups:[],movers:[],winds:[],checkpoints:[],pz:[],tier:3,hand:true,decor:[],darkA:.94,openBottom:false,par:D.par,
+    bt:{kind:'lift',dur:D.dur}};
+}
+function genHaz(dur){
+  const R=rng(4242), D=diffLv(), out=[]; let t=3.6; const v0=250+25*D, g0=D<0?2.6:D===0?2.3:D===1?2.0:1.8, order=['low','floor','high','wall','pair','low','floor','wall','high','pair'];
+  let i=0; while(t<dur-5){ const k=order[i++%order.length], pr=t/dur, v=v0*(1+0.25*pr), side=R()<.5?-1:1, mk=(sd,hi,tt)=>({k:'saw',hi,x0:sd<0?LX0-18:LX1+18,vx:(sd<0?1:-1)*v,y:LFL-(hi?100:17),t0:tt-0.9,t1:tt,side:sd});
+    if(k==='low') out.push(mk(side,false,t)); else if(k==='high') out.push(mk(side,true,t));
+    else if(k==='pair'){ out.push(mk(side,false,t)); out.push(mk(-side,true,t+0.8)); }
+    else if(k==='floor'){ const cx=(8+R()*16)*T; out.push({k:'floor',cx,w:3.4*T,t0:t-0.9,t1:t,t2:t+0.9}); if(pr>.45){ const c2=cx+(cx>16*T?-1:1)*7*T; out.push({k:'floor',cx:c2,w:3.4*T,t0:t-0.9,t1:t,t2:t+0.9}); } }
+    else out.push({k:'wall',side,w:3.4*T,t0:t-0.9,t1:t,t2:t+1.0});
+    t+=g0*(1-0.3*pr); }
+  return out;
+}
+function setupLift(L){ BTX.z=1.5; S.lt=0; S.haz=genHaz(L.bt.dur); exitLocked=true; S.opened=false; S.hintT=7; banner('ПОДЪЁМ!','#c79bff',1.3); }
+function hazRect(h){
+  if(h.k==='saw') return {x:h.x-15,y:h.y-15,w:30,h:30};
+  if(h.k==='floor') return {x:h.cx-h.w/2,y:LFL-28,w:h.w,h:28};
+  return {x:h.side<0?LX0:LX1-h.w,y:3*T,w:h.w,h:LFL-3*T};
+}
+function liftPost(dt){
+  S.hintT=Math.max(0,S.hintT-dt); S.lt+=dt; const dur=S.L.bt.dur;
+  for(const h of S.haz){ if(h.k==='saw'){ if(S.lt<h.t1) continue; h.x=h.x0+h.vx*(S.lt-h.t1); if(h.dead) continue; if(h.x<LX0-60||h.x>LX1+60) h.dead=true; } }
+  for(const p of live()){ if(p.down||p.inv>0) continue; for(const h of S.haz){ if(h.dead) continue;
+      const act=h.k==='saw'?S.lt>=h.t1:(S.lt>=h.t1&&S.lt<=h.t2); if(!act) continue; const r=hazRect(h);
+      if(h.k==='saw'?(h.hi?(p.y<h.y+15&&p.y+p.h>h.y-15):true)&&overlap(p,r):overlap(p,r)){ _hurt(p); p.vy=-360; p.vx=(p.x+p.w/2<(r.x+r.w/2)?-1:1)*260; texts.push({x:p.x+p.w/2,y:p.y-30,t:h.k==='saw'?'ПИЛА!':'ШИПЫ!',life:1,c:'#ff6b6b',pop:true}); sfx('hit'); shake=Math.max(shake,6); break; } } }
+  if(S.lt>=dur&&!S.opened){ S.opened=true; exitLocked=false; banner('ПРИЕХАЛИ! ВЫХОД ОТКРЫТ','#7fe08a',1.6); sfx('win'); }
+  platformPost(dt);
+}
+function drawLift(){
+  const t=S.lt||0, off=(t*220)%80; ctx.save();
+  for(const sx of [0,LX1]){ ctx.fillStyle='rgba(120,140,160,.22)'; for(let y=-80+off;y<LFL;y+=80) ctx.fillRect(sx+6,y,LX0-12,6); ctx.fillStyle='rgba(255,209,102,.18)'; ctx.fillRect(sx+(sx?T*0.5:LX0-T*0.7),0,6,LFL); }
+  ctx.fillStyle='rgba(199,155,255,.14)'; for(let k=0;k<7;k++){ const x=LX0+60+k*(LX1-LX0-120)/6, y=((t*320+k*173)%(LFL+120))-60; ctx.fillRect(x,y,3,50); }
+  const dur=S.L.bt.dur, fl=Math.floor(clock*8)%2;
+  for(const h of S.haz||[]){ if(h.dead) continue;
+    if(h.k==='saw'){
+      if(t>=h.t0&&t<h.t1){ const x=h.side<0?LX0+22:LX1-22; ctx.globalAlpha=fl?1:.45; ctx.fillStyle=h.hi?'#7fd3ff':'#ffd166'; ctx.beginPath(); if(h.side<0){ ctx.moveTo(x-10,h.y-14); ctx.lineTo(x+16,h.y); ctx.lineTo(x-10,h.y+14); } else { ctx.moveTo(x+10,h.y-14); ctx.lineTo(x-16,h.y); ctx.lineTo(x+10,h.y+14); } ctx.closePath(); ctx.fill(); ctx.globalAlpha=1; label(h.hi?'ВЫСОКАЯ':'ПРЫГАЙ',x+(h.side<0?44:-44),h.y-24,10,ctx.fillStyle); }
+      else if(t>=h.t1){ ctx.save(); ctx.translate(h.x,h.y); ctx.rotate(t*14*(h.vx>0?1:-1)); ctx.fillStyle='#cfd8e0'; ctx.beginPath(); for(let k=0;k<16;k++){ const a=k/16*Math.PI*2, r=k%2?12:19; ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r); } ctx.closePath(); ctx.fill(); ctx.fillStyle='#5b6b7a'; ctx.beginPath(); ctx.arc(0,0,6,0,7); ctx.fill(); ctx.restore(); if(h.hi){ ctx.strokeStyle='rgba(207,216,224,.35)'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(h.x0,h.y); ctx.lineTo(h.x,h.y); ctx.stroke(); } }
+    } else if(t>=h.t0&&t<=h.t2){ const r=hazRect(h), warn=t<h.t1;
+      if(warn){ ctx.globalAlpha=fl?.5:.25; ctx.fillStyle='#ff4d5e'; ctx.fillRect(r.x,h.k==='floor'?LFL-8:r.y,r.w,h.k==='floor'?8:r.h); ctx.globalAlpha=1; label('ШИПЫ!',r.x+r.w/2,h.k==='floor'?LFL-40:LFL-120,12,'#ff6b6b'); }
+      else { ctx.fillStyle='#e6edf3'; const n=Math.round(r.w/22); if(h.k==='floor'){ for(let k=0;k<n;k++){ const x=r.x+k*r.w/n; ctx.beginPath(); ctx.moveTo(x,LFL); ctx.lineTo(x+r.w/n/2,LFL-28); ctx.lineTo(x+r.w/n,LFL); ctx.closePath(); ctx.fill(); } }
+        else { const m=Math.round(r.h/26); for(let k=0;k<m;k++){ const y=r.y+k*r.h/m; ctx.beginPath(); if(h.side<0){ ctx.moveTo(r.x,y); ctx.lineTo(r.x+r.w,y+r.h/m/2); ctx.lineTo(r.x,y+r.h/m); } else { ctx.moveTo(r.x+r.w,y); ctx.lineTo(r.x,y+r.h/m/2); ctx.lineTo(r.x+r.w,y+r.h/m); } ctx.closePath(); ctx.fill(); } } } } }
+  ctx.restore();
+}
 function placeRocket(sp){ for(const p of players){ if(p.absent) continue; const off=solo?0:(p.kind==='spark'?-0.8:0.8); p.x=sp.x*T+4; p.y=(sp.y+off)*T-p.h/2; p.vx=p.vy=0; p.rocket={vy:0,crash:false}; p.onGround=false; } }
 function setupRocket(L){
-  const B=L.bt; BTX.z=1.5; BTX.lx=VW*0.22/1.5; for(const f of B.flags) f.on=!!(S.cp&&S.cp.x>=f.x);
+  const B=L.bt; BTX.z=1.7; BTX.lx=VW*0.22/1.7; for(const f of B.flags) f.on=!!(S.cp&&S.cp.x>=f.x);
   placeRocket(S.cp?B.spots.filter(s=>s.x<=S.cp.x).pop()||B.spots[0]:{x:3,y:9});
   S.fuel=100; S.gt=0; S.gateGap=gateGap; S.lastGears=gears; S.freeze=S.cp?0.9:1.4; S.hintT=S.cp?0:6; banner(S.cp?'С ФЛАЖКА':'ЗАВОДИМ РАКЕТУ…','#9cc3ff',S.freeze);
 }
@@ -323,6 +377,7 @@ function smash(p){
   p.smashCd=0.7; p.smashT=0.22; sfx('slam'); shake=Math.max(shake,6); hitstop=Math.max(hitstop,.04);
   const cx=p.x+p.w/2+p.face*48, cy=p.y+p.h*0.55, zone={x:cx-62,y:p.y-24,w:124,h:p.h+34};
   rings.push({x:cx,y:cy,r:8,max:80,life:.3,c:'#62c7c1',w:5}); burst(cx,cy,16,['#9cc3ff','#62c7c1','#fff'],320,.4);
+  if(S.haz) for(const h of S.haz){ if(h.k==='saw'&&!h.dead&&S.lt>=h.t1&&overlap({x:h.x-16,y:h.y-16,w:32,h:32},zone)){ h.dead=true; burst(h.x,h.y,18,['#ffd166','#fff','#ff8a3d'],340,.5); texts.push({x:h.x,y:h.y-30,t:'СБИТА!',life:.8,c:'#62c7c1',pop:true}); sfx('kill'); } }
   let n=0; for(const en of enemies){ if(en.hp<=0||!overlap(en,zone)) continue; n++; damageEnemy(en,4,false,'slam'); knock(en,p.face*760,-420); }
   if(n) texts.push({x:cx,y:p.y-30,t:n>1?'СМЭШ ×'+n+'!':'СМЭШ!',life:.8,c:'#62c7c1',pop:true});
 }
@@ -370,7 +425,7 @@ function cartExtraHit(p){
 function fishUp(f){ if(f.t<0) return 0; const t=f.t; return t<0.14?t/0.14*44:t<1.2?44:t<1.45?44*(1-(t-1.2)/0.25):0; }
 function cartExtraRewind(spot){ S.mines=S.mines.filter(m=>m.x<spot*T-T||m.x>(spot+16)*T); for(const f of S.L.bt.fish) if(f.x>spot) f.t=-1; if(S.R&&!S.R.dead) S.R.x=(spot+12)*T; }
 
-const BUILD={cart:D=>cartLevel(D),rope:D=>ropeLevel(D),chase:D=>chaseLevel(D),snake:D=>snakeLevel(D),rocket:D=>rocketLevel(D),tube:D=>tubeLevel(D),brawl:D=>brawlLevel(D)};
+const BUILD={cart:D=>cartLevel(D),rope:D=>ropeLevel(D),chase:D=>chaseLevel(D),snake:D=>snakeLevel(D),rocket:D=>rocketLevel(D),lift:D=>liftLevel(D),tube:D=>tubeLevel(D),brawl:D=>brawlLevel(D)};
 const LEVELS=DEFS.map(D=>BUILD[D.kind](D));
 
 /* ---------------- перехваты движка ---------------- */
@@ -386,7 +441,7 @@ loadLevel=function(i,keepHp){
   tutMarks=[];
   if(S.cp&&S.cp.lvl!==i) S.cp=null;
   for(const p of players){ p.duck=false; p.rope=null; p.rocket=null; p.smashCd=0; p.smashT=0; p.h0=H0[p.kind]; }
-  if(S.kind==='cart'){ setupCart(L); cartExtraSetup(L); } else if(S.kind==='rope') setupRope(L); else if(S.kind==='chase') setupChase(L); else if(S.kind==='snake') setupSnake(L); else if(S.kind==='brawl') setupBrawl(L); else if(S.kind==='rocket') setupRocket(L);
+  if(S.kind==='cart'){ setupCart(L); cartExtraSetup(L); } else if(S.kind==='rope') setupRope(L); else if(S.kind==='chase') setupChase(L); else if(S.kind==='snake') setupSnake(L); else if(S.kind==='brawl') setupBrawl(L); else if(S.kind==='rocket') setupRocket(L); else if(S.kind==='lift') setupLift(L);
 };
 const _tutorInit=tutorInit;
 tutorInit=function(i){ _tutorInit(i); if(getLevel(i)&&getLevel(i).bt) tutMarks=[]; };
@@ -394,13 +449,13 @@ tutorInit=function(i){ _tutorInit(i); if(getLevel(i)&&getLevel(i).bt) tutMarks=[
 function placeCart(x){ for(const p of players){ if(p.absent) continue; setDuck(p,false,true);
   const off=solo?0:(p.kind==='bolt'?2:0); p.x=(x+off)*T+(T-p.w)/2; p.y=FL*T-p.h; p.vx=0; p.vy=0; p.dash=0; p.slam=false; p.onGround=true; p.wasGround=true; } }
 function setupCart(L){
-  BTX.z=1.6; BTX.lx=VW*0.2/1.6;
+  BTX.z=1.85; BTX.lx=VW*0.2/1.85;
   const B=L.bt; for(const f of B.flags) f.on=!!(S.cp&&f.spot<=S.cp.x); for(const pd of B.pads) pd.cd=0;
   if(S.cp) placeCart(S.cp.x);
   S.freeze=S.cp?0.9:1.5; banner(S.cp?'С ФЛАЖКА':'ГОТОВЬСЯ…','#9cc3ff',S.freeze);
 }
 function setupRope(L){
-  BTX.z=1.3; BTX.ly=VH*0.2/1.3;
+  BTX.z=1.6; BTX.ly=VH*0.2/1.6;
   const B=L.bt; for(const f of B.flags) f.on=!!(S.cp&&f.y*T<=S.cp.y);
   for(const p of players){ if(p.absent) continue;
     const ax=solo?16*T:(p.kind==='spark'?15*T:17*T);
@@ -499,7 +554,7 @@ step=function(dt){
   _step(dt);
   if(S.banner){ S.banner.life-=dt; if(S.banner.life<=0) S.banner=null; }
   if(state!=='play') return;
-  ({cart:cartPost,rope:ropePost,chase:chasePost,snake:snakePost,brawl:brawlPost,rocket:rocketPost})[S.kind](dt);
+  ({cart:cartPost,rope:ropePost,chase:chasePost,snake:snakePost,brawl:brawlPost,rocket:rocketPost,lift:liftPost})[S.kind](dt);
 };
 
 function cartPre(dt){
@@ -612,6 +667,7 @@ function drawWorld(){
   } else if(S.kind==='rocket'&&B.gates) drawGates(B);
   else if(S.kind==='chase') drawChaseExtra(B);
   else if(S.kind==='snake') drawSnakeExtra();
+  else if(S.kind==='lift') drawLift();
   else if(S.kind==='rope'){
     const ax=solo?[16*T]:[15*T,17*T]; ctx.save(); for(const x of ax){ ctx.fillStyle='#6f8191'; ctx.beginPath(); ctx.arc(x,B.ay+2,9,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#22324d'; ctx.beginPath(); ctx.arc(x,B.ay+2,4,0,Math.PI*2); ctx.fill(); } ctx.restore();
     for(const z of B.zaps){ const st=zapOn(z), x0=z.x0*T, x1=(z.x1+1)*T, y=z.y*T+T/2;
@@ -651,7 +707,9 @@ function drawWarn(B){
     ctx.restore(); ctx.save(); ctx.globalAlpha=a; label(it.txt,x,y+16,10,it.c); ctx.restore(); }
 }
 function hud(){
-  const B=S.L.bt, L=live(); if(S.freeze<=0&&!S.dead) try{ drawWarn(B); }catch(e){}
+  const B=S.L.bt, L=live();
+  if(S.kind==='lift'){ const w=520, x=VW/2-w/2, y=VH-26, k=clamp((S.lt||0)/B.dur,0,1); ctx.fillStyle='rgba(6,10,22,.8)'; rr(ctx,x-8,y-10,w+16,20,10); ctx.fill(); ctx.fillStyle='#c79bff'; rr(ctx,x,y-3,Math.max(6,w*k),6,3); ctx.fill(); label(S.opened?'ПРИЕХАЛИ':'ПОДЪЁМ '+Math.round(k*100)+'%',VW/2,y-22,12,'#e8effa');
+    if(S.hintT>0){ ctx.globalAlpha=Math.min(1,S.hintT); label('низкие пилы — прыжок · высокие — не прыгай · красное — отойди',VW/2,VH-62,15,'#e8effa'); ctx.globalAlpha=1; } } if(S.freeze<=0&&!S.dead) try{ drawWarn(B); }catch(e){}
   if(S.kind==='cart'){
     const w=520, x=VW/2-w/2, y=VH-26;
     ctx.fillStyle='rgba(6,10,22,.8)'; rr(ctx,x-8,y-10,w+16,20,10); ctx.fill();
@@ -813,6 +871,7 @@ setState=function(s){
       <p><b style="color:#62c7c1">Драка в цеху.</b> Пять волн врагов. Болт: способность на земле — <b>смэш</b>, враги отлетают в стены. Искра: рывок обжигает.</p>
       <p><b style="color:#c79bff">Ракета.</b> Прыжок — вверх, способность — вниз. Шестерёнки — топливо, без него ракета падает.</p>
       <p><b style="color:#5fd6a0">Труба.</b> Скользите по трубе: прыжок — вверх, способность — вниз. В заслонках гуляет зелёное окошко — пролетайте только через него.</p>
+      <p><b style="color:#c79bff">Лифт-шахта.</b> Платформа едет вверх, из стен вылетают пилы и шипы. Низкие пилы перепрыгивай, под высокими не прыгай, от красных шипов отходи. Болт: способность сбивает пилы.</p>
       <p><b style="color:#ff9a8a">Погоня за Механиком.</b> Стреляйте в Механика на доске и сбейте его до финиша, его мины перепрыгивайте.</p>
       <p>Вдвоём каждый управляет своим героем; врезался один — оба возвращаются назад.</p></div>
       <div class="btns"><button class="primary" id="btHB" type="button">Назад · Esc</button></div></div>`;

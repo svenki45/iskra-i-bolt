@@ -37,7 +37,7 @@ sub('<title>Искра и Болт</title>', '<title>Искра и Болт — 
 sub('const TOTAL=100;', f'const TOTAL={n};')
 # камера: испытания задают свой зум и сдвиг вперёд (BTX объявлен в bt.js через var)
 sub('const want=Math.max(1,Math.min(1.45,VW/(x1-x0+620),VH/(y1-y0+380)));',
-    'const want=BTX.z||Math.max(1,Math.min(1.45,VW/(x1-x0+620),VH/(y1-y0+380)));')
+    'const want=BTX.z||Math.max(1,Math.min(1.8,VW/(x1-x0+440),VH/(y1-y0+270)));')
 sub('const cx=live.reduce((a,p)=>a+p.x+p.w/2,0)/live.length;',
     'const cx=live.reduce((a,p)=>a+p.x+p.w/2,0)/live.length+BTX.lx;')
 sub('const cy=live.reduce((a,p)=>a+p.y+p.h/2,0)/live.length;',
