@@ -1,12 +1,13 @@
 /* ===== ИСПЫТАНИЯ (тестовая Steam-сборка desktop-bt): уровни-аттракционы в духе старых аркад =====
    Вставляется сборщиком tools/bt/build.py внутрь кода игры (перед const GAME_VER) — только в копию desktop-bt.
    Основная игра этот файл не видит. Механики свои: доска, трос, пресс, змеи, канал, драка, ракета, погоня за Механиком. */
-/*BT_N=15*/
+/*BT_N=16*/
 var BTX={z:0,lx:0,ly:0,fy:null};   // подсказки камере (читаются в draw)
 const BT=(()=>{
 const S={on:false,kind:null,L:null,cp:null,v:0,boost:0,freeze:0,banner:null,warnBeep:-1,hintT:0,padCd:{}};
 const FL=17, TOP=6;        // гонка: ряд пола и последний ряд потолка тоннеля
 const H0={spark:30,bolt:56}, HD={spark:15,bolt:20};   // рост стоя / пригнувшись
+const RJ=1400;   // прыжок с волны-трамплина (серфинг)
 const JV=760, JV2=700, GX=0.45;   // гонка: скорость прыжка и добавка к тяжести (прыжок короче и резче)
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const PACE=1.5;
@@ -56,7 +57,10 @@ const DEFS=[
    hint:'Способность рядом с напарником — ВЗЯТЬ его на плечи; ещё раз — БРОСИТЬ вперёд. Бросьте напарника через пропасть или на стену: он нажмёт кнопку и откроет мост или лифт. Время общее!'},
   {kind:'cart',name:'Погоня за Механиком',desc:'гонка на доске · сбей Механика до финиша',motif:'Ржавый цех',hue:20,par:50,base:330,top:420,boost:130,lead:16,rival:12,
    hint:'Механик удирает на своей доске и бросает мины. Стреляй в него и сбей до финиша! Мины перепрыгивай.',
-   track:'r14 w r12 g r12 w r10 p2 r12 g r12 f r10 w r12 g r10 b r18 w r10 p2 r12 g r12 h w r12 f r10 g r12 w r10 p3 r12 g r10 w r12 b r18 w r12 g r12 w r14'}
+   track:'r14 w r12 g r12 w r10 p2 r12 g r12 f r10 w r12 g r10 b r18 w r10 p2 r12 g r12 h w r12 f r10 g r12 w r10 p3 r12 g r10 w r12 b r18 w r12 g r12 w r14'},
+  {kind:'cart',name:'Серфинг',desc:'доска по волнам · буи-мины, медузы, волны-трамплины',motif:'Масляный подвал',hue:195,par:50,base:340,top:440,boost:130,lead:14,water:true,surf:true,
+   hint:'Волны несут сами. Прыжок — через буи-мины и скалы, способность (S / ↓) — пригнуться под медуз. На волне-трамплине (бирюзовая полоса) ПРЫГНИ — взлетишь высоко и соберёшь шестерёнки в воздухе.',
+   track:'r10 m r9 m r9 w r10 g r9 m r10 f r8 m r6 m r10 v r26 b r14 w r12 m r12 g r12 m r12 f r8 g r8 m r8 h w r10 v r26 m r9 g r8 b r14 m r12 w r12 m r12 g r12 f r8 m r6 m r8 g r8 w r10 v r26 m r8 g r8 w r8 m r12'}
 ];
 
 function rhythmTrack(D){
@@ -75,7 +79,7 @@ function rhythmTrack(D){
 }
 function cartLevel(D){
   if(D.rhythm&&!D.track) D.track=rhythmTrack(D);
-  const rows=18, cols=[], obs=[], strips=[], pads=[], flags=[], pick=[], fish=[], shoots=[];
+  const rows=18, cols=[], obs=[], strips=[], pads=[], flags=[], pick=[], fish=[], shoots=[], buoys=[], ramps=[];
   const col=()=>{ const c=Array(rows).fill('.'); for(let y=0;y<=TOP;y++) c[y]='#'; c[FL]='#'; return c; };
   cols.push(Array(rows).fill('#'));
   const run=n=>{ for(let i=0;i<n;i++) cols.push(col()); };
@@ -88,6 +92,8 @@ function cartLevel(D){
     else if(k==='p'){ const m=n||2; obs.push({t:'jump',x0:cols.length,x1:cols.length+m-1,pit:true}); for(let i=0;i<m;i++){ const c=col(); c[FL]='.'; cols.push(c); } }
     else if(k==='F'){ obs.push({t:'jump',x0:cols.length,x1:cols.length,fish:true}); fish.push({x:cols.length,t:-1}); cols.push(col()); }
     else if(k==='T'){ obs.push({t:'shoot',x0:cols.length,x1:cols.length}); shoots.push({x:cols.length,dead:false}); cols.push(col()); }
+    else if(k==='m'){ obs.push({t:'jump',x0:cols.length,x1:cols.length,buoy:true}); buoys.push({x:cols.length}); cols.push(col()); }
+    else if(k==='v'){ const x0=cols.length; ramps.push({x:x0}); for(const dx of [7,12,17]) for(const ty of [8,10,12]) pick.push({type:'gear',tx:x0+dx,ty}); }   // волна-трамплин: прыжок с неё — высоко, а шестерёнки висят в воздухе
     else if(k==='b') pads.push({x:cols.length,cd:0});
     else if(k==='f') flags.push({x:cols.length,on:false});
     else if(k==='h') pick.push({type:'heart',tx:cols.length,ty:14});
@@ -103,7 +109,7 @@ function cartLevel(D){
     if(!ok) continue; if(obs.some(o=>o.x1>=x-1&&o.x0<x+8)) continue; spots.push(x); }
   for(const f of flags){ const s=spots.filter(x=>x<=f.x).pop(); f.spot=s!=null?s:3; }
   return {name:D.name,motif:D.motif,hue:D.hue,dark:false,hint:D.hint,map,enemies:[],pickups:pick,movers:[],winds:[],checkpoints:[],pz:[],tier:0,hand:true,decor:[],darkA:.94,openBottom:true,par:D.par,
-    bt:{kind:'cart',obs,strips,pads,flags,spots,finishX,exitC:(ex0+1.5)*T,base:D.base,top:D.top,boost:D.boost,len:W,fish,shoots,rhythm:!!D.rhythm,water:!!D.water,rival:D.rival||0}};
+    bt:{kind:'cart',obs,strips,pads,flags,spots,finishX,exitC:(ex0+1.5)*T,base:D.base,top:D.top,boost:D.boost,len:W,fish,shoots,buoys,ramps,surf:!!D.surf,rhythm:!!D.rhythm,water:!!D.water,rival:D.rival||0}};
 }
 
 function ropeLevel(D){
@@ -630,6 +636,7 @@ function cartExtraHit(p){
   for(const c of B.shoots||[]) if(!c.dead&&overlap(p,{x:c.x*T+4,y:FL*T-76,w:32,h:76})) return 'crate';
   for(const f of B.fish) if(fishUp(f)>18&&overlap(p,{x:f.x*T+13,y:FL*T-fishUp(f)+10,w:14,h:fishUp(f)-18})) return 'fish';
   for(const m of S.mines) if(overlap(p,{x:m.x,y:FL*T-16,w:28,h:16})) return 'mine';
+  for(const b of B.buoys||[]) if(overlap(p,{x:b.x*T+7,y:FL*T-28,w:26,h:28})) return 'mine';
   return null;
 }
 function fishUp(f){ if(f.t<0) return 0; const t=f.t; return t<0.14?t/0.14*44:t<1.2?44:t<1.45?44*(1-(t-1.2)/0.25):0; }
@@ -658,6 +665,7 @@ tutorInit=function(i){ _tutorInit(i); if(getLevel(i)&&getLevel(i).bt) tutMarks=[
 
 function placeCart(x){ for(const p of players){ if(p.absent) continue; setDuck(p,false,true);
   const off=solo?0:(p.kind==='bolt'?2:0); p.x=(x+off)*T+(T-p.w)/2; p.y=FL*T-p.h; p.vx=0; p.vy=0; p.dash=0; p.slam=false; p.onGround=true; p.wasGround=true; } }
+function rampFx(p){ sfx('boost'); shake=Math.max(shake,3); burst(p.x+p.w/2,p.y+p.h,22,['#bfefff','#7fc7ff','#fff'],340,.6); texts.push({x:p.x+p.w/2,y:p.y-34,t:'ВОЛНА!',life:.9,c:'#7fe0ff',pop:true}); }
 function setupCart(L){
   BTX.z=1.85; BTX.lx=VW*0.2/1.85;
   const B=L.bt; for(const f of B.flags) f.on=!!(S.cp&&f.spot<=S.cp.x); for(const pd of B.pads) pd.cd=0;
@@ -694,7 +702,8 @@ control=function(p,inp,dt){
     if(!p.wasGround&&p.vy<0) q.jump=true;          // прыжок на доске всегда полный (без «короткого»)
     const wg=p.wasGround, vy0=p.vy;
     _control(p,q,dt);
-    if(p.vy<vy0-300&&p.vy<=-600) p.vy=wg?-JV:-JV2;   // одинаковая дуга прыжка у обоих героев
+    if(p.vy<vy0-300&&p.vy<=-600){   // одинаковая дуга прыжка у обоих героев
+      if(wg){ const cx=p.x+p.w/2, R=(S.L.bt.ramps||[]).find(r=>cx>=r.x*T&&cx<=(r.x+4)*T); if(R){ p.vy=-RJ; rampFx(p); } else p.vy=-JV; } else p.vy=-JV2; }
     p.face=1;
     if(dn&&!p.wasGround&&!p.onGround&&p.y+p.h<FL*T-4){   // ↓ в воздухе — резко вниз (успеть под ворота после прыжка)
       if(p.vy<900){ p.vy=900; p.cut=true; p.sx=.8; p.sy=1.25; }
@@ -847,7 +856,19 @@ function heroDraw(f,p){
   }
   f(p);
 }
+function drawSurf(p){
+  const x=p.x+p.w/2, y=p.y+p.h-3, L=p.kind==='bolt'?58:50, c=p.kind==='bolt'?'#62c7c1':'#ff8a3d', sp=S.v;
+  ctx.save(); ctx.translate(x,y);
+  if(sp>40){ ctx.fillStyle='rgba(255,255,255,.6)'; for(let k=0;k<7;k++){ const fx=-L/2-6-k*10-((clock*90)%10), fy=5+Math.sin(clock*9+k*1.3)*2.5; ctx.globalAlpha=.7-k*.09; ctx.beginPath(); ctx.arc(fx,fy,4.2-k*.4,0,7); ctx.fill(); } ctx.globalAlpha=1; }
+  ctx.rotate(clamp(p.vy*0.00028,-0.28,0.28));
+  const gr=ctx.createLinearGradient(-L/2,0,L/2,0); gr.addColorStop(0,'#f2f6fb'); gr.addColorStop(.5,'#ffffff'); gr.addColorStop(1,'#dbe6f2');
+  ctx.fillStyle=gr; ctx.beginPath(); ctx.moveTo(-L/2,2); ctx.quadraticCurveTo(-L/2+8,-3,0,-3); ctx.quadraticCurveTo(L/2-4,-3,L/2+8,-1); ctx.quadraticCurveTo(L/2,7,L/2-12,7); ctx.lineTo(-L/2+4,7); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle='#1d2a40'; ctx.lineWidth=1.6; ctx.stroke(); ctx.fillStyle=c; ctx.fillRect(-L/2+8,0.5,L-26,3);
+  ctx.fillStyle='#1d2a40'; ctx.beginPath(); ctx.moveTo(-L/2+6,7); ctx.lineTo(-L/2+2,13); ctx.lineTo(-L/2+14,7); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
 function drawBoard(p){
+  if(S.L.bt.surf) return drawSurf(p);
   const x=p.x+p.w/2, y=p.y+p.h-5, L=p.kind==='bolt'?56:46, c=p.kind==='bolt'?'#62c7c1':'#ff8a3d', sp=S.v;
   ctx.save(); ctx.translate(x,y);
   if(sp>40){ const fl=10+sp/22+Math.sin(clock*40)*4+(S.boost>0?18:0);
@@ -871,7 +892,7 @@ function drawRope(p){
 function drawWorld(){
   const B=S.L.bt;
   if(S.kind==='cart'){
-    for(const sx of B.strips){ const x=sx*T, y=FL*T-40, a=.75+.25*Math.sin(clock*30+sx);
+    for(const sx of B.strips){ if(B.surf){ drawJelly(sx); continue; } const x=sx*T, y=FL*T-40, a=.75+.25*Math.sin(clock*30+sx);
       ctx.save();
       for(let k=0;k<5;k++){ ctx.fillStyle=k%2?'#1d2638':'#ffd166'; ctx.beginPath(); ctx.moveTo(x+k*8,y-8); ctx.lineTo(x+k*8+8,y-8); ctx.lineTo(x+k*8+4,y); ctx.lineTo(x+k*8-4,y); ctx.closePath(); ctx.fill(); }
       const gl=ctx.createLinearGradient(0,y-4,0,y+22); gl.addColorStop(0,'rgba(98,214,255,.55)'); gl.addColorStop(1,'rgba(98,214,255,0)'); ctx.globalAlpha=a; ctx.fillStyle=gl; ctx.fillRect(x-6,y-2,T+12,24);
@@ -986,6 +1007,21 @@ function drawCartExtra(B){
       for(let r=6;r<(o.x1-o.x0+1)*T/2;r+=7){ ctx.beginPath(); ctx.ellipse(cx,FL*T+4,r,r*.28,0,clock*3+r,clock*3+r+4.2); ctx.stroke(); } }
     ctx.restore();
     if(state==='play'&&S.v>60) for(const p of live()) if(p.wasGround&&Math.random()<.7) addP({x:p.x,y:FL*T-6,vx:-S.v*.3-Math.random()*80,vy:-60-Math.random()*120,life:.4,max:.4,c:Math.random()<.5?'#bfefff':'#7fc7ff',s:3,g:.8}); }
+  if(B.surf){
+    ctx.save();
+    for(let k=0;k<2;k++){ const yb=FL*T+8+k*10; ctx.fillStyle=k?'rgba(30,110,190,.18)':'rgba(120,210,255,.12)'; ctx.beginPath(); ctx.moveTo(V.x-20,yb+34); for(let x=V.x-20;x<=V.x+V.w+20;x+=18) ctx.lineTo(x,yb+Math.sin(x*0.018+clock*(2.2+k))*(7+k*3)); ctx.lineTo(V.x+V.w+20,yb+34); ctx.closePath(); ctx.fill(); }
+    ctx.restore();
+    for(const r of B.ramps){ const x0=r.x*T, w=4*T; if(x0+w<V.x-60||x0>V.x+V.w+60) continue;
+      ctx.save(); const gr=ctx.createLinearGradient(0,FL*T-32,0,FL*T); gr.addColorStop(0,'rgba(190,245,255,.95)'); gr.addColorStop(1,'rgba(60,170,230,.55)'); ctx.fillStyle=gr;
+      ctx.beginPath(); ctx.moveTo(x0,FL*T); ctx.quadraticCurveTo(x0+w*0.62,FL*T-1,x0+w,FL*T-30); ctx.lineTo(x0+w,FL*T); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle='#fff'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(x0,FL*T); ctx.quadraticCurveTo(x0+w*0.62,FL*T-1,x0+w,FL*T-30); ctx.stroke();
+      ctx.fillStyle='#0b3a5c'; for(let k=0;k<3;k++){ const xx=x0+14+k*34+((clock*60)%34)*0, ph=(clock*3-k*.3)%1; ctx.globalAlpha=.4+.6*(1-ph); ctx.beginPath(); ctx.moveTo(xx,FL*T-8-k*3); ctx.lineTo(xx+14,FL*T-12-k*4); ctx.lineTo(xx,FL*T-16-k*4); ctx.lineTo(xx+5,FL*T-12-k*4); ctx.closePath(); ctx.fill(); } ctx.globalAlpha=1;
+      ctx.restore(); }
+    for(const b of B.buoys){ const x=b.x*T+20; if(x<V.x-60||x>V.x+V.w+60) continue; const y=FL*T-15+Math.sin(clock*3+b.x)*2, bl=Math.floor(clock*6+b.x)%2;
+      ctx.save(); ctx.translate(x,y); ctx.strokeStyle='#e8effa'; ctx.lineWidth=2; for(let k=0;k<8;k++){ const a=k*Math.PI/4; ctx.beginPath(); ctx.moveTo(Math.cos(a)*12,Math.sin(a)*12); ctx.lineTo(Math.cos(a)*18,Math.sin(a)*18); ctx.stroke(); }
+      ctx.fillStyle='#d9322d'; ctx.beginPath(); ctx.arc(0,0,13,0,7); ctx.fill(); ctx.fillStyle='#f4f7fb'; ctx.fillRect(-13,-3,26,6); ctx.strokeStyle='#4b1311'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,0,13,0,7); ctx.stroke();
+      ctx.fillStyle=bl?'#ffd166':'#7a5b1c'; ctx.beginPath(); ctx.arc(0,-17,3.5,0,7); ctx.fill(); ctx.restore(); }
+  }
   for(const c of B.shoots||[]){ if(c.dead) continue; const x=c.x*T, y=FL*T-76; if(x<V.x-60||x>V.x+V.w+60) continue; ctx.save(); ctx.fillStyle='#8a5a2b'; ctx.fillRect(x+3,y,34,76); ctx.strokeStyle='#4b2f14'; ctx.lineWidth=3; ctx.strokeRect(x+3,y,34,76); ctx.beginPath(); ctx.moveTo(x+3,y); ctx.lineTo(x+37,y+76); ctx.moveTo(x+37,y); ctx.lineTo(x+3,y+76); ctx.stroke(); ctx.fillStyle='#7fe08a'; ctx.beginPath(); ctx.arc(x+20,y+20,10+Math.sin(clock*8)*1.5,0,7); ctx.fill(); ctx.fillStyle='#0b1830'; ctx.beginPath(); ctx.arc(x+20,y+20,5,0,7); ctx.fill(); ctx.restore(); }
   for(const f of B.fish){ const h=fishUp(f); if(h<=0) continue; const x=f.x*T+20, y=FL*T-h+12;
     ctx.save(); ctx.translate(x,y); ctx.rotate(Math.sin(clock*10)*.12); ctx.fillStyle='#8aa2b8'; ctx.beginPath(); ctx.ellipse(0,0,18,12,0,0,Math.PI*2); ctx.fill();
@@ -1003,6 +1039,14 @@ function drawCartExtra(B){
     ctx.fillStyle='#4a3a2a'; ctx.fillRect(-14,-58,28,8); ctx.fillRect(-9,-70,18,13);
     ctx.strokeStyle='#c7d3dd'; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(14,-26); ctx.lineTo(26,-36); ctx.stroke(); ctx.beginPath(); ctx.arc(28,-38,5,0,Math.PI*1.5); ctx.stroke();
     ctx.restore(); }
+}
+function drawJelly(sx){
+  const x=sx*T+T/2, y=FL*T-40, sw=Math.sin(clock*4+sx), a=.75+.25*Math.sin(clock*9+sx);
+  ctx.save(); ctx.globalAlpha=a; const gr=ctx.createRadialGradient(x,y,2,x,y,22); gr.addColorStop(0,'rgba(255,170,230,.95)'); gr.addColorStop(1,'rgba(190,80,220,.55)'); ctx.fillStyle=gr;
+  ctx.beginPath(); ctx.arc(x,y,19,Math.PI,0); ctx.quadraticCurveTo(x+22,y+6,x+16,y+6); ctx.quadraticCurveTo(x,y+2,x-16,y+6); ctx.quadraticCurveTo(x-22,y+6,x-19,y); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle='rgba(255,200,240,.9)'; ctx.lineWidth=2.4; ctx.shadowColor='#ff7ad9'; ctx.shadowBlur=12*GLOW;
+  for(let k=-2;k<=2;k++){ ctx.beginPath(); ctx.moveTo(x+k*7,y+5); ctx.bezierCurveTo(x+k*7+sw*6,y+14,x+k*7-sw*6,y+22,x+k*7+sw*4,y+30); ctx.stroke(); }
+  ctx.restore();
 }
 function drawChaseExtra(B){
   const P=S.press, V=viewRect(); if(!P) return; const x0=B.A*T, x1=(B.B+1)*T, y=P.y; if(y<V.y-40) return;
@@ -1108,6 +1152,7 @@ setState=function(s){
       <p><b style="color:#ffb347">Эстафета.</b> Способность рядом с напарником — взять его на плечи, ещё раз — бросить вперёд (на экране точки показывают полёт). Бросьте друга через пропасть или на стену: он нажмёт кнопку, и появится мост или лифт. Время общее, за каждый участок +20 секунд.</p>
       <p><b style="color:#7fe0d0">Магнит.</b> Способность переворачивает гравитацию: бегаешь по потолку и полу. Шипы на полу — по потолку, на потолке — по полу; в стенах щель сверху или снизу.</p>
       <p><b style="color:#c79bff">Ритм.</b> Гонка по бит: пульс внизу — удар. Жёлтая стрелка — прыжок, красная — пригнись, ящик-мишень — стреляй. Всё в такт!</p>
+      <p><b style="color:#7fe0ff">Серфинг.</b> Доска по волнам. Прыжок — через красные буи-мины и скалы, способность — пригнуться под медуз. На бирюзовой волне-трамплине можно прыгнуть особенно высоко — в воздухе висят шестерёнки. Это по желанию: волну можно и просто проехать.</p>
       <p><b style="color:#ff9a8a">Погоня за Механиком.</b> Стреляйте в Механика на доске и сбейте его до финиша, его мины перепрыгивайте.</p>
       <p>Вдвоём каждый управляет своим героем; врезался один — оба возвращаются назад.</p></div>
       <div class="btns"><button class="primary" id="btHB" type="button">Назад · Esc</button></div></div>`;
