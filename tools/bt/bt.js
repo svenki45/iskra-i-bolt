@@ -1,7 +1,7 @@
 /* ===== ИСПЫТАНИЯ (тестовая Steam-сборка desktop-bt): уровни-аттракционы в духе старых аркад =====
    Вставляется сборщиком tools/bt/build.py внутрь кода игры (перед const GAME_VER) — только в копию desktop-bt.
    Основная игра этот файл не видит. Механики свои: доска, трос, пресс, змеи, канал, драка, ракета, погоня за Механиком. */
-/*BT_N=18*/
+/*BT_N=19*/
 var BTX={z:0,lx:0,ly:0,fy:null};   // подсказки камере (читаются в draw)
 const BT=(()=>{
 const S={on:false,kind:null,L:null,cp:null,v:0,boost:0,freeze:0,banner:null,warnBeep:-1,hintT:0,padCd:{}};
@@ -64,7 +64,10 @@ const DEFS=[
   {kind:'wire',name:'Колесо на проводе',desc:'три провода · шар-преследователь · смена проводов',motif:'Паровой коридор',hue:215,par:55,base:340,top:440,
    hint:'Едешь на колесе по проводу, сзади гонится электрошар. Прыжок (W / ↑) — на провод выше, способность (S / ↓) — на провод ниже. Искры на проводе обходи. Врежешься — замедлишься, и шар нагонит!'},
   {kind:'maze',name:'Лабиринт',desc:'три этажа, лифты, три рычага · охотник-шар',motif:'Паровой коридор',hue:285,par:85,
-   hint:'Нажми три рычага (встань на светящиеся плиты) — откроется выход. Лифты возят между этажами. Охотник-шар летит сквозь стены: кусается, но его можно оглушить выстрелом, смэшем Болта или рывком Искры.'}
+   hint:'Нажми три рычага (встань на светящиеся плиты) — откроется выход. Лифты возят между этажами. Охотник-шар летит сквозь стены: кусается, но его можно оглушить выстрелом, смэшем Болта или рывком Искры.'},
+  {kind:'ice',name:'Лёд',desc:'скользкие острова · ямы с шипами · льдины · лавина',motif:'Склад пружин',hue:195,par:80,
+   hint:'Пол скользкий: разгоняешься и тормозишь не сразу. Прыжок — через шипы и ямы с шипами. Широкие ямы — на плывущей льдине. Сзади сходит лавина — не отставай!',
+   track:'g10 f12 s1 f9 s1 f8 s2 f8 k f4 f6 p2 f8 p3 f7 p2 f9 s1 f6 s2 f8 k f4 f8 m7 f9 p3 f10 m8 f10 h f5 s2 f6 s1 f6 s1 f8 k f4 f8 p3 f6 p3 f6 p3 f6 s2 f6 s2 f6 s1 f10 m9 f8 s2 f7 p3 f6 s2 f8 k f4 f10 p2 f6 p3 f6 p2 f6 p3 f10 m8 f10 s2 f6 s2 f6 p3 f6 s1 f6 s1 f12'}
 ];
 
 function rhythmTrack(D){
@@ -146,7 +149,7 @@ function ropeLevel(D){
 }
 
 /* ================= испытания 4–9 ================= */
-const PLATF={chase:1,snake:1,brawl:1,lift:1,boss:1,maze:1};
+const PLATF={chase:1,snake:1,brawl:1,lift:1,boss:1,maze:1,ice:1};
 // ---------- погоня вниз: пресс сверху ----------
 function chaseLevel(D){
   const W=32, H=104, A=3, B=28;
@@ -216,7 +219,7 @@ function setupSnake(L){
 function placeSnakes(h){ for(const m of movers){ const s=m.snake; if(!s) continue; const [x,y]=snakeAt(s,s.head-m.i*T-m.tr*s.len/3); m.dx=x-m.x; m.dy=y-m.y; if(!h){ m.dx=0; m.dy=0; } m.x=x; m.y=y; } }
 const _updateMovers=updateMovers;
 updateMovers=function(h){
-  if(!(S.on&&S.kind==='snake')){ _updateMovers(h); if(S.on&&S.kind==='maze') mazeAssist(); return; }
+  if(!(S.on&&S.kind==='snake')){ _updateMovers(h); if(S.on&&(S.kind==='maze'||S.kind==='ice')) mazeAssist(); return; }
   const mul=speedMul(); for(const s of S.snakes) s.head+=s.sp*mul*h;
   placeSnakes(h);
   for(const m of movers) if(m.dx||m.dy) for(const o of players){ if(o.ground!==m||o.absent) continue; if(m.dx) moveX(o,m.dx); if(m.dy<0) moveY(o,m.dy); else if(m.dy>0) o.y+=m.dy; }
@@ -773,7 +776,89 @@ function cartExtraHit(p){
 function fishUp(f){ if(f.t<0) return 0; const t=f.t; return t<0.14?t/0.14*44:t<1.2?44:t<1.45?44*(1-(t-1.2)/0.25):0; }
 function cartExtraRewind(spot){ S.mines=S.mines.filter(m=>m.x<spot*T-T||m.x>(spot+16)*T); for(const f of S.L.bt.fish) if(f.x>spot) f.t=-1; if(S.R&&!S.R.dead) S.R.x=(spot+12)*T; }
 
-const BUILD={cart:D=>cartLevel(D),rope:D=>ropeLevel(D),chase:D=>chaseLevel(D),snake:D=>snakeLevel(D),rocket:D=>rocketLevel(D),lift:D=>liftLevel(D),mag:D=>magLevel(D),relay:D=>relayLevel(D),boss:D=>bossLevel(D),tube:D=>tubeLevel(D),brawl:D=>brawlLevel(D),wire:D=>wireLevel(D),maze:D=>mazeLevel(D)};
+// ---------- лёд: ледяные острова, ямы с шипами, льдины и лавина ----------
+// трасса: fN лёд, gN обычная земля, sN шипы на льду, pN яма (перепрыгнуть), mN широкая яма с льдиной, k флажок, h сердце
+const IFL=14;   // ряд поверхности: верх пола на высоте IFL*T
+function iceLevel(D){
+  const H=18, cols=[], flags=[], pick=[], movers=[], floes=[];
+  const surf=ice=>{ const c=Array(H).fill('.'); c[0]='#'; c[IFL]=ice?'I':'#'; c[15]='#'; c[16]='#'; c[17]='#'; return c; };
+  const pit=()=>{ const c=Array(H).fill('.'); c[0]='#'; c[16]='^'; c[17]='#'; return c; };
+  cols.push(Array(H).fill('#'));
+  for(const tok of D.track.trim().split(/\s+/)){
+    const k=tok[0], n=+tok.slice(1)||1;
+    if(k==='f'||k==='g'){ for(let i=0;i<n;i++) cols.push(surf(k==='f')); }
+    else if(k==='s'){ const x0=cols.length; for(let i=0;i<n;i++){ const c=surf(true); c[IFL-1]='^'; cols.push(c); } for(let i=0;i<n;i++) pick.push({type:'gear',tx:x0+i,ty:IFL-3}); }
+    else if(k==='p'){ const x0=cols.length; for(let i=0;i<n;i++) cols.push(pit()); pick.push({type:'gear',tx:x0+Math.floor(n/2),ty:IFL-3}); }
+    else if(k==='m'){ const x0=cols.length; for(let i=0;i<n;i++) cols.push(pit());
+      movers.push({ax:x0,ay:IFL,bx:x0+n-4,by:IFL,w:4,sp:110,pause:1.0}); floes.push({x0,x1:x0+n-1,m:movers.length-1});
+      pick.push({type:'gear',tx:x0+Math.floor(n/2)-1,ty:IFL-3},{type:'gear',tx:x0+Math.floor(n/2),ty:IFL-3}); }
+    else if(k==='k') flags.push({x:cols.length,on:false});
+    else if(k==='h') pick.push({type:'heart',tx:cols.length+1,ty:IFL-1});
+  }
+  for(let i=0;i<4;i++) cols.push(surf(false));
+  const finishX=cols.length;
+  for(let i=0;i<3;i++){ const c=surf(false); c[IFL-1]='E'; c[IFL-2]='E'; cols.push(c); }
+  for(let i=0;i<4;i++) cols.push(surf(false));
+  cols.push(Array(H).fill('#'));
+  cols[3][IFL-1]='1'; cols[5][IFL-1]='2';
+  const W=cols.length, map=[]; for(let y=0;y<H;y++){ let s=''; for(let x=0;x<W;x++) s+=cols[x][y]; map.push(s); }
+  // безопасные клетки: ровный пол без шипов в соседних столбцах (сюда возвращаем после падения)
+  const safe=[]; for(let x=1;x<W-1;x++){ let ok=true; for(let d=-1;d<=1&&ok;d++){ const c=cols[x+d]; if(c[IFL]!=='I'&&c[IFL]!=='#') ok=false; if(c[IFL-1]==='^') ok=false; } safe[x]=ok; }
+  return {name:D.name,motif:D.motif,hue:D.hue,dark:false,hint:D.hint,map,enemies:[],pickups:pick,movers,winds:[],checkpoints:[],pz:[],tier:2,hand:true,decor:[],darkA:.94,openBottom:false,par:D.par,
+    bt:{kind:'ice',flags,finishX,floes,safe,len:W}};
+}
+// на льду в прыжке сохраняется скорость, набранная на земле (инерция), пока держишь направление
+function iceMomentum(p,inp){ if(p.onGround||p.wasGround){ p.iv=p.vx; return; } if(p.iv&&inp.dir&&Math.sign(p.iv)===inp.dir&&Math.abs(p.vx)<Math.abs(p.iv)) p.vx=p.iv; }
+function placeIce(x){ for(const p of players){ if(p.absent) continue;
+  const off=solo?0:(p.kind==='bolt'?2:0); p.x=(x+off)*T+(T-p.w)/2; p.y=IFL*T-p.h; p.vx=0; p.vy=0; p.dash=0; p.slam=false; p.onGround=true; p.wasGround=true; } }
+function setupIce(L){
+  const B=L.bt; BTX.z=1.5; BTX.lx=VW*0.2/1.5;
+  for(const f of B.flags) f.on=!!(S.cp&&S.cp.x>=f.x);
+  const sx=S.cp?S.cp.x:4; if(S.cp) placeIce(sx);
+  for(const p of players) p.iv=0; S.snowX=(sx-17)*T; S.wait=S.cp?1.4:3.2; S.safe={}; for(const p of players) if(!p.absent) S.safe[p.kind]={x:p.x,y:p.y};
+  S.hintT=S.cp?0:8; banner(S.cp?'С ФЛАЖКА':'ЛЁД!','#9fe4f5',1.4);
+}
+function icePost(dt){
+  const B=S.L.bt, L=live(); if(!L.length) return; S.hintT=Math.max(0,S.hintT-dt);
+  const lead=Math.max(...L.map(p=>p.x+p.w));
+  for(const f of B.flags) if(!f.on&&lead>f.x*T+10){ f.on=true; S.cp={lvl:levelIdx,x:f.x}; sfx('pk_shield'); const p=L[0]; texts.push({x:p.x,y:p.y-50,t:'ФЛАЖОК!',life:1.4,c:'#7fe08a',pop:true}); }
+  for(const p of L){
+    if(p.onGround&&!p.ground&&Math.abs(p.y+p.h-IFL*T)<3&&B.safe[Math.floor((p.x+p.w/2)/T)]) S.safe[p.kind]={x:p.x,y:p.y};
+    if(p.y+p.h>(IFL+1.5)*T){   // упал в яму с шипами: сердце минус и назад на безопасное место
+      const s=S.safe[p.kind]||{x:4*T,y:IFL*T-p.h}; burst(p.x+p.w/2,p.y+p.h,16,['#bfefff','#fff'],260,.5); hurt(p); if(state!=='play') return;
+      p.x=s.x; p.y=s.y; p.vx=0; p.vy=0; p.inv=Math.max(p.inv,1.2); S.snowX=Math.min(S.snowX,s.x-10*T); texts.push({x:p.x+p.w/2,y:p.y-24,t:'ОБРАТНО!',life:1,c:'#9fe4f5'}); } }
+  if(S.wait>0){ S.wait-=dt; if(S.wait<=0){ banner('ЛАВИНА!','#ff9a8a',1); sfx('slam'); shake=Math.max(shake,6); } }
+  else { const prog=clamp(lead/T/B.finishX,0,1), D=diffLv(), k=D<0?0.85:1+0.07*D; S.snowX=Math.min(S.snowX+(105+55*prog)*k*dt,(B.finishX-5)*T); }
+  for(const p of L){ if(p.x>S.snowX+10) continue;   // лавина накрыла: сердце минус, лавина откатывается назад
+    burst(p.x+p.w/2,p.y+p.h/2,24,['#e8fbff','#fff','#9fe4f5'],380,.6); p.inv=0; _hurt(p); texts.push({x:p.x+p.w/2,y:p.y-30,t:'ЛАВИНА!',life:1.1,c:'#ff6b6b',pop:true});
+    sfx('hit'); shake=Math.max(shake,10); flash('#e8fbff',.3); hitstop=Math.max(hitstop,.1); S.snowX=p.x-14*T;
+    if(p.down||p.hp<=0){ p.down=false; die(p,'down'); return; } }
+  platformPost(dt);
+}
+function drawIce(B){
+  const t=clock, x=S.snowX, Hh=18*T; ctx.save();
+  for(const f of B.flags){ const fx=f.x*T+6, fy=IFL*T; ctx.strokeStyle='#c7d3dd'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(fx,fy); ctx.lineTo(fx,fy-86); ctx.stroke();
+    ctx.fillStyle=f.on?'#7fe08a':'#6f8191'; ctx.beginPath(); ctx.moveTo(fx,fy-86); ctx.quadraticCurveTo(fx+18,fy-80+Math.sin(t*6)*3,fx+30,fy-76); ctx.lineTo(fx,fy-64); ctx.closePath(); ctx.fill(); }
+  const w=560, gr=ctx.createLinearGradient(x-w,0,x+30,0); gr.addColorStop(0,'rgba(232,248,255,0)'); gr.addColorStop(.6,'rgba(226,246,255,.82)'); gr.addColorStop(1,'rgba(250,254,255,.97)');
+  ctx.fillStyle=gr; ctx.beginPath(); ctx.moveTo(x-w,-60); ctx.lineTo(x+30,-60);
+  for(let y=-60,k=0;y<=Hh+60;y+=34,k++) ctx.lineTo(x+30+Math.sin(t*6+k*1.3)*12+(k%2?14:-6),y);
+  ctx.lineTo(x-w,Hh+60); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle='rgba(159,228,245,.9)'; ctx.lineWidth=3; ctx.beginPath(); for(let y=-60,k=0;y<=Hh+60;y+=34,k++){ const xx=x+30+Math.sin(t*6+k*1.3)*12+(k%2?14:-6); k?ctx.lineTo(xx,y):ctx.moveTo(xx,y); } ctx.stroke();
+  if(state==='play'&&Math.random()<.6) addP({x:x+10,y:Math.random()*Hh,vx:80+Math.random()*120,vy:(Math.random()-.5)*90,life:.5,max:.5,c:'#ffffff',s:2.5+Math.random()*2,g:0});
+  ctx.restore();
+}
+function iceHud(B,L){
+  const w=520, x=VW/2-w/2, y=VH-26;
+  ctx.fillStyle='rgba(6,10,22,.8)'; rr(ctx,x-8,y-10,w+16,20,10); ctx.fill(); ctx.fillStyle='rgba(159,228,245,.25)'; rr(ctx,x,y-3,w,6,3); ctx.fill();
+  for(const f of B.flags){ ctx.fillStyle=f.on?'#7fe08a':'#6f8191'; ctx.fillRect(x+w*f.x/B.finishX-1,y-8,3,16); }
+  ctx.fillStyle='#e8fbff'; ctx.beginPath(); ctx.arc(x+w*clamp(S.snowX/T/B.finishX,0,1),y,6,0,7); ctx.fill();
+  for(const p of L){ const k=clamp(p.x/T/B.finishX,0,1); ctx.fillStyle=p.kind==='spark'?'#ff8a3d':'#62c7c1'; ctx.beginPath(); ctx.arc(x+w*k,y,6,0,Math.PI*2); ctx.fill(); }
+  if(L.length){ const gap=(Math.min(...L.map(p=>p.x))-S.snowX)/T, near=gap<6; label('лавина: '+Math.max(0,Math.round(gap*1.5))+' м',VW-T*1.2,VH-28,18,near&&Math.floor(clock*6)%2?'#ff6b6b':'#e8effa','right'); }
+  if(S.wait>0) label('лавина сойдёт через '+Math.ceil(S.wait),VW/2,VH*0.2,18,'#9fe4f5');
+  if(S.hintT>0){ ctx.globalAlpha=Math.min(1,S.hintT); label('лёд скользкий: тормозишь не сразу · прыжок — через шипы и ямы · широкие ямы — на льдине · лавина догоняет',VW/2,VH-56,15,'#e8effa'); ctx.globalAlpha=1; }
+}
+
+const BUILD={cart:D=>cartLevel(D),rope:D=>ropeLevel(D),chase:D=>chaseLevel(D),snake:D=>snakeLevel(D),rocket:D=>rocketLevel(D),lift:D=>liftLevel(D),mag:D=>magLevel(D),relay:D=>relayLevel(D),boss:D=>bossLevel(D),tube:D=>tubeLevel(D),brawl:D=>brawlLevel(D),wire:D=>wireLevel(D),maze:D=>mazeLevel(D),ice:D=>iceLevel(D)};
 const LEVELS=DEFS.map(D=>BUILD[D.kind](D));
 
 /* ---------------- перехваты движка ---------------- */
@@ -789,7 +874,7 @@ loadLevel=function(i,keepHp){
   tutMarks=[];
   if(S.cp&&S.cp.lvl!==i) S.cp=null;
   for(const p of players){ p.duck=false; p.rope=null; p.rocket=null; p.wire=null; p.mag=null; p.carried=null; p.carrying=null; p.thrown=0; p.smashCd=0; p.smashT=0; p.h0=H0[p.kind]; }
-  if(S.kind==='cart'){ setupCart(L); cartExtraSetup(L); } else if(S.kind==='rope') setupRope(L); else if(S.kind==='chase') setupChase(L); else if(S.kind==='snake') setupSnake(L); else if(S.kind==='brawl') setupBrawl(L); else if(S.kind==='rocket') setupRocket(L); else if(S.kind==='lift') setupLift(L); else if(S.kind==='boss') setupBoss(L); else if(S.kind==='mag') setupMag(L); else if(S.kind==='relay') setupRelay(L); else if(S.kind==='wire') setupWire(L); else if(S.kind==='maze') setupMaze(L);
+  if(S.kind==='cart'){ setupCart(L); cartExtraSetup(L); } else if(S.kind==='rope') setupRope(L); else if(S.kind==='chase') setupChase(L); else if(S.kind==='snake') setupSnake(L); else if(S.kind==='brawl') setupBrawl(L); else if(S.kind==='rocket') setupRocket(L); else if(S.kind==='lift') setupLift(L); else if(S.kind==='boss') setupBoss(L); else if(S.kind==='mag') setupMag(L); else if(S.kind==='relay') setupRelay(L); else if(S.kind==='wire') setupWire(L); else if(S.kind==='maze') setupMaze(L); else if(S.kind==='ice') setupIce(L);
 };
 const _tutorInit=tutorInit;
 tutorInit=function(i){ _tutorInit(i); if(getLevel(i)&&getLevel(i).bt) tutMarks=[]; };
@@ -867,7 +952,7 @@ control=function(p,inp,dt){
     const wasDash=p.dash>0; p.smashCd=Math.max(0,(p.smashCd||0)-dt);
     if(p.kind==='bolt'&&inp.ap&&p.wasGround){ const s0=players[0], onHead=!s0.absent&&!s0.down&&s0.wasGround&&s0.ground===p;
       if(!onHead){ if(p.smashCd<=0) smash(p); inp=Object.assign({},inp,{ap:false}); } }
-    _control(p,inp,dt); if(!wasDash&&p.dash>0) p.dashN=(p.dashN||0)+1; return;
+    _control(p,inp,dt); if(S.kind==='ice') iceMomentum(p,inp); if(!wasDash&&p.dash>0) p.dashN=(p.dashN||0)+1; return;
   }
   if(S.kind==='rope'&&p.rope){
     p.rope.in={dir:inp.dir,up:!!inp.jump||padUp(pi),dn:!!inp.ab||padDn(pi)};
@@ -918,7 +1003,7 @@ step=function(dt){
   _step(dt);
   if(S.banner){ S.banner.life-=dt; if(S.banner.life<=0) S.banner=null; }
   if(state!=='play') return;
-  ({cart:cartPost,rope:ropePost,chase:chasePost,snake:snakePost,brawl:brawlPost,rocket:rocketPost,lift:liftPost,boss:bossPost,mag:magPost,relay:relayPost,wire:wirePost,maze:mazePost})[S.kind](dt);
+  ({cart:cartPost,rope:ropePost,chase:chasePost,snake:snakePost,brawl:brawlPost,rocket:rocketPost,lift:liftPost,boss:bossPost,mag:magPost,relay:relayPost,wire:wirePost,maze:mazePost,ice:icePost})[S.kind](dt);
 };
 
 function cartPre(dt){
@@ -1050,6 +1135,7 @@ function drawWorld(){
   else if(S.kind==='relay') drawRelay();
   else if(S.kind==='wire') drawWire(B);
   else if(S.kind==='maze') drawMaze();
+  else if(S.kind==='ice') drawIce(B);
   else if(S.kind==='boss') drawBoss();
   else if(S.kind==='rope'){
     const ax=solo?[16*T]:[15*T,17*T]; ctx.save(); for(const x of ax){ ctx.fillStyle='#6f8191'; ctx.beginPath(); ctx.arc(x,B.ay+2,9,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#22324d'; ctx.beginPath(); ctx.arc(x,B.ay+2,4,0,Math.PI*2); ctx.fill(); } ctx.restore();
@@ -1215,6 +1301,7 @@ function drawSmash(p){ if(!(p.smashT>0)) return; const k=1-p.smashT/0.22, x=p.x+
   ctx.save(); ctx.globalAlpha=1-k; ctx.strokeStyle='#bfefff'; ctx.lineWidth=5; ctx.beginPath(); ctx.arc(x,y,18+k*40,p.face>0?-1:Math.PI-1,p.face>0?1:Math.PI+1); ctx.stroke();
   ctx.fillStyle='#c7d3dd'; ctx.beginPath(); ctx.arc(x-p.face*10,y,10,0,Math.PI*2); ctx.fill(); ctx.restore(); }
 function hudExtra(B,L){
+  if(S.kind==='ice') iceHud(B,L);
   if(S.kind==='cart'&&S.R){ const R=S.R, w=520, x=VW/2-w/2, y=VH-26, k=clamp(R.x/T/B.finishX,0,1);
     if(!R.dead){ ctx.fillStyle='#ff4d5e'; ctx.beginPath(); ctx.moveTo(x+w*k,y-9); ctx.lineTo(x+w*k+7,y); ctx.lineTo(x+w*k,y+9); ctx.lineTo(x+w*k-7,y); ctx.closePath(); ctx.fill(); }
     const bw=220, bx=VW/2-bw/2, by=78; ctx.fillStyle='rgba(6,10,22,.85)'; rr(ctx,bx-8,by-12,bw+16,24,10); ctx.fill();
