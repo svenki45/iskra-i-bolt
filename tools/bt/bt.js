@@ -132,7 +132,7 @@ function chaseLevel(D){
     bt:{kind:'chase',H,A,B,layers,flags}};
 }
 function setupChase(L){
-  const B=L.bt; BTX.z=1; BTX.ly=VH*0.12; for(const f of B.flags) f.on=!!(S.cp&&S.cp.i>=f.i);
+  const B=L.bt; BTX.z=1.3; BTX.ly=VH*0.2/1.3; for(const f of B.flags) f.on=!!(S.cp&&S.cp.i>=f.i);
   let top=7;
   if(S.cp){ const ly=B.layers[S.cp.i]; top=ly.y; for(const p of players){ if(p.absent) continue; const x=(ly.land[0]+(p.kind==='bolt'&&!solo?2:0))*T+4; p.x=x; p.y=ly.y*T-p.h; p.vx=p.vy=0; } }
   S.press={y:(top-8)*T,t:0,wait:S.cp?1.2:2.2}; S.hintT=S.cp?0:5; banner(S.cp?'С ФЛАЖКА':'БЕГИ ВНИЗ!','#ff9a8a',1.2);
@@ -204,7 +204,7 @@ function rocketLevel(D){
   for(let x=finishX;x<W;x++){ g[16][x]='#'; for(let y=1;y<3;y++) g[y][x]='#'; }
   for(let y=0;y<H;y++){ g[y][0]='#'; g[y][W-1]='#'; }
   const obs=[], R=rng(777);
-  const block=(x,y,w,h)=>{ for(let i=0;i<w;i++) for(let j=0;j<h;j++) g[y+j][x+i]='#'; obs.push([x,x+w-1]); };
+  const block=(x,y,w,h)=>{ for(let i=0;i<w;i++) for(let j=0;j<h;j++) g[y+j][x+i]='#'; obs.push([x,x+w-1,y,h]); };
   for(const x of [52,82,112,142,172,202,230]){ const [t,b]=prof[x]; const up=R()<.5; block(x,up?t+1:b-2,2,2); }
   for(const x of [68,128,188]){ const [t]=prof[x]; block(x,t,1,3); }
   for(const x of [98,158,218]){ const [,b]=prof[x]; block(x,b-2,1,3); }
@@ -216,7 +216,7 @@ function rocketLevel(D){
   const spots=[]; for(let x=4;x<finishX-2;x++){ const [t,b]=prof[x]; if(b-t<5) continue; let ok=true; for(let d=-1;d<=8&&ok;d++){ const c=x+d; if(obs.some(o=>c>=o[0]&&c<=o[1])) ok=false; for(let y=prof[c][0];y<=prof[c][1];y++) if(g[y][c]==='#') ok=false; } if(ok) spots.push({x,y:(prof[x][0]+prof[x][1])/2}); }
   const flags=[85,165].map(x=>({x,on:false}));
   return {name:D.name,motif:D.motif,hue:D.hue,dark:false,hint:D.hint,map:g.map(r=>r.join('')),enemies:en,pickups:pick,movers:[],winds:[],checkpoints:[],pz:[],tier:2,hand:true,decor:[],darkA:.94,openBottom:false,par:D.par,
-    bt:{kind:'rocket',finishX,spots,flags,prof,base:D.base,top:D.top}};
+    bt:{kind:'rocket',obsList:obs,finishX,spots,flags,prof,base:D.base,top:D.top}};
 }
 
 function gateGap(g,t){ const H=gapH(), c=g.mid+g.amp*Math.sin(t*6.2832/g.per+g.ph); return [(c-H/2)*T,(c+H/2)*T]; }
@@ -251,7 +251,7 @@ function tubeHits(){
 }
 function placeRocket(sp){ for(const p of players){ if(p.absent) continue; const off=solo?0:(p.kind==='spark'?-0.8:0.8); p.x=sp.x*T+4; p.y=(sp.y+off)*T-p.h/2; p.vx=p.vy=0; p.rocket={vy:0,crash:false}; p.onGround=false; } }
 function setupRocket(L){
-  const B=L.bt; BTX.z=1; BTX.lx=VW*0.22; for(const f of B.flags) f.on=!!(S.cp&&S.cp.x>=f.x);
+  const B=L.bt; BTX.z=1.5; BTX.lx=VW*0.22/1.5; for(const f of B.flags) f.on=!!(S.cp&&S.cp.x>=f.x);
   placeRocket(S.cp?B.spots.filter(s=>s.x<=S.cp.x).pop()||B.spots[0]:{x:3,y:9});
   S.fuel=100; S.gt=0; S.gateGap=gateGap; S.lastGears=gears; S.freeze=S.cp?0.9:1.4; S.hintT=S.cp?0:6; banner(S.cp?'С ФЛАЖКА':'ЗАВОДИМ РАКЕТУ…','#9cc3ff',S.freeze);
 }
@@ -394,13 +394,13 @@ tutorInit=function(i){ _tutorInit(i); if(getLevel(i)&&getLevel(i).bt) tutMarks=[
 function placeCart(x){ for(const p of players){ if(p.absent) continue; setDuck(p,false,true);
   const off=solo?0:(p.kind==='bolt'?2:0); p.x=(x+off)*T+(T-p.w)/2; p.y=FL*T-p.h; p.vx=0; p.vy=0; p.dash=0; p.slam=false; p.onGround=true; p.wasGround=true; } }
 function setupCart(L){
-  BTX.z=1; BTX.lx=VW*0.24;
+  BTX.z=1.6; BTX.lx=VW*0.2/1.6;
   const B=L.bt; for(const f of B.flags) f.on=!!(S.cp&&f.spot<=S.cp.x); for(const pd of B.pads) pd.cd=0;
   if(S.cp) placeCart(S.cp.x);
   S.freeze=S.cp?0.9:1.5; banner(S.cp?'С ФЛАЖКА':'ГОТОВЬСЯ…','#9cc3ff',S.freeze);
 }
 function setupRope(L){
-  BTX.z=1; BTX.ly=VH*0.16;
+  BTX.z=1.3; BTX.ly=VH*0.2/1.3;
   const B=L.bt; for(const f of B.flags) f.on=!!(S.cp&&f.y*T<=S.cp.y);
   for(const p of players){ if(p.absent) continue;
     const ax=solo?16*T:(p.kind==='spark'?15*T:17*T);
@@ -630,8 +630,28 @@ function drawWorld(){
 const _drawHud=drawHud;
 drawHud=function(){ _drawHud(); if(S.on&&players&&!intro&&(state==='play'||state==='dying'||state==='pause')) try{ hud(); }catch(e){} };
 function label(t,x,y,sz,c,al){ ctx.font=`400 ${sz}px 'Russo One', Unbounded, sans-serif`; ctx.textAlign=al||'center'; ctx.textBaseline='middle'; ctx.lineJoin='round'; ctx.lineWidth=Math.max(3,sz/5); ctx.strokeStyle='rgba(6,10,22,.92)'; ctx.strokeText(t,x,y); ctx.fillStyle=c; ctx.fillText(t,x,y); }
+
+// ---------- указатели опасности: камера близко, поэтому опасность сначала показывается у правого края ----------
+function drawWarn(B){
+  const V=draw.view; if(!V||!players) return; const z=V.z||1, rightW=(VW-V.ox)/z, v=Math.max(S.v,220), reach=v*1.0, items=[];
+  if(S.kind==='cart'){ return;
+    const lead=Math.max(...live().map(p=>p.x+p.w)); const yW=(FL*T-34);
+    for(const o of B.obs.concat(S.dyn||[])){ const wx=o.x0*T; const d=wx-rightW; if(d<-T*0.5||d>reach||wx<lead) continue;
+      const duck=o.t==='duck'; items.push({d,wx,yW,txt:o.pit?(B.water?'ВИР':'ЯМА'):o.fish?'РЫБА':o.mine?'МИНА':duck?'ПРИГНИСЬ':'ПРЫЖОК',dir:duck?1:-1,c:duck?'#7fd3ff':'#ffd166'}); }
+  } else if(S.kind==='rocket'){
+    const lead=Math.max(...live().map(p=>p.x+p.w));
+    if(B.gates){ for(const q of B.gates){ const wx=q.x*T-10, d=wx-rightW; if(d<-T*0.5||d>reach*1.3||wx<lead) continue; const tau=Math.max(0,(wx-lead)/v), g=gateGap(q,(S.gt||0)+tau); items.push({d,wx,yW:(g[0]+g[1])/2,txt:'ОКНО',dir:0,c:'#7fe08a'}); } }
+    else for(const o of B.obsList||[]){ const wx=o[0]*T, d=wx-rightW; if(d<-T*0.5||d>reach*1.2||wx<lead) continue; items.push({d,wx,yW:(o[2]+o[3]/2)*T,txt:'СТЕНА',dir:0,c:'#ff6b6b'}); }
+  } else return;
+  items.sort((a,b)=>a.d-b.d); const t=clock;
+  for(let k=0;k<Math.min(3,items.length);k++){ const it=items[k], x=VW-38-k*58, y=clamp(it.yW*z+V.oy,70,VH-70), a=clamp(1-Math.max(0,it.d)/reach*0.4,.55,1), pul=1+0.12*Math.sin(t*14);
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(x,y); ctx.scale(pul,pul);
+    ctx.fillStyle='rgba(6,10,22,.88)'; rr(ctx,-24,-26,48,52,10); ctx.fill(); ctx.strokeStyle=it.c; ctx.lineWidth=2.5; rr(ctx,-24,-26,48,52,10); ctx.stroke();
+    ctx.fillStyle=it.c; ctx.beginPath(); if(it.dir<0){ ctx.moveTo(0,-16); ctx.lineTo(13,-1); ctx.lineTo(-13,-1); } else if(it.dir>0){ ctx.moveTo(0,-1); ctx.lineTo(13,-16); ctx.lineTo(-13,-16); } else { ctx.arc(0,-9,8,0,Math.PI*2); } ctx.closePath(); ctx.fill();
+    ctx.restore(); ctx.save(); ctx.globalAlpha=a; label(it.txt,x,y+16,10,it.c); ctx.restore(); }
+}
 function hud(){
-  const B=S.L.bt, L=live();
+  const B=S.L.bt, L=live(); if(S.freeze<=0&&!S.dead) try{ drawWarn(B); }catch(e){}
   if(S.kind==='cart'){
     const w=520, x=VW/2-w/2, y=VH-26;
     ctx.fillStyle='rgba(6,10,22,.8)'; rr(ctx,x-8,y-10,w+16,20,10); ctx.fill();
