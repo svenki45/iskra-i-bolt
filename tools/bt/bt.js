@@ -1,8 +1,8 @@
 /* ===== ИСПЫТАНИЯ (тестовая Steam-сборка desktop-bt): уровни-аттракционы в духе старых аркад =====
    Вставляется сборщиком tools/bt/build.py внутрь кода игры (перед const GAME_VER) — только в копию desktop-bt.
    Основная игра этот файл не видит. Механики свои: доска, трос, пресс, змеи, канал, драка, ракета, погоня за Механиком. */
-/*BT_N=12*/
-var BTX={z:0,lx:0,ly:0};   // подсказки камере (читаются в draw)
+/*BT_N=15*/
+var BTX={z:0,lx:0,ly:0,fy:null};   // подсказки камере (читаются в draw)
 const BT=(()=>{
 const S={on:false,kind:null,L:null,cp:null,v:0,boost:0,freeze:0,banner:null,warnBeep:-1,hintT:0,padCd:{}};
 const FL=17, TOP=6;        // гонка: ряд пола и последний ряд потолка тоннеля
@@ -48,13 +48,34 @@ const DEFS=[
    hint:'Лифт поднимается по шахте. Низкие пилы — прыгай, высокие — не прыгай, красные шипы на полу и стенах — отойди заранее. Болт: способность на земле сбивает пилы и прикрывает Искру.'},
   {kind:'boss',name:'Кузнец',desc:'босс-робот · три фазы, смэш и огонь',motif:'Литейная',hue:8,par:100,
    hint:'Огромный робот-Кузнец. Топот — волны по полу (перепрыгни), ракеты — уходи с красных полос, в ярости летят пилы. Болт: способность вблизи — смэш. Искра: стреляй и рывком жги. Три фазы!'},
+  {kind:'cart',name:'Ритм',desc:'гонка по бит · прыжок, пригибание, выстрел',motif:'Ржавый цех',hue:300,par:55,base:400,top:400,boost:0,lead:15,rhythm:true,beats:84,
+   hint:'Всё идёт в такт: пульс внизу — это удар. Жёлтая стрелка — прыжок, красная — пригнись (способность), мишень-ящик — СТРЕЛЯЙ (держи огонь). Попадай в ритм!'},
+  {kind:'mag',name:'Магнит',desc:'гравитация вверх-вниз · потолок и пол',motif:'Масляный подвал',hue:190,par:65,
+   hint:'Способность — перевернуть гравитацию: падаешь вверх и бежишь по потолку. Шипы на полу — беги по потолку, на потолке — по полу. Стены с щелью: проходи с той стороны, где щель. Прыжок — оттолкнуться.'},
+  {kind:'relay',name:'Эстафета',desc:'вдвоём · несите друг друга · общий таймер',motif:'Литейная',hue:30,par:90,time:90,
+   hint:'Способность рядом с напарником — ВЗЯТЬ его на плечи; ещё раз — БРОСИТЬ вперёд. Бросьте напарника через пропасть или на стену: он нажмёт кнопку и откроет мост или лифт. Время общее!'},
   {kind:'cart',name:'Погоня за Механиком',desc:'гонка на доске · сбей Механика до финиша',motif:'Ржавый цех',hue:20,par:50,base:330,top:420,boost:130,lead:16,rival:12,
    hint:'Механик удирает на своей доске и бросает мины. Стреляй в него и сбей до финиша! Мины перепрыгивай.',
    track:'r14 w r12 g r12 w r10 p2 r12 g r12 f r10 w r12 g r10 b r18 w r10 p2 r12 g r12 h w r12 f r10 g r12 w r10 p3 r12 g r10 w r12 b r18 w r12 g r12 w r14'}
 ];
 
+function rhythmTrack(D){
+  const R=rng(909), N=D.beats, pat=[]; let last=-9, lastT='';
+  for(let i=0;i<N;i++){ pat.push('.'); }
+  const gapNeed=(a,b)=>b==='T'||a==='T'?1:(a==='D'&&b==='D'?1:2);
+  for(let i=3;i<N-3;i++){ const pr=i/N, chance=0.34+0.3*pr; if(R()>chance) continue;
+    const opts=['J','D','T']; if(pr>.25) opts.push('P'); if(pr>.5) opts.push('J','D'); const t=opts[Math.floor(R()*opts.length)];
+    if(i-last<gapNeed(lastT,t)) continue; pat[i]=t; last=i; lastT=t; }
+  for(let i=14;i<N-4;i+=22){ if(pat[i]==='.'&&pat[i+1]==='.') pat[i]='f'; }
+  for(const x of [31,63]) if(pat[x]==='.') pat[x]='h';
+  const out=[]; for(let i=0;i<N;i++){ const c=pat[i];
+    if(c==='J') out.push('w1','r4'); else if(c==='D') out.push('g','r4'); else if(c==='T') out.push('T','r4'); else if(c==='P') out.push('p2','r3');
+    else if(c==='f'){ out.push('f','r5'); } else if(c==='h'){ out.push('h','r5'); } else out.push('r5'); }
+  return out.join(' ');
+}
 function cartLevel(D){
-  const rows=18, cols=[], obs=[], strips=[], pads=[], flags=[], pick=[], fish=[];
+  if(D.rhythm&&!D.track) D.track=rhythmTrack(D);
+  const rows=18, cols=[], obs=[], strips=[], pads=[], flags=[], pick=[], fish=[], shoots=[];
   const col=()=>{ const c=Array(rows).fill('.'); for(let y=0;y<=TOP;y++) c[y]='#'; c[FL]='#'; return c; };
   cols.push(Array(rows).fill('#'));
   const run=n=>{ for(let i=0;i<n;i++) cols.push(col()); };
@@ -66,6 +87,7 @@ function cartLevel(D){
     else if(k==='g'){ obs.push({t:'duck',x0:cols.length,x1:cols.length}); const c=col(); for(let y=TOP+1;y<=15;y++) c[y]='#'; strips.push(cols.length); cols.push(c); }
     else if(k==='p'){ const m=n||2; obs.push({t:'jump',x0:cols.length,x1:cols.length+m-1,pit:true}); for(let i=0;i<m;i++){ const c=col(); c[FL]='.'; cols.push(c); } }
     else if(k==='F'){ obs.push({t:'jump',x0:cols.length,x1:cols.length,fish:true}); fish.push({x:cols.length,t:-1}); cols.push(col()); }
+    else if(k==='T'){ obs.push({t:'shoot',x0:cols.length,x1:cols.length}); shoots.push({x:cols.length,dead:false}); cols.push(col()); }
     else if(k==='b') pads.push({x:cols.length,cd:0});
     else if(k==='f') flags.push({x:cols.length,on:false});
     else if(k==='h') pick.push({type:'heart',tx:cols.length,ty:14});
@@ -81,7 +103,7 @@ function cartLevel(D){
     if(!ok) continue; if(obs.some(o=>o.x1>=x-1&&o.x0<x+8)) continue; spots.push(x); }
   for(const f of flags){ const s=spots.filter(x=>x<=f.x).pop(); f.spot=s!=null?s:3; }
   return {name:D.name,motif:D.motif,hue:D.hue,dark:false,hint:D.hint,map,enemies:[],pickups:pick,movers:[],winds:[],checkpoints:[],pz:[],tier:0,hand:true,decor:[],darkA:.94,openBottom:true,par:D.par,
-    bt:{kind:'cart',obs,strips,pads,flags,spots,finishX,exitC:(ex0+1.5)*T,base:D.base,top:D.top,boost:D.boost,len:W,fish,water:!!D.water,rival:D.rival||0}};
+    bt:{kind:'cart',obs,strips,pads,flags,spots,finishX,exitC:(ex0+1.5)*T,base:D.base,top:D.top,boost:D.boost,len:W,fish,shoots,rhythm:!!D.rhythm,water:!!D.water,rival:D.rival||0}};
 }
 
 function ropeLevel(D){
@@ -374,6 +396,115 @@ function drawBoss(){
   if(b.flash>0){ ctx.globalAlpha=.45; ctx.fillStyle='#fff'; rr(ctx,x0+4,b.y+26,b.w-8,b.h-52,14); ctx.fill(); }
   ctx.restore();
 }
+
+// ---------- магнитный уровень: гравитация переключается способностью ----------
+const MC=5*T, MF=13*T;     // потолок (низ плиток) и пол (верх плиток)
+function magLevel(D){
+  const H=20, types=['F','C','P','Q','M','F','C','P','Q','M','S','F','Q','S','M','P','C','S','F','Q','M','S'], R=rng(555);
+  const segs=[], saws=[], flags=[]; let x=14; const rects=[];
+  const place=[];
+  for(const t of types){ const gap=10+Math.floor(R()*3); 
+    if(t==='F'){ segs.push({k:'f',x0:x,x1:x+5,need:-1}); x+=6; }
+    else if(t==='C'){ segs.push({k:'c',x0:x,x1:x+5,need:1}); x+=6; }
+    else if(t==='P'){ segs.push({k:'p',x0:x,x1:x+1,need:-1}); x+=2; }
+    else if(t==='Q'){ segs.push({k:'q',x0:x,x1:x+1,need:1}); x+=2; }
+    else if(t==='M'){ segs.push({k:'f',x0:x,x1:x+3,need:-1}); segs.push({k:'c',x0:x+9,x1:x+12,need:1}); x+=13; }
+    else { saws.push({x:(x+1)*T+20,mid:9*T,A:2.9*T,per:2.1+R()*0.5,ph:R()*6}); segs.push({k:'s',x0:x,x1:x+2,need:0}); x+=3; }
+    x+=gap; if(segs.length%4===0) flags.push({x:x-5,on:false}); }
+  const finishX=x+4, W=finishX+16, g=[...Array(H)].map(()=>Array(W).fill('.'));
+  for(let xx=0;xx<W;xx++){ for(let y=0;y<=4;y++) g[y][xx]='#'; for(let y=13;y<H;y++) g[y][xx]='#'; }
+  for(let y=0;y<H;y++){ g[y][0]='#'; g[y][W-1]='#'; }
+  for(const sg of segs){ if(sg.k==='p') for(let xx=sg.x0;xx<=sg.x1;xx++) for(let y=8;y<=12;y++) g[y][xx]='#'; if(sg.k==='q') for(let xx=sg.x0;xx<=sg.x1;xx++) for(let y=5;y<=9;y++) g[y][xx]='#'; }
+  for(let xx=finishX+4;xx<=finishX+6;xx++){ g[11][xx]='E'; g[12][xx]='E'; }
+  g[12][3]='1'; g[12][5]='2';
+  const spots=[]; for(let xx=3;xx<finishX-2;xx++){ if(segs.some(sg=>sg.x1>=xx-2&&sg.x0<=xx+11)) continue; spots.push(xx); }
+  for(const f of flags) f.spot=spots.filter(q=>q<=f.x).pop()||3;
+  return {name:D.name,motif:D.motif,hue:D.hue,dark:false,hint:D.hint,map:g.map(r=>r.join('')),enemies:[],pickups:[],movers:[],winds:[],checkpoints:[],pz:[],tier:2,hand:true,decor:[],darkA:.94,openBottom:false,par:D.par,
+    bt:{kind:'mag',segs,saws,flags,spots,finishX,len:W}};
+}
+function placeMag(sp){ for(const p of players){ if(p.absent) continue; p.mag={g:1,vx:0,vy:0,on:false,cd:0,dir:0,jp:false,flip:false,jwas:false,abwas:false}; p.x=(sp+(p.kind==='bolt'&&!solo?1.6:0))*T+4; p.y=MF-p.h-1; p.vx=p.vy=0; p.onGround=true; p.wasGround=true; } }
+function setupMag(L){ const B=L.bt; BTX.z=1.7; BTX.lx=VW*0.2/1.7; BTX.fy=9*T; S.lt=0; S.freeze=S.cp?0.8:1.4; S.hintT=S.cp?0:8;
+  for(const f of B.flags) f.on=!!(S.cp&&S.cp.x>=f.x); placeMag(S.cp?(B.flags.filter(f=>f.on).pop()||{spot:3}).spot:3); banner(S.cp?'С ФЛАЖКА':'ГОТОВЬСЯ…','#9cc3ff',S.freeze); }
+function magPhys(p,h){
+  const M=p.mag; M.cd=Math.max(0,M.cd-h);
+  if(S.freeze>0){ p.vx=p.vy=0; return; }
+  if(M.flip&&M.cd<=0){ M.g=-M.g; M.cd=0.3; M.vy=M.g*160; M.on=false; sfx('jump'); burst(p.x+p.w/2,p.y+p.h/2,10,['#9cf','#fff'],200,.35); } M.flip=false;
+  M.vx=approach(M.vx,M.dir*235,3200*h);
+  if(M.jp&&M.on){ M.vy=-M.g*740; M.on=false; sfx('jump'); } M.jp=false;
+  M.vy+=M.g*2300*h; M.vy=clamp(M.vy,-900,900);
+  const nx=p.x+M.vx*h; if(!tileHit(nx,p.y,p.w,p.h)) p.x=nx; else M.vx=0;
+  const dy=M.vy*h; let hit=false;
+  if(!tileHit(p.x,p.y+dy,p.w,p.h)) p.y+=dy; else { hit=true; const st=Math.sign(dy)||1; let n=0; while(n<Math.abs(dy)&&!tileHit(p.x,p.y+st,p.w,p.h)){ p.y+=st; n++; } }
+  if(hit){ if(Math.sign(M.vy)===M.g) M.on=true; M.vy=0; } else if(Math.abs(M.vy)>40) M.on=false;
+  p.vx=M.vx; p.vy=M.vy; p.onGround=M.on; p.wasGround=M.on; p.ground=null;
+}
+function sawY(q,t){ return q.mid+q.A*Math.sin(t*6.2832/q.per+q.ph); }
+function magPost(dt){
+  const B=S.L.bt, L=live(); if(!L.length) return; S.hintT=Math.max(0,S.hintT-dt);
+  if(S.freeze>0){ S.freeze-=dt; if(S.freeze<=0){ banner('ВПЕРЁД!','#ffd166',.9); sfx('boost'); } return; }
+  S.lt+=dt;
+  for(const f of B.flags) if(!f.on&&L.some(p=>p.x>f.x*T)){ f.on=true; S.cp={lvl:levelIdx,x:f.x}; sfx('pk_shield'); const p=L[0]; texts.push({x:p.x,y:p.y-50,t:'ФЛАЖОК!',life:1.4,c:'#7fe08a',pop:true}); }
+  const bad=[];
+  for(const p of L){ if(p.down||p.inv>0) continue; let why=null;
+    for(const sg of B.segs){ const x=sg.x0*T, w=(sg.x1-sg.x0+1)*T; if(sg.k==='f'&&overlap(p,{x,y:MF-24,w,h:24})) why='ШИПЫ!'; else if(sg.k==='c'&&overlap(p,{x,y:MC,w,h:24})) why='ШИПЫ!'; }
+    for(const q of B.saws){ const y=sawY(q,S.lt); if(overlap(p,{x:q.x-16,y:y-16,w:32,h:32})) why='ПИЛА!'; }
+    if(why){ bad.push(p); texts.push({x:p.x+p.w/2,y:p.y-30,t:why,life:1,c:'#ff6b6b',pop:true}); } }
+  if(!bad.length) return;
+  for(const p of bad){ burst(p.x+p.w/2,p.y+p.h/2,22,['#ff6b6b','#fff','#ffd166'],360,.55); p.inv=0; _hurt(p); if(p.down||p.hp<=0){ p.down=false; die(p,'down'); return; } }
+  sfx('hit'); shake=Math.max(shake,8); flash('#ff3b4e',.3); hitstop=Math.max(hitstop,.1);
+  const minX=Math.min(...bad.map(p=>p.x))/T, sp=B.spots.filter(q=>q+3<=minX).pop()||3;
+  placeMag(sp); for(const p of players) if(!p.absent) p.inv=Math.max(p.inv,1.5); S.freeze=0.8; banner('ЕЩЁ РАЗ!','#ff9a8a',.8);
+}
+function drawMag(){
+  const B=S.L.bt, V=viewRect(), t=clock; ctx.save();
+  for(const sg of B.segs){ const x=sg.x0*T, w=(sg.x1-sg.x0+1)*T; if(x+w<V.x-40||x>V.x+V.w+40) continue;
+    if(sg.k==='f'||sg.k==='c'){ const fl=sg.k==='f', y0=fl?MF:MC, dir=fl?-1:1, n=Math.round(w/20); ctx.fillStyle='#e6edf3'; for(let k=0;k<n;k++){ const xx=x+k*w/n; ctx.beginPath(); ctx.moveTo(xx,y0); ctx.lineTo(xx+w/n/2,y0+dir*26); ctx.lineTo(xx+w/n,y0); ctx.closePath(); ctx.fill(); }
+      ctx.globalAlpha=.18+.1*Math.sin(t*6); ctx.fillStyle='#ff4d5e'; ctx.fillRect(x,fl?MF-70:MC,w,70); ctx.globalAlpha=1; } }
+  for(const q of B.saws){ if(q.x<V.x-60||q.x>V.x+V.w+60) continue; const y=sawY(q,S.lt||0); ctx.strokeStyle='rgba(207,216,224,.25)'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(q.x,MC); ctx.lineTo(q.x,MF); ctx.stroke();
+    ctx.save(); ctx.translate(q.x,y); ctx.rotate(t*12); ctx.fillStyle='#cfd8e0'; ctx.beginPath(); for(let k=0;k<16;k++){ const a=k/16*Math.PI*2, r=k%2?13:21; ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r); } ctx.closePath(); ctx.fill(); ctx.fillStyle='#5b6b7a'; ctx.beginPath(); ctx.arc(0,0,6,0,7); ctx.fill(); ctx.restore(); }
+  ctx.restore();
+}
+
+// ---------- эстафета: несите друг друга, общий таймер ----------
+const THROW={vx:600,vy:1000}, LOB={vx:380,vy:1160}, RFR=13;
+function relayLevel(D){
+  const H=18, spec=['pit','wall','pit','wall'], gaps=[10,10], W0=4+spec.length*30+14, g=[...Array(H)].map(()=>Array(W0).fill('.'));
+  for(let x=0;x<W0;x++){ g[0][x]='#'; for(let y=RFR;y<H;y++) g[y][x]='#'; } for(let y=0;y<H;y++){ g[y][0]='#'; g[y][W0-1]='#'; }
+  const st=[], movers=[]; let x=5, pi=0;
+  for(const t of spec){ const e={type:t,safeX:x+1};
+    if(t==='pit'){ const G=gaps[pi++%gaps.length], gs=x+10, ge=gs+G; for(let xx=gs;xx<ge;xx++) for(let y=RFR;y<=H-2;y++) g[y][xx]='.'; e.gs=gs; e.ge=ge; e.plate={x:(ge+2.5)*T,y:RFR*T}; e.mi=movers.length; movers.push({ax:gs,ay:RFR,bx:gs,by:RFR,w:G,sp:0,pause:0}); e.endX=ge+4; x=ge+10; e.throwX=gs-1.1; }
+    else { const ex=x+10, wx=ex+3; for(let xx=wx;xx<wx+4;xx++) for(let y=5;y<RFR;y++) g[y][xx]='#'; for(let xx=ex;xx<ex+3;xx++) for(let y=RFR;y<=H-2;y++) g[y][xx]='.'; e.ex=ex; e.wx=wx; e.plate={x:(wx+2)*T,y:5*T}; e.mi=movers.length; movers.push({ax:ex,ay:RFR,bx:ex,by:5,w:3,sp:0,pause:1.1}); e.endX=wx+5; x=wx+4+9; e.throwX=wx-4.8; }
+    st.push(e); }
+  const finishX=x+2; for(let xx=finishX+3;xx<=finishX+5;xx++){ g[RFR-1][xx]='E'; g[RFR-2][xx]='E'; }
+  g[RFR-1][2]='1'; g[RFR-1][4]='2';
+  return {name:D.name,motif:D.motif,hue:D.hue,dark:false,hint:D.hint,map:g.map(r=>r.join('')),enemies:[],pickups:[],movers,winds:[],checkpoints:[],pz:[],tier:2,hand:true,decor:[],darkA:.94,openBottom:false,par:D.par,
+    bt:{kind:'relay',st,finishX,time:D.time,len:W0}};
+}
+function relayActivate(e,quiet){ e.on=true; const m=movers[e.mi]; if(!m) return; if(e.type==='pit'){ m.ay=m.by=RFR*T; m.y=RFR*T; } else { m.sp=170; } if(!quiet){ sfx('win'); banner(e.type==='pit'?'МОСТ ВЫДВИНУТ!':'ЛИФТ ЕДЕТ!','#7fe08a',1.2); shake=Math.max(shake,4); } }
+function setupRelay(L){ const B=L.bt; BTX.z=1.45; BTX.lx=VW*0.12/1.45; S.rt=B.time*(diffLv()<0?1.3:diffLv()>1?0.85:1); S.hintT=10; S.freeze=1.3; banner('ЭСТАФЕТА!','#ffb347',1.2);
+  for(const e of B.st){ e.on=false; e.done=false; const m=movers[e.mi]; if(m){ if(e.type==='pit'){ m.ay=m.by=-4000; m.y=-4000; } else { m.sp=0; m.u=0; m.dir=1; m.hold=0; } } }
+  if(solo) for(const e of B.st) relayActivate(e,true); }
+function relayPost(dt){
+  const B=S.L.bt, L=live(); if(!L.length) return; S.hintT=Math.max(0,S.hintT-dt);
+  if(S.freeze>0){ S.freeze-=dt; return; }
+  S.rt-=dt; if(S.rt<=0){ S.rt=0; burst(L[0].x,L[0].y,20,['#ff6b6b','#fff'],300,.6); banner('ВРЕМЯ ВЫШЛО!','#ff6b6b',1.4); die(L[0],'down'); return; }
+  for(const p of L) if(p.carrying){ const q=p.carrying; q.x=p.x+(p.w-q.w)/2; q.y=p.y-q.h-2; q.vx=0; q.vy=0; q.face=p.face; }
+  for(const e of B.st){ if(!e.on&&L.some(p=>p.x+p.w>e.plate.x-24&&p.x<e.plate.x+24&&Math.abs(p.y+p.h-e.plate.y)<10)) relayActivate(e);
+    if(!e.done&&L.every(p=>p.x>e.endX*T)){ e.done=true; S.rt+=20; texts.push({x:L[0].x,y:L[0].y-50,t:'+20 с',life:1.2,c:'#7fe08a',pop:true}); sfx('pk_shield'); } }
+  for(const p of L){ if(p.down||p.carried) continue; const fell=p.y+p.h>(RFR+2.4)*T; if(!fell) continue;
+    const e=B.st.filter(q=>q.safeX*T<p.x).pop()||B.st[0]; burst(p.x+p.w/2,p.y+p.h/2,18,['#ff6b6b','#fff'],320,.5); if(p.carrying){ p.carrying.carried=null; p.carrying=null; }
+    p.inv=0; _hurt(p); texts.push({x:p.x+p.w/2,y:(RFR+1)*T,t:'ПРОВАЛ!',life:1,c:'#ff6b6b',pop:true}); sfx('hit'); if(p.down||p.hp<=0){ p.down=false; die(p,'down'); return; }
+    p.x=e.safeX*T; p.y=RFR*T-p.h-1; p.vx=p.vy=0; p.thrown=0; p.inv=1.4; }
+}
+function drawRelay(){
+  const B=S.L.bt, V=viewRect(), t=clock; ctx.save();
+  for(const e of B.st){ if(e.type==='pit'){ const x=e.gs*T, w=(e.ge-e.gs)*T; if(x+w<V.x-40||x>V.x+V.w+40) continue; ctx.fillStyle='#e6edf3'; const n=Math.round(w/22); for(let k=0;k<n;k++){ const xx=x+k*w/n; ctx.beginPath(); ctx.moveTo(xx,17*T); ctx.lineTo(xx+w/n/2,17*T-24); ctx.lineTo(xx+w/n,17*T); ctx.closePath(); ctx.fill(); } if(!e.on){ ctx.globalAlpha=.5+.3*Math.sin(t*5); ctx.strokeStyle='#ffd166'; ctx.lineWidth=3; ctx.setLineDash([10,8]); ctx.strokeRect(x,RFR*T-2,w,12); ctx.setLineDash([]); ctx.globalAlpha=1; } }
+    else if(!e.on){ const x=e.ex*T; ctx.globalAlpha=.5+.3*Math.sin(t*5); ctx.strokeStyle='#ffd166'; ctx.lineWidth=3; ctx.setLineDash([10,8]); ctx.strokeRect(x,RFR*T-2,3*T,12); ctx.setLineDash([]); ctx.globalAlpha=1; }
+    const px=e.plate.x, py=e.plate.y; if(px<V.x-60||px>V.x+V.w+60) continue; ctx.fillStyle=e.on?'#7fe08a':'#ff6b6b'; rr(ctx,px-22,py-8,44,10,4); ctx.fill(); ctx.fillStyle='#2b333c'; ctx.fillRect(px-26,py,52,4);
+    if(!e.on){ ctx.globalAlpha=.6+.4*Math.sin(t*8); label('КНОПКА',px,py-26,11,'#ffd166'); ctx.globalAlpha=1; } }
+  for(const p of live()) if(p.carrying&&state==='play'){ const inpP=readInput?null:null; const up=!!(p.jumpHeld); let x=p.x+p.w/2, y=p.y-p.carrying.h-2, vx=(p.face||1)*(up?LOB.vx:THROW.vx), vy=-(up?LOB.vy:THROW.vy); ctx.fillStyle='rgba(255,255,255,.7)'; for(let k=1;k<=22;k++){ const tt=k*0.045, xx=x+vx*tt, yy=y+vy*tt+0.5*G*tt*tt; if(yy>(RFR+1)*T) break; ctx.beginPath(); ctx.arc(xx,yy,3.2,0,7); ctx.fill(); } }
+  ctx.restore();
+}
 function placeRocket(sp){ for(const p of players){ if(p.absent) continue; const off=solo?0:(p.kind==='spark'?-0.8:0.8); p.x=sp.x*T+4; p.y=(sp.y+off)*T-p.h/2; p.vx=p.vy=0; p.rocket={vy:0,crash:false}; p.onGround=false; } }
 function setupRocket(L){
   const B=L.bt; BTX.z=1.7; BTX.lx=VW*0.22/1.7; for(const f of B.flags) f.on=!!(S.cp&&S.cp.x>=f.x);
@@ -467,11 +598,13 @@ function platformPost(dt){
 // ---------- гонка: рыбы, мины и Механик ----------
 function cartExtraSetup(L){
   const B=L.bt; S.dyn=[]; S.mines=[];
-  for(const f of B.fish) f.t=-1;
+  for(const f of B.fish) f.t=-1; for(const c of B.shoots||[]) c.dead=false; S.beatN=null;
   if(B.rival){ const sx=(S.cp?S.cp.x:3)+14; S.R={x:sx*T,v:0,hp:B.rival,max:B.rival,cd:2.5,dead:false,flash:0,deadT:0}; exitLocked=true; } else { S.R=null; exitLocked=false; }
 }
 function cartExtraPost(dt,L){
   const B=S.L.bt, lead=Math.max(...L.map(p=>p.x+p.w));
+  for(const c of B.shoots||[]){ if(c.dead) continue; const r={x:c.x*T,y:FL*T-80,w:40,h:80}; for(const bl of bullets){ if(bl.life<=0||!overlap(bl,r)) continue; c.dead=true; bl.life=0; burst(c.x*T+20,FL*T-40,16,['#ffd166','#ff8a3d','#fff'],300,.45); sfx('kill'); texts.push({x:c.x*T+20,y:FL*T-90,t:'ТАК!',life:.6,c:'#7fe08a',pop:true}); break; } }
+  if(B.rhythm&&L.length){ const k=(lead/T-16)/5, b=Math.floor(k); if(S.beatN!==b){ S.beatN=b; S.beatT=0; if(S.freeze<=0&&b>=0) tone(b%4===0?300:200,b%4===0?260:180,.05,'square',.03); } S.beatT=(S.beatT||0)+dt; }
   for(const f of B.fish){ if(f.t<0){ if(lead>f.x*T-Math.max(S.v,200)*0.55&&lead<f.x*T) { f.t=0; burst(f.x*T+20,FL*T-4,14,['#9cf','#fff'],220,.4); sfx('jump'); } } else f.t+=dt; }
   const R=S.R;
   if(R){
@@ -490,6 +623,7 @@ function cartExtraPost(dt,L){
 }
 function cartExtraHit(p){
   const B=S.L.bt;
+  for(const c of B.shoots||[]) if(!c.dead&&overlap(p,{x:c.x*T+4,y:FL*T-76,w:32,h:76})) return 'crate';
   for(const f of B.fish) if(fishUp(f)>18&&overlap(p,{x:f.x*T+13,y:FL*T-fishUp(f)+10,w:14,h:fishUp(f)-18})) return 'fish';
   for(const m of S.mines) if(overlap(p,{x:m.x,y:FL*T-16,w:28,h:16})) return 'mine';
   return null;
@@ -497,7 +631,7 @@ function cartExtraHit(p){
 function fishUp(f){ if(f.t<0) return 0; const t=f.t; return t<0.14?t/0.14*44:t<1.2?44:t<1.45?44*(1-(t-1.2)/0.25):0; }
 function cartExtraRewind(spot){ S.mines=S.mines.filter(m=>m.x<spot*T-T||m.x>(spot+16)*T); for(const f of S.L.bt.fish) if(f.x>spot) f.t=-1; if(S.R&&!S.R.dead) S.R.x=(spot+12)*T; }
 
-const BUILD={cart:D=>cartLevel(D),rope:D=>ropeLevel(D),chase:D=>chaseLevel(D),snake:D=>snakeLevel(D),rocket:D=>rocketLevel(D),lift:D=>liftLevel(D),boss:D=>bossLevel(D),tube:D=>tubeLevel(D),brawl:D=>brawlLevel(D)};
+const BUILD={cart:D=>cartLevel(D),rope:D=>ropeLevel(D),chase:D=>chaseLevel(D),snake:D=>snakeLevel(D),rocket:D=>rocketLevel(D),lift:D=>liftLevel(D),mag:D=>magLevel(D),relay:D=>relayLevel(D),boss:D=>bossLevel(D),tube:D=>tubeLevel(D),brawl:D=>brawlLevel(D)};
 const LEVELS=DEFS.map(D=>BUILD[D.kind](D));
 
 /* ---------------- перехваты движка ---------------- */
@@ -508,12 +642,12 @@ const _loadLevel=loadLevel;
 loadLevel=function(i,keepHp){
   _loadLevel(i,keepHp);
   const L=getLevel(i); S.L=L; S.on=!!(L&&L.bt&&!edTest); S.kind=S.on?L.bt.kind:null;
-  BTX.z=0; BTX.lx=0; BTX.ly=0; S.banner=null; S.boost=0; S.v=0; S.freeze=0; S.hintT=0; S.R=null; S.press=null; S.snakes=null; S.mines=[]; S.dyn=[];
+  BTX.z=0; BTX.lx=0; BTX.ly=0; BTX.fy=null; S.banner=null; S.boost=0; S.v=0; S.freeze=0; S.hintT=0; S.R=null; S.press=null; S.snakes=null; S.mines=[]; S.dyn=[];
   if(!S.on) return;
   tutMarks=[];
   if(S.cp&&S.cp.lvl!==i) S.cp=null;
-  for(const p of players){ p.duck=false; p.rope=null; p.rocket=null; p.smashCd=0; p.smashT=0; p.h0=H0[p.kind]; }
-  if(S.kind==='cart'){ setupCart(L); cartExtraSetup(L); } else if(S.kind==='rope') setupRope(L); else if(S.kind==='chase') setupChase(L); else if(S.kind==='snake') setupSnake(L); else if(S.kind==='brawl') setupBrawl(L); else if(S.kind==='rocket') setupRocket(L); else if(S.kind==='lift') setupLift(L); else if(S.kind==='boss') setupBoss(L);
+  for(const p of players){ p.duck=false; p.rope=null; p.rocket=null; p.mag=null; p.carried=null; p.carrying=null; p.thrown=0; p.smashCd=0; p.smashT=0; p.h0=H0[p.kind]; }
+  if(S.kind==='cart'){ setupCart(L); cartExtraSetup(L); } else if(S.kind==='rope') setupRope(L); else if(S.kind==='chase') setupChase(L); else if(S.kind==='snake') setupSnake(L); else if(S.kind==='brawl') setupBrawl(L); else if(S.kind==='rocket') setupRocket(L); else if(S.kind==='lift') setupLift(L); else if(S.kind==='boss') setupBoss(L); else if(S.kind==='mag') setupMag(L); else if(S.kind==='relay') setupRelay(L);
 };
 const _tutorInit=tutorInit;
 tutorInit=function(i){ _tutorInit(i); if(getLevel(i)&&getLevel(i).bt) tutMarks=[]; };
@@ -566,6 +700,17 @@ control=function(p,inp,dt){
     p.vx=v;
     return;
   }
+  if(S.kind==='relay'&&(p.kind==='spark'||p.kind==='bolt')){
+    const q=players.find(o=>o!==p&&!o.absent&&!o.dead);
+    if(p.carried){ _control(p,{dir:0,jump:false,jp:false,ab:false,ap:false,fire:false,use:false,nx:false},dt); p.vx=0; return; }
+    if(inp.ap&&S.freeze<=0&&!p.down){
+      p.jumpHeld=!!inp.jump; if(p.carrying){ const c=p.carrying; p.carrying=null; c.carried=null; const th=(inp.jump||inp.jp)?LOB:THROW; c.vx=(p.face||1)*th.vx; c.vy=-th.vy; c.thrown=1.6; c.tvx=c.vx; c.tvy=th.vy; c.tt=0; sfx('jump'); burst(c.x+c.w/2,c.y+c.h/2,12,['#ffd166','#fff'],260,.4); texts.push({x:p.x+p.w/2,y:p.y-40,t:'БРОСОК!',life:.7,c:'#ffd166',pop:true}); }
+      else if(q&&!q.carried&&!(q.thrown>0)&&!q.down&&p.onGround&&q.onGround&&Math.abs(q.x+q.w/2-(p.x+p.w/2))<T*1.7&&Math.abs(q.y+q.h-(p.y+p.h))<T*0.9){ p.carrying=q; q.carried=p; q.vx=q.vy=0; sfx('pk_shield'); texts.push({x:p.x+p.w/2,y:p.y-40,t:'НА ПЛЕЧИ!',life:.7,c:'#7fe08a',pop:true}); } }
+    _control(p,{dir:inp.dir,jump:inp.jump,jp:inp.jp,ab:false,ap:false,fire:false,use:inp.use,nx:inp.nx},dt);
+    if(p.thrown>0){ p.thrown-=dt; p.tt+=dt; p.vx=p.tvx; p.vy=-p.tvy+G*p.tt; if(p.onGround&&p.tt>0.25) p.thrown=0; }
+    return; }
+  if(S.kind==='mag'&&p.mag){ const M=p.mag; M.dir=S.freeze>0?0:(inp.dir||0); M.jp=!!(inp.jp||(inp.jump&&!M.jwas)); M.jwas=!!inp.jump; if(inp.ap||(inp.ab&&!M.abwas)) M.flip=true; M.abwas=!!inp.ab; if(M.dir) p.face=M.dir;
+    _control(p,{dir:0,jump:false,jp:false,ab:false,ap:false,fire:false,use:inp.use,nx:inp.nx},dt); return; }
   if(S.kind==='rocket'&&p.rocket){
     const up=inp.jump||padUp(pi), dn=inp.ab||padDn(pi); const VY=300*1.12; let want=up?-VY:dn?VY:0; if(S.fuel<=0) want=230; if(S.freeze>0) want=0;
     p.rocket.vy=approach(p.rocket.vy,want,1800*dt);
@@ -586,7 +731,7 @@ control=function(p,inp,dt){
 };
 
 const _physics=physics;
-physics=function(e,h){ if(S.on&&S.kind==='rope'&&e.rope) return ropePhys(e,h); if(S.on&&S.kind==='rocket'&&e.rocket) return rocketPhys(e,h); if(S.on&&S.kind==='cart'&&e.kind!=='crate'&&!e.slam) e.vy+=G*GX*h; return _physics(e,h); };
+physics=function(e,h){ if(S.on&&S.kind==='rope'&&e.rope) return ropePhys(e,h); if(S.on&&S.kind==='rocket'&&e.rocket) return rocketPhys(e,h); if(S.on&&S.kind==='mag'&&e.mag) return magPhys(e,h); if(S.on&&S.kind==='relay'&&e.carried) return; if(S.on&&S.kind==='cart'&&e.kind!=='crate'&&!e.slam) e.vy+=G*GX*h; return _physics(e,h); };
 function ropePhys(p,h){
   const R=p.rope, B=S.L.bt;
   if(p.vy<-420){ R.vy=-300; }                     // отскок: прыжок на врага / шипы
@@ -626,7 +771,7 @@ step=function(dt){
   _step(dt);
   if(S.banner){ S.banner.life-=dt; if(S.banner.life<=0) S.banner=null; }
   if(state!=='play') return;
-  ({cart:cartPost,rope:ropePost,chase:chasePost,snake:snakePost,brawl:brawlPost,rocket:rocketPost,lift:liftPost,boss:bossPost})[S.kind](dt);
+  ({cart:cartPost,rope:ropePost,chase:chasePost,snake:snakePost,brawl:brawlPost,rocket:rocketPost,lift:liftPost,boss:bossPost,mag:magPost,relay:relayPost})[S.kind](dt);
 };
 
 function cartPre(dt){
@@ -634,7 +779,7 @@ function cartPre(dt){
   const lead=Math.max(...L.map(p=>p.x));
   if(S.freeze>0){ S.freeze-=dt; S.v=0; if(S.freeze<=0){ banner('ВПЕРЁД!','#ffd166',0.9); sfx('boost'); tone(520,1040,.18,'square',.05); } return; }
   const prog=clamp(lead/T/B.finishX,0,1), mul=speedMul();
-  const target=(B.base+(B.top-B.base)*prog)*mul+(S.boost>0?B.boost*mul:0);
+  const target=B.rhythm?B.base:(B.base+(B.top-B.base)*prog)*mul+(S.boost>0?B.boost*mul:0);
   S.v=approach(S.v,target,(S.v<target?650:320)*dt); S.boost=Math.max(0,S.boost-dt);
 }
 function cartPost(dt){
@@ -689,6 +834,7 @@ function heroDraw(f,p){
   if(!S.on||!p||!players||(p!==players[0]&&p!==players[1])||p.absent||p.dead) return f(p);
   if(S.kind==='rope'&&p.rope){ drawRope(p); return f(p); }
   if(S.kind==='rocket'&&p.rocket){ drawRocket(p); return f(p); }
+  if(S.kind==='mag'&&p.mag){ if(p.mag.g<0){ const cx=p.x+p.w/2, cy=p.y+p.h/2; ctx.save(); ctx.translate(cx,cy); ctx.scale(1,-1); ctx.translate(-cx,-cy); f(p); ctx.restore(); } else f(p); return; }
   if(PLATF[S.kind]){ f(p); drawSmash(p); return; }
   if(S.kind==='cart'){
     if(p.duck){ const h=p.h,y=p.y,sx=p.sx,sy=p.sy; p.y=y+h-H0[p.kind]; p.h=H0[p.kind]; p.sx=1.22; p.sy=HD[p.kind]/H0[p.kind]*1.08; ctx.save(); ctx.translate(0,-6); f(p); ctx.restore(); p.h=h; p.y=y; p.sx=sx; p.sy=sy; }
@@ -740,6 +886,8 @@ function drawWorld(){
   else if(S.kind==='chase') drawChaseExtra(B);
   else if(S.kind==='snake') drawSnakeExtra();
   else if(S.kind==='lift') drawLift();
+  else if(S.kind==='mag') drawMag();
+  else if(S.kind==='relay') drawRelay();
   else if(S.kind==='boss') drawBoss();
   else if(S.kind==='rope'){
     const ax=solo?[16*T]:[15*T,17*T]; ctx.save(); for(const x of ax){ ctx.fillStyle='#6f8191'; ctx.beginPath(); ctx.arc(x,B.ay+2,9,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#22324d'; ctx.beginPath(); ctx.arc(x,B.ay+2,4,0,Math.PI*2); ctx.fill(); } ctx.restore();
@@ -771,7 +919,8 @@ function drawWarn(B){
     const lead=Math.max(...live().map(p=>p.x+p.w));
     if(B.gates){ for(const q of B.gates){ const wx=q.x*T-10, d=wx-rightW; if(d<-T*0.5||d>reach*1.3||wx<lead) continue; const tau=Math.max(0,(wx-lead)/v), g=gateGap(q,(S.gt||0)+tau); items.push({d,wx,yW:(g[0]+g[1])/2,txt:'ОКНО',dir:0,c:'#7fe08a'}); } }
     else for(const o of B.obsList||[]){ const wx=o[0]*T, d=wx-rightW; if(d<-T*0.5||d>reach*1.2||wx<lead) continue; items.push({d,wx,yW:(o[2]+o[3]/2)*T,txt:'СТЕНА',dir:0,c:'#ff6b6b'}); }
-  } else return;
+  } else if(S.kind==='mag'){ const lead=Math.max(...live().map(p=>p.x+p.w)); for(const sg of B.segs){ const wx=sg.x0*T, d=wx-rightW; if(d<-T*0.5||d>reach*1.4||wx<lead) continue; const k=sg.k; items.push({d,wx,yW:k==='f'||k==='q'?MF-30:k==='c'||k==='p'?MC+30:(MC+MF)/2,txt:k==='f'?'ПОЛ!':k==='c'?'ПОТОЛОК!':k==='p'?'СТЕНА С ПОЛА':k==='q'?'СТЕНА С ПОТОЛКА':'ПИЛА',dir:k==='f'?-1:k==='c'?1:0,c:k==='s'?'#ffd166':'#ff6b6b'}); } }
+  else return;
   items.sort((a,b)=>a.d-b.d); const t=clock;
   for(let k=0;k<Math.min(3,items.length);k++){ const it=items[k], x=VW-38-k*58, y=clamp(it.yW*z+V.oy,70,VH-70), a=clamp(1-Math.max(0,it.d)/reach*0.4,.55,1), pul=1+0.12*Math.sin(t*14);
     ctx.save(); ctx.globalAlpha=a; ctx.translate(x,y); ctx.scale(pul,pul);
@@ -781,6 +930,9 @@ function drawWarn(B){
 }
 function hud(){
   const B=S.L.bt, L=live();
+  if(S.kind==='relay'){ const m=Math.floor(S.rt/60), sc=Math.floor(S.rt%60), low=S.rt<20; ctx.fillStyle='rgba(6,10,22,.85)'; rr(ctx,VW/2-70,70,140,32,12); ctx.fill(); label((m+':'+String(sc).padStart(2,'0')),VW/2,87,20,low&&Math.floor(clock*4)%2?'#ff6b6b':'#ffd166'); label('ОБЩЕЕ ВРЕМЯ',VW/2,64,10,'#e8effa');
+    if(S.hintT>0){ ctx.globalAlpha=Math.min(1,S.hintT); label('способность рядом с напарником — взять на плечи · ещё раз — бросить вперёд (с прыжком — подбросить вверх)',VW/2,VH-44,15,'#e8effa'); ctx.globalAlpha=1; } }
+  if(S.kind==='cart'&&B.rhythm&&L.length){ const lead=Math.max(...L.map(q=>q.x+q.w)), k=(lead/T-16)/5, ph=k-Math.floor(k), pu=Math.pow(1-ph,2), cx=VW/2, cy=VH-64; ctx.save(); ctx.globalAlpha=.35+.65*pu; ctx.strokeStyle=(Math.floor(k)%4===0)?'#ffd166':'#c79bff'; ctx.lineWidth=4; ctx.beginPath(); ctx.arc(cx,cy,12+26*pu,0,7); ctx.stroke(); ctx.fillStyle=ctx.strokeStyle; ctx.beginPath(); ctx.arc(cx,cy,7,0,7); ctx.fill(); ctx.restore(); }
   if(S.kind==='boss'&&S.bo){ const b=S.bo, bw=420, bx=VW/2-bw/2, by=78; ctx.fillStyle='rgba(6,10,22,.88)'; rr(ctx,bx-10,by-14,bw+20,30,12); ctx.fill(); label('КУЗНЕЦ',bx,by-26,12,'#ff9a8a','left'); ctx.fillStyle='rgba(255,77,94,.2)'; rr(ctx,bx,by-6,bw,12,5); ctx.fill(); ctx.fillStyle=b.ph===3?'#ff4d5e':b.ph===2?'#ff9a3d':'#ffd166'; rr(ctx,bx,by-6,Math.max(0,bw*b.hp/b.max),12,5); ctx.fill(); ctx.fillStyle='#0b1220'; for(const k of [0.34,0.67]) ctx.fillRect(bx+bw*k-1,by-8,3,16);
     if(S.hintT>0){ ctx.globalAlpha=Math.min(1,S.hintT); label('Болт: способность вблизи — смэш · Искра: огонь и рывок',VW/2,VH-40,15,'#e8effa'); ctx.globalAlpha=1; } }
   if(S.kind==='lift'){ const w=520, x=VW/2-w/2, y=VH-26, k=clamp((S.lt||0)/B.dur,0,1); ctx.fillStyle='rgba(6,10,22,.8)'; rr(ctx,x-8,y-10,w+16,20,10); ctx.fill(); ctx.fillStyle='#c79bff'; rr(ctx,x,y-3,Math.max(6,w*k),6,3); ctx.fill(); label(S.opened?'ПРИЕХАЛИ':'ПОДЪЁМ '+Math.round(k*100)+'%',VW/2,y-22,12,'#e8effa');
@@ -799,12 +951,12 @@ function hud(){
     if(S.freeze<=0&&L.length){ const front=Math.max(...L.map(p=>p.x+p.w)), v=Math.max(S.v,180), wt=warnTime();
       const o=B.obs.concat(S.dyn||[]).filter(o=>(o.x1+1)*T>front-8).sort((a,b)=>a.x0-b.x0)[0];
       if(o){ const tt=(o.x0*T-front)/v; if(tt<wt){
-        const up=o.t==='jump', blink=Math.floor(clock*(tt<wt*.45?12:6))%2===0, cx=VW-T*2.6, cy=VH*0.42;
+        const up=o.t==='jump', sh=o.t==='shoot', blink=Math.floor(clock*(tt<wt*.45?12:6))%2===0, cx=VW-T*2.6, cy=VH*0.42;
         if(S.warnBeep!==o){ S.warnBeep=o; tone(up?880:440,up?1320:330,.08,'square',.035); }
-        ctx.save(); ctx.globalAlpha=blink?1:.45; ctx.fillStyle=up?'#ffd166':'#ff6b6b'; ctx.strokeStyle='#0b1830'; ctx.lineWidth=4;
+        ctx.save(); ctx.globalAlpha=blink?1:.45; ctx.fillStyle=sh?'#7fe08a':up?'#ffd166':'#ff6b6b'; ctx.strokeStyle='#0b1830'; ctx.lineWidth=4;
         ctx.beginPath(); ctx.arc(cx,cy,34,0,Math.PI*2); ctx.fill(); ctx.stroke();
-        ctx.fillStyle='#0b1830'; ctx.beginPath(); if(up){ ctx.moveTo(cx,cy-20); ctx.lineTo(cx+18,cy+10); ctx.lineTo(cx-18,cy+10); } else { ctx.moveTo(cx,cy+20); ctx.lineTo(cx+18,cy-10); ctx.lineTo(cx-18,cy-10); } ctx.closePath(); ctx.fill();
-        ctx.restore(); label(up?(o.pit?'ЯМА — ПРЫЖОК':'ПРЫЖОК'):'ПРИГНИСЬ',cx,cy+52,14,up?'#ffd166':'#ff6b6b'); } } }
+        ctx.fillStyle='#0b1830'; ctx.beginPath(); if(sh){ ctx.arc(cx,cy,15,0,7); ctx.moveTo(cx+11,cy); ctx.arc(cx,cy,11,0,7,true); ctx.moveTo(cx-24,cy-1.5); ctx.rect(cx-24,cy-1.5,48,3); ctx.rect(cx-1.5,cy-24,3,48); } else if(up){ ctx.moveTo(cx,cy-20); ctx.lineTo(cx+18,cy+10); ctx.lineTo(cx-18,cy+10); } else { ctx.moveTo(cx,cy+20); ctx.lineTo(cx+18,cy-10); ctx.lineTo(cx-18,cy-10); } ctx.closePath(); ctx.fill();
+        ctx.restore(); label(sh?'СТРЕЛЯЙ':up?(o.pit?'ЯМА — ПРЫЖОК':'ПРЫЖОК'):'ПРИГНИСЬ',cx,cy+52,14,sh?'#7fe08a':up?'#ffd166':'#ff6b6b'); } } }
   } else if(S.kind==='rope'){
     const x=VW-T*0.9, y0=T*1.6, y1=VH-T*1.6, Hh=(B.H-3)*T;
     ctx.fillStyle='rgba(6,10,22,.8)'; rr(ctx,x-9,y0-8,18,y1-y0+16,9); ctx.fill();
@@ -830,6 +982,7 @@ function drawCartExtra(B){
       for(let r=6;r<(o.x1-o.x0+1)*T/2;r+=7){ ctx.beginPath(); ctx.ellipse(cx,FL*T+4,r,r*.28,0,clock*3+r,clock*3+r+4.2); ctx.stroke(); } }
     ctx.restore();
     if(state==='play'&&S.v>60) for(const p of live()) if(p.wasGround&&Math.random()<.7) addP({x:p.x,y:FL*T-6,vx:-S.v*.3-Math.random()*80,vy:-60-Math.random()*120,life:.4,max:.4,c:Math.random()<.5?'#bfefff':'#7fc7ff',s:3,g:.8}); }
+  for(const c of B.shoots||[]){ if(c.dead) continue; const x=c.x*T, y=FL*T-76; if(x<V.x-60||x>V.x+V.w+60) continue; ctx.save(); ctx.fillStyle='#8a5a2b'; ctx.fillRect(x+3,y,34,76); ctx.strokeStyle='#4b2f14'; ctx.lineWidth=3; ctx.strokeRect(x+3,y,34,76); ctx.beginPath(); ctx.moveTo(x+3,y); ctx.lineTo(x+37,y+76); ctx.moveTo(x+37,y); ctx.lineTo(x+3,y+76); ctx.stroke(); ctx.fillStyle='#7fe08a'; ctx.beginPath(); ctx.arc(x+20,y+20,10+Math.sin(clock*8)*1.5,0,7); ctx.fill(); ctx.fillStyle='#0b1830'; ctx.beginPath(); ctx.arc(x+20,y+20,5,0,7); ctx.fill(); ctx.restore(); }
   for(const f of B.fish){ const h=fishUp(f); if(h<=0) continue; const x=f.x*T+20, y=FL*T-h+12;
     ctx.save(); ctx.translate(x,y); ctx.rotate(Math.sin(clock*10)*.12); ctx.fillStyle='#8aa2b8'; ctx.beginPath(); ctx.ellipse(0,0,18,12,0,0,Math.PI*2); ctx.fill();
     ctx.fillStyle='#5c7186'; ctx.beginPath(); ctx.moveTo(14,0); ctx.lineTo(26,-10); ctx.lineTo(26,10); ctx.closePath(); ctx.fill();
@@ -948,6 +1101,9 @@ setState=function(s){
       <p><b style="color:#5fd6a0">Труба.</b> Скользите по трубе: прыжок — вверх, способность — вниз. В заслонках гуляет зелёное окошко — пролетайте только через него.</p>
       <p><b style="color:#c79bff">Лифт-шахта.</b> Платформа едет вверх, из стен вылетают пилы и шипы. Низкие пилы перепрыгивай, под высокими не прыгай, от красных шипов отходи. Болт: способность сбивает пилы.</p>
       <p><b style="color:#ff8a7a">Кузнец.</b> Босс-робот в три фазы: топот (волны по полу — перепрыгни), ракеты (уходи с красных полос), ярость (ещё и пилы). Болт бьёт смэшем вблизи, Искра стреляет и жжёт рывком.</p>
+      <p><b style="color:#ffb347">Эстафета.</b> Способность рядом с напарником — взять его на плечи, ещё раз — бросить вперёд (на экране точки показывают полёт). Бросьте друга через пропасть или на стену: он нажмёт кнопку, и появится мост или лифт. Время общее, за каждый участок +20 секунд.</p>
+      <p><b style="color:#7fe0d0">Магнит.</b> Способность переворачивает гравитацию: бегаешь по потолку и полу. Шипы на полу — по потолку, на потолке — по полу; в стенах щель сверху или снизу.</p>
+      <p><b style="color:#c79bff">Ритм.</b> Гонка по бит: пульс внизу — удар. Жёлтая стрелка — прыжок, красная — пригнись, ящик-мишень — стреляй. Всё в такт!</p>
       <p><b style="color:#ff9a8a">Погоня за Механиком.</b> Стреляйте в Механика на доске и сбейте его до финиша, его мины перепрыгивайте.</p>
       <p>Вдвоём каждый управляет своим героем; врезался один — оба возвращаются назад.</p></div>
       <div class="btns"><button class="primary" id="btHB" type="button">Назад · Esc</button></div></div>`;

@@ -41,7 +41,7 @@ sub('const want=Math.max(1,Math.min(1.45,VW/(x1-x0+620),VH/(y1-y0+380)));',
 sub('const cx=live.reduce((a,p)=>a+p.x+p.w/2,0)/live.length;',
     'const cx=live.reduce((a,p)=>a+p.x+p.w/2,0)/live.length+BTX.lx;')
 sub('const cy=live.reduce((a,p)=>a+p.y+p.h/2,0)/live.length;',
-    'const cy=live.reduce((a,p)=>a+p.y+p.h/2,0)/live.length+BTX.ly;')
+    'const cy=(BTX.fy!=null?BTX.fy:live.reduce((a,p)=>a+p.y+p.h/2,0)/live.length)+BTX.ly;')
 sub('const starPar=L=>L.boss?150:(solo?35:40);', 'const starPar=L=>L.par||(L.boss?150:(solo?35:40));')
 sub("v.textContent='v'+GAME_VER+' · сборка '", "v.textContent='Испытания (тест) · v'+GAME_VER+' · сборка '")
 # длинные трассы (300–400 клеток): слои фона в 1×, иначе холст ~32000 px и сотни МБ памяти
