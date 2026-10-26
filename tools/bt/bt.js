@@ -10,7 +10,10 @@ const H0={spark:30,bolt:56}, HD={spark:15,bolt:20};   // рост стоя / п�
 const RJ=1400;   // прыжок с волны-трамплина (серфинг)
 const JV=760, JV2=700, GX=0.45;   // гонка: скорость прыжка и добавка к тяжести (прыжок короче и резче)
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-const PACE=1.5;
+// темп растёт от уровня к уровню: 1-е испытание спокойное (×0.9), дальше плавно до ×1.35 к последним
+let PACE=0.9;
+const paceFor=i=>0.9+0.45*Math.min(1,Math.max(0,i)/Math.max(1,DEFS.length-1));
+const paceRamp=()=>clamp((PACE-0.9)/0.45,0,1);
 const speedMul=()=>{ const D=diffLv(); return PACE*(D<0?0.86:D===0?1:D===1?1.08:1.15); };
 const warnTime=()=>{ const D=diffLv(); return D<0?2.1:D===0?1.6:D===1?1.25:1.0; };
 const live=()=>(players||[]).filter(p=>!p.absent&&!p.dead);
@@ -536,7 +539,7 @@ function rocketPre(dt){
   const B=S.L.bt, L=live(); if(!L.length) return;
   if(S.freeze>0){ S.freeze-=dt; S.v=0; if(S.freeze<=0){ banner('ПОЛЕТЕЛИ!','#ffd166',.9); sfx('boost'); } return; }
   const lead=Math.max(...L.map(p=>p.x)), prog=clamp(lead/T/B.finishX,0,1);
-  S.v=approach(S.v,(B.base+(B.top-B.base)*prog)*speedMul()/PACE*1.25,500*dt); S.gt=(S.gt||0)+dt; if(B.tube) S.fuel=100;
+  S.v=approach(S.v,(B.base+(B.top-B.base)*prog)*speedMul()/PACE*(1+0.25*paceRamp()),500*dt); S.gt=(S.gt||0)+dt; if(B.tube) S.fuel=100;
   const D=diffLv(); S.fuel=Math.max(0,S.fuel-(D<0?2.4:D===0?3.2:D===1?3.8:4.4)*dt);
 }
 function rocketPhys(p,h){
@@ -593,7 +596,7 @@ function wirePre(dt){
   const B=S.L.bt, L=live(); if(!L.length) return;
   if(S.freeze>0){ S.freeze-=dt; S.v=0; if(S.freeze<=0){ banner('ЕДЕМ!','#ffd166',.9); sfx('boost'); } return; }
   const lead=Math.max(...L.map(p=>p.x)), prog=clamp(lead/T/B.finishX,0,1);
-  S.v0=(B.base+(B.top-B.base)*prog)*speedMul()/PACE*1.25; S.stun=Math.max(0,(S.stun||0)-dt);
+  S.v0=(B.base+(B.top-B.base)*prog)*speedMul()/PACE*(1+0.25*paceRamp()); S.stun=Math.max(0,(S.stun||0)-dt);
   const tgt=S.stun>0?S.v0*0.35:S.v0; S.v=approach(S.v,tgt,(S.v<tgt?500:4000)*dt);
   if(lead<B.finishX*T) S.ballX+=S.v0*0.92*dt;
 }
@@ -937,7 +940,7 @@ const _loadLevel=loadLevel;
 loadLevel=function(i,keepHp){
   _loadLevel(i,keepHp);
   const L=getLevel(i); S.L=L; S.on=!!(L&&L.bt&&!edTest); S.kind=S.on?L.bt.kind:null;
-  BTX.z=0; BTX.lx=0; BTX.ly=0; BTX.fy=null; S.banner=null; S.boost=0; S.v=0; S.freeze=0; S.hintT=0; S.R=null; S.press=null; S.snakes=null; S.mines=[]; S.dyn=[];
+  PACE=paceFor(i); BTX.z=0; BTX.lx=0; BTX.ly=0; BTX.fy=null; S.banner=null; S.boost=0; S.v=0; S.freeze=0; S.hintT=0; S.R=null; S.press=null; S.snakes=null; S.mines=[]; S.dyn=[];
   if(!S.on) return;
   tutMarks=[];
   if(S.cp&&S.cp.lvl!==i) S.cp=null;
