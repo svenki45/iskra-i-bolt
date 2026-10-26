@@ -1,7 +1,7 @@
 /* ===== ИСПЫТАНИЯ (тестовая Steam-сборка desktop-bt): уровни-аттракционы в духе старых аркад =====
    Вставляется сборщиком tools/bt/build.py внутрь кода игры (перед const GAME_VER) — только в копию desktop-bt.
    Основная игра этот файл не видит. Механики свои: доска, трос, пресс, змеи, канал, драка, ракета, погоня за Механиком. */
-/*BT_N=17*/
+/*BT_N=18*/
 var BTX={z:0,lx:0,ly:0,fy:null};   // подсказки камере (читаются в draw)
 const BT=(()=>{
 const S={on:false,kind:null,L:null,cp:null,v:0,boost:0,freeze:0,banner:null,warnBeep:-1,hintT:0,padCd:{}};
@@ -62,7 +62,9 @@ const DEFS=[
    hint:'Волны несут сами. Прыжок — через буи-мины и скалы, способность (S / ↓) — пригнуться под медуз. На волне-трамплине (бирюзовая полоса) ПРЫГНИ — взлетишь высоко и соберёшь шестерёнки в воздухе.',
    track:'r10 m r9 m r9 w r10 g r9 m r10 f r8 m r6 m r10 v r26 b r14 w r12 m r12 g r12 m r12 f r8 g r8 m r8 h w r10 v r26 m r9 g r8 b r14 m r12 w r12 m r12 g r12 f r8 m r6 m r8 g r8 w r10 v r26 m r8 g r8 w r8 m r12'},
   {kind:'wire',name:'Колесо на проводе',desc:'три провода · шар-преследователь · смена проводов',motif:'Паровой коридор',hue:215,par:55,base:340,top:440,
-   hint:'Едешь на колесе по проводу, сзади гонится электрошар. Прыжок (W / ↑) — на провод выше, способность (S / ↓) — на провод ниже. Искры на проводе обходи. Врежешься — замедлишься, и шар нагонит!'}
+   hint:'Едешь на колесе по проводу, сзади гонится электрошар. Прыжок (W / ↑) — на провод выше, способность (S / ↓) — на провод ниже. Искры на проводе обходи. Врежешься — замедлишься, и шар нагонит!'},
+  {kind:'maze',name:'Лабиринт',desc:'три этажа, лифты, три рычага · охотник-шар',motif:'Паровой коридор',hue:285,par:85,
+   hint:'Нажми три рычага (встань на светящиеся плиты) — откроется выход. Лифты возят между этажами. Охотник-шар летит сквозь стены: кусается, но его можно оглушить выстрелом, смэшем Болта или рывком Искры.'}
 ];
 
 function rhythmTrack(D){
@@ -144,7 +146,7 @@ function ropeLevel(D){
 }
 
 /* ================= испытания 4–9 ================= */
-const PLATF={chase:1,snake:1,brawl:1,lift:1,boss:1};
+const PLATF={chase:1,snake:1,brawl:1,lift:1,boss:1,maze:1};
 // ---------- погоня вниз: пресс сверху ----------
 function chaseLevel(D){
   const W=32, H=104, A=3, B=28;
@@ -214,7 +216,7 @@ function setupSnake(L){
 function placeSnakes(h){ for(const m of movers){ const s=m.snake; if(!s) continue; const [x,y]=snakeAt(s,s.head-m.i*T-m.tr*s.len/3); m.dx=x-m.x; m.dy=y-m.y; if(!h){ m.dx=0; m.dy=0; } m.x=x; m.y=y; } }
 const _updateMovers=updateMovers;
 updateMovers=function(h){
-  if(!(S.on&&S.kind==='snake')) return _updateMovers(h);
+  if(!(S.on&&S.kind==='snake')){ _updateMovers(h); if(S.on&&S.kind==='maze') mazeAssist(); return; }
   const mul=speedMul(); for(const s of S.snakes) s.head+=s.sp*mul*h;
   placeSnakes(h);
   for(const m of movers) if(m.dx||m.dy) for(const o of players){ if(o.ground!==m||o.absent) continue; if(m.dx) moveX(o,m.dx); if(m.dy<0) moveY(o,m.dy); else if(m.dy>0) o.y+=m.dy; }
@@ -631,6 +633,53 @@ function drawWheel(p){
   ctx.restore(); if(sp>80&&state==='play'&&Math.random()<.5) addP({x:x-10,y:y+13,vx:-sp*.25,vy:-40-Math.random()*60,life:.3,max:.3,c:'#bfefff',s:2.2,g:.4});
 }
 
+// ---------- лабиринт: три этажа, лифты, три рычага, охотник ----------
+function mazeLevel(D){
+  const W=48,H=27,g=[...Array(H)].map(()=>Array(W).fill('.'));
+  for(let x=0;x<W;x++){ g[0][x]='#'; g[1][x]='#'; for(const r of [9,10,17,18,25,26]) g[r][x]='#'; }
+  for(let y=0;y<H;y++){ g[y][0]='#'; g[y][W-1]='#'; }
+  for(const r of [17,18]) for(let x=7;x<=10;x++) g[r][x]='.';
+  for(const r of [9,10]) for(let x=38;x<=41;x++) g[r][x]='.';
+  for(const [fr,xs] of [[25,[30,36]],[17,[16,30]],[9,[14,30]]]) for(const x of xs){ g[fr-1][x]='^'; }
+  for(let x=2;x<=3;x++){ g[7][x]='E'; g[8][x]='E'; }
+  g[24][20]='1'; g[24][22]='2';
+  const plates=[{x:43,y:25,on:false},{x:25,y:17,on:false},{x:22,y:9,on:false}];
+  return {name:D.name,motif:D.motif,hue:D.hue,dark:false,hint:D.hint,map:g.map(r=>r.join('')),enemies:[],pickups:[{type:'heart',tx:34,ty:24},{type:'heart',tx:44,ty:16},{type:'gear',tx:12,ty:15},{type:'gear',tx:13,ty:15},{type:'gear',tx:20,ty:7},{type:'gear',tx:21,ty:7}],
+    movers:[{ax:7,ay:25,bx:7,by:17,w:4,sp:120,pause:1.3},{ax:38,ay:17,bx:38,by:9,w:4,sp:120,pause:1.3}],winds:[],checkpoints:[],pz:[],tier:3,hand:true,decor:[],darkA:.94,openBottom:false,par:D.par,
+    bt:{kind:'maze',plates}};
+}
+function setupMaze(L){ const B=L.bt; BTX.z=0; for(const pl of B.plates) pl.on=false; S.nOn=0; S.hunt={x:44*T,y:5*T,stun:3.5,r:20,t:0}; exitLocked=true; S.opened=false; S.hintT=9; banner('ЛАБИРИНТ!','#c79bff',1.3); }
+function stunHunt(t,fx){ const h=S.hunt; if(!h) return; h.stun=Math.max(h.stun,t); sfx('kill'); burst(h.x,h.y,16,['#c79bff','#fff','#ffd166'],300,.45); texts.push({x:h.x,y:h.y-30,t:'ОГЛУШЁН!',life:.8,c:'#c79bff',pop:true}); if(fx) { h.x+=fx; } }
+function mazePost(dt){
+  const B=S.L.bt, L=live(), h=S.hunt; S.hintT=Math.max(0,S.hintT-dt); h.t+=dt;
+  if(L.length){
+    if(h.stun>0) h.stun-=dt;
+    else { let n=null, nd=1e9; for(const p of L){ const d=Math.hypot(p.x+p.w/2-h.x,p.y+p.h/2-h.y); if(d<nd){ nd=d; n=p; } }
+      const D=diffLv(), v=[44,64,86,110][S.nOn]*(D<0?.8:1+.1*D); const dx=n.x+n.w/2-h.x, dy=n.y+n.h/2-h.y, dd=Math.hypot(dx,dy)||1; h.x+=dx/dd*v*dt; h.y+=dy/dd*v*dt+Math.sin(h.t*3)*20*dt; }
+    for(const p of L){ if(p.down||p.inv>0) continue; if(Math.hypot(p.x+p.w/2-h.x,p.y+p.h/2-h.y)<h.r+Math.max(p.w,p.h)*0.45&&h.stun<=0){ _hurt(p); p.vy=-320; p.vx=(p.x+p.w/2<h.x?-1:1)*280; texts.push({x:p.x+p.w/2,y:p.y-30,t:'ОХОТНИК!',life:1,c:'#ff6b6b',pop:true}); sfx('hit'); shake=Math.max(shake,7); h.stun=2.6; h.x+=(h.x<p.x?-1:1)*-0+(p.x+p.w/2<h.x?60:-60); if(p.down||p.hp<=0){ p.down=false; die(p,'down'); return; } } }
+    for(const bl of bullets){ if(bl.life<=0) continue; if(Math.hypot(bl.x-h.x,bl.y-h.y)<h.r+10){ bl.life=0; stunHunt(2.2); } }
+    for(const p of L){ const d=Math.hypot(p.x+p.w/2-h.x,p.y+p.h/2-h.y); if(p.kind==='bolt'&&p.smashT>0.08&&d<125) stunHunt(2.6,p.face*70); else if(p.kind==='spark'&&p.dash>0&&d<70) stunHunt(2.6); }
+  }
+  for(const pl of B.plates){ if(pl.on) continue; if(L.some(p=>p.onGround&&overlap(p,{x:pl.x*T,y:pl.y*T-14,w:T,h:16}))){ pl.on=true; S.nOn++; sfx('pk_shield'); burst(pl.x*T+20,pl.y*T-6,22,['#7fe08a','#fff'],300,.5); banner(S.nOn<3?'РЫЧАГ '+S.nOn+' ИЗ 3':'ВСЕ РЫЧАГИ! ВЫХОД ОТКРЫТ','#7fe08a',1.4);
+      if(S.nOn>=3){ S.opened=true; exitLocked=false; sfx('win'); } else { h.stun=Math.max(h.stun,0); } } }
+  platformPost(dt);
+}
+function drawMaze(){
+  const B=S.L.bt, t=clock; ctx.save();
+  for(const pl of B.plates){ const x=pl.x*T, y=pl.y*T; ctx.fillStyle=pl.on?'#7fe08a':'#ff6b6b'; rr(ctx,x+2,y-8,T-4,8,3); ctx.fill(); ctx.fillStyle='#2b333c'; ctx.fillRect(x-2,y-2,T+4,4);
+    if(!pl.on){ ctx.globalAlpha=.4+.3*Math.sin(t*6); ctx.fillStyle='#ff6b6b'; ctx.fillRect(x+4,y-70,T-8,62); ctx.globalAlpha=1; label('РЫЧАГ',x+T/2,y-80,11,'#ffd166'); } }
+  const h=S.hunt; if(h){ const st=h.stun>0, bl=st&&Math.floor(t*10)%2; ctx.translate(h.x,h.y);
+    const gr=ctx.createRadialGradient(0,0,2,0,0,h.r+14); gr.addColorStop(0,st?'rgba(200,200,220,.9)':'rgba(255,190,255,.95)'); gr.addColorStop(.6,st?'rgba(130,140,170,.6)':'rgba(190,90,230,.7)'); gr.addColorStop(1,'rgba(120,60,200,0)'); ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(0,0,h.r+14,0,7); ctx.fill();
+    ctx.strokeStyle=st?'#9aa5b8':'#f0c4ff'; ctx.lineWidth=2.5; for(let k=0;k<10;k++){ const a=k*0.628+t*(st?0.5:3), r1=h.r-2, r2=h.r+(st?3:9+Math.sin(t*12+k)*3); ctx.beginPath(); ctx.moveTo(Math.cos(a)*r1,Math.sin(a)*r1); ctx.lineTo(Math.cos(a)*r2,Math.sin(a)*r2); ctx.stroke(); }
+    ctx.fillStyle=bl?'#fff':(st?'#5a6475':'#3a1850'); ctx.beginPath(); ctx.arc(0,0,h.r-3,0,7); ctx.fill(); ctx.fillStyle=st?'#ccd':'#ff4d5e'; ctx.beginPath(); ctx.arc(0,0,7,0,7); ctx.fill(); ctx.fillStyle='#0b1220'; ctx.beginPath(); ctx.arc(1,0,3,0,7); ctx.fill(); }
+  ctx.restore();
+}
+// лифт вровень с полом: герой, стоящий на его уровне, считается стоящим на лифте (иначе он останется на полу и не поедет)
+function mazeAssist(){ for(const o of players){ if(o.absent||o.dead||o.down||o.carried||o.vy<-50) continue; for(const m of movers){ if(o.ground===m) break; const fy=o.y+o.h; if(fy>=m.y-4&&fy<=m.y+8&&o.x+o.w>m.x+2&&o.x<m.x+m.w-2){ o.ground=m; o.y=m.y-o.h; o.onGround=true; o.vy=0; break; } } } }
+function mazeArrow(){
+  const h=S.hunt, V=draw.view; if(!h||!V) return; const z=V.z||1, sx=h.x*z+V.ox, sy=h.y*z+V.oy; if(sx>30&&sx<VW-30&&sy>30&&sy<VH-30) return;
+  const cx=clamp(sx,36,VW-36), cy=clamp(sy,96,VH-60), a=Math.atan2(sy-VH/2,sx-VW/2); ctx.save(); ctx.translate(cx,cy); ctx.rotate(a); ctx.globalAlpha=.7+.3*Math.sin(clock*8); ctx.fillStyle=h.stun>0?'#9aa5b8':'#c79bff'; ctx.strokeStyle='#0b1220'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(16,0); ctx.lineTo(-10,-11); ctx.lineTo(-10,11); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }
+
 // ---------- драка в цеху ----------
 const WAVES=[
   [['crawler','L'],['crawler','R'],['crawler','L',null,.6],['crawler','R',null,.6]],
@@ -724,7 +773,7 @@ function cartExtraHit(p){
 function fishUp(f){ if(f.t<0) return 0; const t=f.t; return t<0.14?t/0.14*44:t<1.2?44:t<1.45?44*(1-(t-1.2)/0.25):0; }
 function cartExtraRewind(spot){ S.mines=S.mines.filter(m=>m.x<spot*T-T||m.x>(spot+16)*T); for(const f of S.L.bt.fish) if(f.x>spot) f.t=-1; if(S.R&&!S.R.dead) S.R.x=(spot+12)*T; }
 
-const BUILD={cart:D=>cartLevel(D),rope:D=>ropeLevel(D),chase:D=>chaseLevel(D),snake:D=>snakeLevel(D),rocket:D=>rocketLevel(D),lift:D=>liftLevel(D),mag:D=>magLevel(D),relay:D=>relayLevel(D),boss:D=>bossLevel(D),tube:D=>tubeLevel(D),brawl:D=>brawlLevel(D),wire:D=>wireLevel(D)};
+const BUILD={cart:D=>cartLevel(D),rope:D=>ropeLevel(D),chase:D=>chaseLevel(D),snake:D=>snakeLevel(D),rocket:D=>rocketLevel(D),lift:D=>liftLevel(D),mag:D=>magLevel(D),relay:D=>relayLevel(D),boss:D=>bossLevel(D),tube:D=>tubeLevel(D),brawl:D=>brawlLevel(D),wire:D=>wireLevel(D),maze:D=>mazeLevel(D)};
 const LEVELS=DEFS.map(D=>BUILD[D.kind](D));
 
 /* ---------------- перехваты движка ---------------- */
@@ -740,7 +789,7 @@ loadLevel=function(i,keepHp){
   tutMarks=[];
   if(S.cp&&S.cp.lvl!==i) S.cp=null;
   for(const p of players){ p.duck=false; p.rope=null; p.rocket=null; p.wire=null; p.mag=null; p.carried=null; p.carrying=null; p.thrown=0; p.smashCd=0; p.smashT=0; p.h0=H0[p.kind]; }
-  if(S.kind==='cart'){ setupCart(L); cartExtraSetup(L); } else if(S.kind==='rope') setupRope(L); else if(S.kind==='chase') setupChase(L); else if(S.kind==='snake') setupSnake(L); else if(S.kind==='brawl') setupBrawl(L); else if(S.kind==='rocket') setupRocket(L); else if(S.kind==='lift') setupLift(L); else if(S.kind==='boss') setupBoss(L); else if(S.kind==='mag') setupMag(L); else if(S.kind==='relay') setupRelay(L); else if(S.kind==='wire') setupWire(L);
+  if(S.kind==='cart'){ setupCart(L); cartExtraSetup(L); } else if(S.kind==='rope') setupRope(L); else if(S.kind==='chase') setupChase(L); else if(S.kind==='snake') setupSnake(L); else if(S.kind==='brawl') setupBrawl(L); else if(S.kind==='rocket') setupRocket(L); else if(S.kind==='lift') setupLift(L); else if(S.kind==='boss') setupBoss(L); else if(S.kind==='mag') setupMag(L); else if(S.kind==='relay') setupRelay(L); else if(S.kind==='wire') setupWire(L); else if(S.kind==='maze') setupMaze(L);
 };
 const _tutorInit=tutorInit;
 tutorInit=function(i){ _tutorInit(i); if(getLevel(i)&&getLevel(i).bt) tutMarks=[]; };
@@ -869,7 +918,7 @@ step=function(dt){
   _step(dt);
   if(S.banner){ S.banner.life-=dt; if(S.banner.life<=0) S.banner=null; }
   if(state!=='play') return;
-  ({cart:cartPost,rope:ropePost,chase:chasePost,snake:snakePost,brawl:brawlPost,rocket:rocketPost,lift:liftPost,boss:bossPost,mag:magPost,relay:relayPost,wire:wirePost})[S.kind](dt);
+  ({cart:cartPost,rope:ropePost,chase:chasePost,snake:snakePost,brawl:brawlPost,rocket:rocketPost,lift:liftPost,boss:bossPost,mag:magPost,relay:relayPost,wire:wirePost,maze:mazePost})[S.kind](dt);
 };
 
 function cartPre(dt){
@@ -1000,6 +1049,7 @@ function drawWorld(){
   else if(S.kind==='mag') drawMag();
   else if(S.kind==='relay') drawRelay();
   else if(S.kind==='wire') drawWire(B);
+  else if(S.kind==='maze') drawMaze();
   else if(S.kind==='boss') drawBoss();
   else if(S.kind==='rope'){
     const ax=solo?[16*T]:[15*T,17*T]; ctx.save(); for(const x of ax){ ctx.fillStyle='#6f8191'; ctx.beginPath(); ctx.arc(x,B.ay+2,9,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#22324d'; ctx.beginPath(); ctx.arc(x,B.ay+2,4,0,Math.PI*2); ctx.fill(); } ctx.restore();
@@ -1185,6 +1235,8 @@ function hudExtra(B,L){
     for(const p of L){ const k=clamp(p.x/T/B.finishX,0,1); ctx.fillStyle=p.kind==='spark'?'#ff8a3d':'#62c7c1'; ctx.beginPath(); ctx.arc(x+w*k,y,6,0,Math.PI*2); ctx.fill(); }
     if(L.length){ const gap=(Math.min(...L.map(p=>p.x))-S.ballX)/T, near=gap<7; label('шар: '+Math.max(0,Math.round(gap*1.5))+' м',VW-T*1.2,VH-28,18,near&&Math.floor(clock*6)%2?'#ff6b6b':'#e8effa','right'); }
     if(S.hintT>0){ ctx.globalAlpha=Math.min(1,S.hintT); label('↑ / W — провод выше   ·   ↓ / S — провод ниже   ·   обходи искры, не дай шару догнать',VW/2,VH-56,15,'#e8effa'); ctx.globalAlpha=1; } }
+  if(S.kind==='maze'){ ctx.fillStyle='rgba(6,10,22,.85)'; rr(ctx,VW/2-80,70,160,30,12); ctx.fill(); label('РЫЧАГИ '+S.nOn+' / 3',VW/2,86,16,S.nOn>=3?'#7fe08a':'#ffd166'); mazeArrow();
+    if(S.hintT>0){ ctx.globalAlpha=Math.min(1,S.hintT); label('встань на красные плиты · лифты между этажами · охотника оглушай выстрелом, смэшем или рывком',VW/2,VH-30,15,'#e8effa'); ctx.globalAlpha=1; } }
   if(S.kind==='chase'&&S.press){ const x=VW-T*0.9, y0=T*1.6, y1=VH-T*1.6, Hh=(B.H-3)*T;
     ctx.fillStyle='rgba(6,10,22,.8)'; rr(ctx,x-9,y0-8,18,y1-y0+16,9); ctx.fill();
     const py=y0+(y1-y0)*clamp(S.press.y/Hh,0,1); ctx.fillStyle='rgba(255,77,94,.5)'; rr(ctx,x-5,y0,10,Math.max(0,py-y0),4); ctx.fill(); ctx.fillStyle='#ff4d5e'; ctx.fillRect(x-9,py-2,18,4);
@@ -1249,6 +1301,7 @@ setState=function(s){
       <p><b style="color:#c79bff">Ритм.</b> Гонка по бит: пульс внизу — удар. Жёлтая стрелка — прыжок, красная — пригнись, ящик-мишень — стреляй. Всё в такт!</p>
       <p><b style="color:#7fe0ff">Серфинг.</b> Доска по волнам. Прыжок — через красные буи-мины и скалы, способность — пригнуться под медуз. На бирюзовой волне-трамплине можно прыгнуть особенно высоко — в воздухе висят шестерёнки. Это по желанию: волну можно и просто проехать.</p>
       <p><b style="color:#9cc3ff">Колесо на проводе.</b> Едешь по одному из трёх проводов, сзади гонится электрошар. <b>Прыжок</b> — на провод выше, <b>способность</b> — на провод ниже. Искры на проводе обходи: врежешься — замедлишься, и шар нагонит. Если догонит — минус сердце и назад к флажку.</p>
+      <p><b style="color:#c79bff">Лабиринт.</b> Три этажа и два лифта. Встаньте на три красные плиты-рычага — откроется выход. Охотник-шар летит сквозь стены и кусается; оглушите его выстрелом, смэшем Болта или рывком Искры, чтобы выиграть время.</p>
       <p><b style="color:#ff9a8a">Погоня за Механиком.</b> Стреляйте в Механика на доске и сбейте его до финиша, его мины перепрыгивайте.</p>
       <p>Вдвоём каждый управляет своим героем; врезался один — оба возвращаются назад.</p></div>
       <div class="btns"><button class="primary" id="btHB" type="button">Назад · Esc</button></div></div>`;
