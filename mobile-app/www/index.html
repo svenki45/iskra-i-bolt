@@ -2906,7 +2906,7 @@ function setState(s){
       <p class="padst">${slotMode==='load'?'Игра сохраняется сама после каждого уровня, покупки в Лавке и полученного достижения.':'Новая игра запишется в выбранный слот. Режим меняется в главном меню кнопкой «Режим».'}</p>
       <div class="btns"><button class="secondary" id="bSlBack" type="button">Назад · Esc</button></div></div>`;
     overlay.querySelectorAll('[data-load]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.load; applySlot(i); sfx('pick'); startGame(Math.min(TOTAL-1,best)); });
-    overlay.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.del; if(slotDel!==i){ slotDel=i; sfx('nav'); setState('slots'); return; } slots[i]=null; if(activeSlot===i){ activeSlot=-1; store.set('iskra-bolt-slot',-1); } store.set('iskra-bolt-slots',slots); slotDel=-1; sfx('off'); if(!slots.some(Boolean)) setState('menu'); else setState('slots'); });
+    overlay.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.del; if(slotDel!==i){ slotDel=i; sfx('nav'); setState('slots'); return; } const wasActive=activeSlot===i; slots[i]=null; if(wasActive){ activeSlot=-1; store.set('iskra-bolt-slot',-1); } store.set('iskra-bolt-slots',slots); if(wasActive||!slots.some(Boolean)) wipeProgress(!slots.some(Boolean)); slotDel=-1; sfx('off'); if(!slots.some(Boolean)) setState('menu'); else setState('slots'); });
     overlay.querySelectorAll('[data-new]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.new; newSlotTarget=i; setState('diffpick'); });
     $('bSlBack').onclick=()=>setState('menu');
   } else if(s==='report'){
@@ -3322,6 +3322,14 @@ function startNGPlus(){
   snapSlot(); sfx('boss'); deaths=0; totalTime=0; gears=0;
   toastQ.push({small:'Новая игра +',title:'НИ+'+run.ng+': прокачка сохранена, враги злее',icon:'first'}); showToast();
   startGame(0,true);
+}
+// удалили сохранение: текущий прогресс (ачивки, статистика, уровни, награды) сбрасывается как при первом запуске; если слотов не осталось — стираются и звёзды/рекорды
+function wipeProgress(all){
+  achGot={}; store.set('iskra-bolt-ach',achGot); stats={gears:0,kills:0,stomps:0,bosses:[],pw:[]}; saveStats();
+  best=0; for(const sf of ['','-spark','-bolt']){ try{ localStorage.setItem('iskra-bolt-sheet'+sf,'0'); localStorage.removeItem('iskra-bolt-run'+sf); }catch(e){} }
+  run={score:0,wallet:0,up:{},offer:[],refresh:0,reward:null,inv:{},diff:'normal',ng:0};
+  if(all){ for(const sf of ['','-spark','-bolt']){ try{ localStorage.removeItem('iskra-bolt-stars'+sf); localStorage.removeItem('iskra-bolt-bt-best'+sf); }catch(e){} } LVS={}; try{ localStorage.removeItem('iskra-bolt-lvlstats'); }catch(e){} }
+  for(const k in cache) delete cache[k];
 }
 function doNewGame(slotIdx){
   if(slotIdx==null) slotIdx=newSlotTarget>=0?newSlotTarget:Math.max(0,slots.findIndex(x=>!x));
