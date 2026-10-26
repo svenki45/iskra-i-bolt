@@ -1,7 +1,7 @@
 /* ===== ИСПЫТАНИЯ (тестовая Steam-сборка desktop-bt): уровни-аттракционы в духе старых аркад =====
    Вставляется сборщиком tools/bt/build.py внутрь кода игры (перед const GAME_VER) — только в копию desktop-bt.
    Основная игра этот файл не видит. Механики свои: доска, трос, пресс, змеи, канал, драка, ракета, погоня за Механиком. */
-/*BT_N=16*/
+/*BT_N=17*/
 var BTX={z:0,lx:0,ly:0,fy:null};   // подсказки камере (читаются в draw)
 const BT=(()=>{
 const S={on:false,kind:null,L:null,cp:null,v:0,boost:0,freeze:0,banner:null,warnBeep:-1,hintT:0,padCd:{}};
@@ -60,7 +60,9 @@ const DEFS=[
    track:'r14 w r12 g r12 w r10 p2 r12 g r12 f r10 w r12 g r10 b r18 w r10 p2 r12 g r12 h w r12 f r10 g r12 w r10 p3 r12 g r10 w r12 b r18 w r12 g r12 w r14'},
   {kind:'cart',name:'Серфинг',desc:'доска по волнам · буи-мины, медузы, волны-трамплины',motif:'Масляный подвал',hue:195,par:50,base:340,top:440,boost:130,lead:14,water:true,surf:true,
    hint:'Волны несут сами. Прыжок — через буи-мины и скалы, способность (S / ↓) — пригнуться под медуз. На волне-трамплине (бирюзовая полоса) ПРЫГНИ — взлетишь высоко и соберёшь шестерёнки в воздухе.',
-   track:'r10 m r9 m r9 w r10 g r9 m r10 f r8 m r6 m r10 v r26 b r14 w r12 m r12 g r12 m r12 f r8 g r8 m r8 h w r10 v r26 m r9 g r8 b r14 m r12 w r12 m r12 g r12 f r8 m r6 m r8 g r8 w r10 v r26 m r8 g r8 w r8 m r12'}
+   track:'r10 m r9 m r9 w r10 g r9 m r10 f r8 m r6 m r10 v r26 b r14 w r12 m r12 g r12 m r12 f r8 g r8 m r8 h w r10 v r26 m r9 g r8 b r14 m r12 w r12 m r12 g r12 f r8 m r6 m r8 g r8 w r10 v r26 m r8 g r8 w r8 m r12'},
+  {kind:'wire',name:'Колесо на проводе',desc:'три провода · шар-преследователь · смена проводов',motif:'Паровой коридор',hue:215,par:55,base:340,top:440,
+   hint:'Едешь на колесе по проводу, сзади гонится электрошар. Прыжок (W / ↑) — на провод выше, способность (S / ↓) — на провод ниже. Искры на проводе обходи. Врежешься — замедлишься, и шар нагонит!'}
 ];
 
 function rhythmTrack(D){
@@ -549,6 +551,86 @@ function rocketPost(dt){
   S.fuel=Math.max(S.fuel,45); S.v=0; S.freeze=0.85; banner('ЕЩЁ РАЗ!','#ff9a8a',.85);
 }
 
+// ---------- колесо на проводе: три провода, шар сзади ----------
+const LYW=[6*T,10*T,14*T], WHL=24;     // высота проводов (низ колеса) и подъём героя над проводом
+function wireLevel(D){
+  const H=18, R=rng(2024), obs=[], pick=[], flags=[]; let x=16, n=0;
+  const pats=['0','1','2','01','12','02'];
+  while(n<36){
+    const pr=n/36; let sp=Math.round(10-3*pr); if(n%7===6) sp+=2;
+    x+=sp-1; const two=R()<0.25+0.4*pr, one=['0','1','2'], pair=['01','12','02'];
+    const pat=two?pair[Math.floor(R()*3)]:one[Math.floor(R()*3)], lanes=pat.split('').map(Number); obs.push({x,lanes,dead:false}); x+=1; n++;
+    const free=[0,1,2].filter(l=>!lanes.includes(l));
+    if(n%3===0){ const l=free[Math.floor(R()*free.length)]; for(let k=0;k<3;k++) pick.push({type:'gear',tx:x+3+k,ty:[6,10,14][l]/1-1}); }
+    if(n===12||n===24){ const l=free[0]; pick.push({type:'heart',tx:x+4,ty:[6,10,14][l]-1}); }
+    if(n===11||n===23) flags.push({x:x+5,on:false});
+  }
+  const finishX=x+8, W=finishX+20, g=[...Array(H)].map(()=>Array(W).fill('.'));
+  for(let xx=0;xx<W;xx++){ g[0][xx]='#'; g[17][xx]='#'; } for(let y=0;y<H;y++){ g[y][0]='#'; g[y][W-1]='#'; }
+  for(let xx=finishX;xx<W;xx++){ g[16][xx]='#'; for(let y=1;y<3;y++) g[y][xx]='#'; }
+  for(let xx=finishX+4;xx<=finishX+10;xx++){ g[14][xx]='E'; g[15][xx]='E'; }
+  g[8][3]='1'; g[10][3]='2';
+  return {name:D.name,motif:D.motif,hue:D.hue,dark:false,hint:D.hint,map:g.map(r=>r.join('')),enemies:[],pickups:pick,movers:[],winds:[],checkpoints:[],pz:[],tier:2,hand:true,decor:[],darkA:.94,openBottom:false,par:D.par,
+    bt:{kind:'wire',obs,flags,finishX,base:D.base,top:D.top,len:W}};
+}
+const wireRect=(o,ln)=>({x:o.x*T+8,y:LYW[ln]-64,w:26,h:64});
+function placeWire(col){ for(const p of players){ if(p.absent) continue; const lane=solo?1:(p.kind==='spark'?0:2); p.wire={lane,jw:false,aw:false}; p.x=col*T; p.y=LYW[lane]-WHL-p.h; p.vx=p.vy=0; p.onGround=false; p.ground=null; p.rocket=null; } }
+function wireSpot(){ return S.cp?S.cp.x:4; }
+function setupWire(L){
+  const B=L.bt; BTX.z=1.3; BTX.lx=VW*0.2/1.3; S.v=0; S.v0=0; S.stun=0; for(const f of B.flags) f.on=!!(S.cp&&S.cp.x>=f.x);
+  const c=wireSpot(); for(const o of B.obs) o.dead=o.x<=c+2; placeWire(c); S.ballX=(c-18)*T; S.freeze=S.cp?0.9:1.5; S.hintT=S.cp?0:7; S.warnT=0; banner(S.cp?'С ФЛАЖКА':'ВЫЕЗЖАЕМ…','#9cc3ff',S.freeze);
+}
+function wirePre(dt){
+  const B=S.L.bt, L=live(); if(!L.length) return;
+  if(S.freeze>0){ S.freeze-=dt; S.v=0; if(S.freeze<=0){ banner('ЕДЕМ!','#ffd166',.9); sfx('boost'); } return; }
+  const lead=Math.max(...L.map(p=>p.x)), prog=clamp(lead/T/B.finishX,0,1);
+  S.v0=(B.base+(B.top-B.base)*prog)*speedMul()/PACE*1.25; S.stun=Math.max(0,(S.stun||0)-dt);
+  const tgt=S.stun>0?S.v0*0.35:S.v0; S.v=approach(S.v,tgt,(S.v<tgt?500:4000)*dt);
+  if(lead<B.finishX*T) S.ballX+=S.v0*0.92*dt;
+}
+function wirePhys(p,h){
+  const W=p.wire, ty=LYW[W.lane]-WHL-p.h, dy=ty-p.y, st=1100*h; p.y+=clamp(dy,-st,st); p.x+=S.v*h;
+  p.vx=S.v; p.vy=clamp(dy*6,-700,700); p.onGround=false; p.ground=null;
+}
+function wirePost(dt){
+  const B=S.L.bt, L=live(); if(!L.length) return; S.hintT=Math.max(0,S.hintT-dt);
+  for(const p of L) if(p.wire&&p.x>B.finishX*T){ p.wire=null; p.vx=S.v*0.4; p.vy=-120; sfx('jump'); worldText(p,'СПРЫГИВАЙ!','#7fe08a'); }
+  if(S.freeze>0) return;
+  const lead=Math.max(...L.map(p=>p.x+p.w));
+  for(const f of B.flags) if(!f.on&&lead>f.x*T){ f.on=true; S.cp={lvl:levelIdx,x:f.x}; sfx('pk_shield'); const p=L[0]; texts.push({x:p.x,y:p.y-50,t:'ФЛАЖОК!',life:1.4,c:'#7fe08a',pop:true}); }
+  let hitAny=false;
+  for(const o of B.obs){ if(o.dead) continue; for(const p of L){ if(!p.wire||p.inv>0||p.down) continue; if(o.lanes.some(ln=>overlap(p,wireRect(o,ln)))){ o.dead=true; hitAny=true;
+        burst(o.x*T+20,p.y+p.h,22,['#bfefff','#fff','#62d6ff'],360,.6); p.inv=0; _hurt(p); texts.push({x:p.x+p.w/2,y:p.y-30,t:'РАЗРЯД!',life:1,c:'#9cf',pop:true}); if(p.down||p.hp<=0){ p.down=false; die(p,'down'); return; } break; } } }
+  if(hitAny){ S.stun=0.7; sfx('hit'); shake=Math.max(shake,8); flash('#9cf',.3); hitstop=Math.max(hitstop,.08); }
+  const back=Math.min(...L.filter(p=>p.wire).map(p=>p.x),1e9);
+  if(back<S.ballX+10){   // шар догнал
+    for(const p of L){ if(!p.wire) continue; burst(p.x+p.w/2,p.y+p.h/2,24,['#bfefff','#fff'],380,.6); p.inv=0; _hurt(p); texts.push({x:p.x+p.w/2,y:p.y-30,t:'ШАР!',life:1.1,c:'#ff6b6b',pop:true}); if(p.down||p.hp<=0){ p.down=false; die(p,'down'); return; } }
+    sfx('hit'); shake=Math.max(shake,10); flash('#ff3b4e',.35); hitstop=Math.max(hitstop,.12);
+    const c=wireSpot(); for(const o of B.obs) o.dead=o.x<=c+2; placeWire(c); S.ballX=(c-18)*T; S.v=0; S.stun=0; S.freeze=0.9; for(const p of players) if(!p.absent) p.inv=Math.max(p.inv,1.6); banner('ЕЩЁ РАЗ!','#ff9a8a',.85); }
+}
+function drawWire(B){
+  const V=viewRect(), t=clock; ctx.save();
+  const x0=Math.max(T,Math.floor(V.x/T)*T-T), x1=Math.min(B.finishX*T,V.x+V.w+T);
+  for(let l=0;l<3;l++){ const y=LYW[l]; ctx.strokeStyle='#2b3448'; ctx.lineWidth=5; ctx.beginPath(); ctx.moveTo(x0,y); ctx.lineTo(x1,y); ctx.stroke(); ctx.strokeStyle='#8fa3b8'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x0,y-1); ctx.lineTo(x1,y-1); ctx.stroke(); }
+  for(let c=Math.floor(x0/T/12)*12;c*T<x1;c+=12){ const x=c*T; ctx.fillStyle='#46525f'; ctx.fillRect(x-4,LYW[0]-30,8,LYW[2]-LYW[0]+60); ctx.fillStyle='#6b7886'; for(let l=0;l<3;l++) ctx.fillRect(x-14,LYW[l]-4,28,8); }
+  for(const f of B.flags){ const x=f.x*T, y=LYW[0]-60; if(x<V.x-60||x>V.x+V.w+60) continue; ctx.strokeStyle='#c7d3dd'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x,y+30); ctx.stroke(); ctx.fillStyle=f.on?'#7fe08a':'#6f8191'; ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+30,y+8); ctx.lineTo(x,y+18); ctx.closePath(); ctx.fill(); }
+  for(const o of B.obs){ if(o.dead||o.x*T<V.x-60||o.x*T>V.x+V.w+60) continue; for(const ln of o.lanes){ const cx=o.x*T+21, cy=LYW[ln]-30, a=t*14+o.x;
+      ctx.save(); const gr=ctx.createRadialGradient(cx,cy,2,cx,cy,26); gr.addColorStop(0,'rgba(255,255,255,.95)'); gr.addColorStop(.5,'rgba(120,220,255,.6)'); gr.addColorStop(1,'rgba(60,140,255,0)'); ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(cx,cy,26,0,7); ctx.fill();
+      ctx.strokeStyle='#e8fbff'; ctx.lineWidth=2.4; ctx.shadowColor='#62d6ff'; ctx.shadowBlur=12*GLOW; for(let k=0;k<5;k++){ const an=a+k*1.257; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+Math.cos(an)*(14+Math.sin(a*3+k)*6),cy+Math.sin(an)*(14+Math.sin(a*3+k)*6)); ctx.stroke(); }
+      ctx.restore(); } }
+  { const x=B.finishX*T; for(let r=0;r<12;r++) for(let k=0;k<2;k++){ ctx.fillStyle=(r+k)%2?'#0b1830':'#e8effa'; ctx.fillRect(x+k*8,LYW[0]-60+r*16,8,16); } ctx.fillStyle='#ffd166'; ctx.font="900 14px Unbounded, 'Arial Black', sans-serif"; ctx.textAlign='center'; ctx.fillText('ФИНИШ',x+8,LYW[0]-70); }
+  if(S.ballX!=null){ const bx=S.ballX-130, by=LYW[1], r=150+Math.sin(t*9)*6; if(bx+r>V.x-40){
+      const gr=ctx.createRadialGradient(bx,by,10,bx,by,r); gr.addColorStop(0,'rgba(255,255,255,.95)'); gr.addColorStop(.45,'rgba(140,225,255,.75)'); gr.addColorStop(1,'rgba(60,120,255,0)'); ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(bx,by,r,0,7); ctx.fill();
+      ctx.strokeStyle='#e8fbff'; ctx.lineWidth=3; ctx.shadowColor='#62d6ff'; ctx.shadowBlur=18*GLOW; for(let k=0;k<9;k++){ const an=t*5+k*0.7, len=r*(0.7+0.3*Math.sin(t*13+k*2)); ctx.beginPath(); ctx.moveTo(bx+Math.cos(an)*30,by+Math.sin(an)*30); let px=bx+Math.cos(an)*30, py=by+Math.sin(an)*30; for(let q=1;q<=5;q++){ const rr=30+(len-30)*q/5, jt=Math.sin(t*40+k*3+q*2)*12; px=bx+Math.cos(an)*rr-Math.sin(an)*jt; py=by+Math.sin(an)*rr+Math.cos(an)*jt; ctx.lineTo(px,py); } ctx.stroke(); } } }
+  ctx.restore();
+}
+function drawWheel(p){
+  const x=p.x+p.w/2, y=p.y+p.h+WHL-13, sp=S.v;
+  ctx.save(); ctx.translate(x,y); ctx.strokeStyle='#e7b54a'; ctx.lineWidth=4; ctx.beginPath(); ctx.arc(0,0,13,0,7); ctx.stroke(); ctx.fillStyle='#22324d'; ctx.beginPath(); ctx.arc(0,0,4,0,7); ctx.fill();
+  ctx.rotate(x*0.06); ctx.strokeStyle='#c9a46a'; ctx.lineWidth=2; for(let k=0;k<4;k++){ ctx.rotate(Math.PI/4); ctx.beginPath(); ctx.moveTo(-12,0); ctx.lineTo(12,0); ctx.stroke(); }
+  ctx.restore(); if(sp>80&&state==='play'&&Math.random()<.5) addP({x:x-10,y:y+13,vx:-sp*.25,vy:-40-Math.random()*60,life:.3,max:.3,c:'#bfefff',s:2.2,g:.4});
+}
+
 // ---------- драка в цеху ----------
 const WAVES=[
   [['crawler','L'],['crawler','R'],['crawler','L',null,.6],['crawler','R',null,.6]],
@@ -642,7 +724,7 @@ function cartExtraHit(p){
 function fishUp(f){ if(f.t<0) return 0; const t=f.t; return t<0.14?t/0.14*44:t<1.2?44:t<1.45?44*(1-(t-1.2)/0.25):0; }
 function cartExtraRewind(spot){ S.mines=S.mines.filter(m=>m.x<spot*T-T||m.x>(spot+16)*T); for(const f of S.L.bt.fish) if(f.x>spot) f.t=-1; if(S.R&&!S.R.dead) S.R.x=(spot+12)*T; }
 
-const BUILD={cart:D=>cartLevel(D),rope:D=>ropeLevel(D),chase:D=>chaseLevel(D),snake:D=>snakeLevel(D),rocket:D=>rocketLevel(D),lift:D=>liftLevel(D),mag:D=>magLevel(D),relay:D=>relayLevel(D),boss:D=>bossLevel(D),tube:D=>tubeLevel(D),brawl:D=>brawlLevel(D)};
+const BUILD={cart:D=>cartLevel(D),rope:D=>ropeLevel(D),chase:D=>chaseLevel(D),snake:D=>snakeLevel(D),rocket:D=>rocketLevel(D),lift:D=>liftLevel(D),mag:D=>magLevel(D),relay:D=>relayLevel(D),boss:D=>bossLevel(D),tube:D=>tubeLevel(D),brawl:D=>brawlLevel(D),wire:D=>wireLevel(D)};
 const LEVELS=DEFS.map(D=>BUILD[D.kind](D));
 
 /* ---------------- перехваты движка ---------------- */
@@ -657,8 +739,8 @@ loadLevel=function(i,keepHp){
   if(!S.on) return;
   tutMarks=[];
   if(S.cp&&S.cp.lvl!==i) S.cp=null;
-  for(const p of players){ p.duck=false; p.rope=null; p.rocket=null; p.mag=null; p.carried=null; p.carrying=null; p.thrown=0; p.smashCd=0; p.smashT=0; p.h0=H0[p.kind]; }
-  if(S.kind==='cart'){ setupCart(L); cartExtraSetup(L); } else if(S.kind==='rope') setupRope(L); else if(S.kind==='chase') setupChase(L); else if(S.kind==='snake') setupSnake(L); else if(S.kind==='brawl') setupBrawl(L); else if(S.kind==='rocket') setupRocket(L); else if(S.kind==='lift') setupLift(L); else if(S.kind==='boss') setupBoss(L); else if(S.kind==='mag') setupMag(L); else if(S.kind==='relay') setupRelay(L);
+  for(const p of players){ p.duck=false; p.rope=null; p.rocket=null; p.wire=null; p.mag=null; p.carried=null; p.carrying=null; p.thrown=0; p.smashCd=0; p.smashT=0; p.h0=H0[p.kind]; }
+  if(S.kind==='cart'){ setupCart(L); cartExtraSetup(L); } else if(S.kind==='rope') setupRope(L); else if(S.kind==='chase') setupChase(L); else if(S.kind==='snake') setupSnake(L); else if(S.kind==='brawl') setupBrawl(L); else if(S.kind==='rocket') setupRocket(L); else if(S.kind==='lift') setupLift(L); else if(S.kind==='boss') setupBoss(L); else if(S.kind==='mag') setupMag(L); else if(S.kind==='relay') setupRelay(L); else if(S.kind==='wire') setupWire(L);
 };
 const _tutorInit=tutorInit;
 tutorInit=function(i){ _tutorInit(i); if(getLevel(i)&&getLevel(i).bt) tutMarks=[]; };
@@ -724,6 +806,9 @@ control=function(p,inp,dt){
     return; }
   if(S.kind==='mag'&&p.mag){ const M=p.mag; M.dir=S.freeze>0?0:(inp.dir||0); M.jp=!!(inp.jp||(inp.jump&&!M.jwas)); M.jwas=!!inp.jump; if(inp.ap||(inp.ab&&!M.abwas)) M.flip=true; M.abwas=!!inp.ab; if(M.dir) p.face=M.dir;
     _control(p,{dir:0,jump:false,jp:false,ab:false,ap:false,fire:false,use:inp.use,nx:inp.nx},dt); return; }
+  if(S.kind==='wire'&&p.wire){ const W=p.wire, jp=!!(inp.jp||((inp.jump||padUp(pi))&&!W.jw)), dp=!!(inp.ap||((inp.ab||padDn(pi))&&!W.aw)); W.jw=!!(inp.jump||padUp(pi)); W.aw=!!(inp.ab||padDn(pi));
+    if(S.freeze<=0&&!p.down){ if(jp&&W.lane>0){ W.lane--; sfx('jump'); burst(p.x+p.w/2,p.y+p.h,8,['#bfefff','#fff'],220,.3); } else if(dp&&W.lane<2){ W.lane++; sfx('jump'); burst(p.x+p.w/2,p.y+p.h,8,['#bfefff','#fff'],220,.3); } }
+    _control(p,{dir:0,jump:false,jp:false,ab:false,ap:false,fire:inp.fire,use:inp.use,nx:inp.nx},dt); p.face=1; return; }
   if(S.kind==='rocket'&&p.rocket){
     const up=inp.jump||padUp(pi), dn=inp.ab||padDn(pi); const VY=300*1.12; let want=up?-VY:dn?VY:0; if(S.fuel<=0) want=230; if(S.freeze>0) want=0;
     p.rocket.vy=approach(p.rocket.vy,want,1800*dt);
@@ -744,7 +829,7 @@ control=function(p,inp,dt){
 };
 
 const _physics=physics;
-physics=function(e,h){ if(S.on&&S.kind==='rope'&&e.rope) return ropePhys(e,h); if(S.on&&S.kind==='rocket'&&e.rocket) return rocketPhys(e,h); if(S.on&&S.kind==='mag'&&e.mag) return magPhys(e,h); if(S.on&&S.kind==='relay'&&e.carried) return; if(S.on&&S.kind==='cart'&&e.kind!=='crate'&&!e.slam) e.vy+=G*GX*h; return _physics(e,h); };
+physics=function(e,h){ if(S.on&&S.kind==='rope'&&e.rope) return ropePhys(e,h); if(S.on&&S.kind==='rocket'&&e.rocket) return rocketPhys(e,h); if(S.on&&S.kind==='mag'&&e.mag) return magPhys(e,h); if(S.on&&S.kind==='wire'&&e.wire) return wirePhys(e,h); if(S.on&&S.kind==='relay'&&e.carried) return; if(S.on&&S.kind==='cart'&&e.kind!=='crate'&&!e.slam) e.vy+=G*GX*h; return _physics(e,h); };
 function ropePhys(p,h){
   const R=p.rope, B=S.L.bt;
   if(p.vy<-420){ R.vy=-300; }                     // отскок: прыжок на врага / шипы
@@ -780,11 +865,11 @@ complete=function(){ if(S.on) S.cp=null; return _complete(); };
 const _step=step;
 step=function(dt){
   if(!S.on) return _step(dt);
-  if(S.kind==='cart') cartPre(dt); else if(S.kind==='rocket') rocketPre(dt);
+  if(S.kind==='cart') cartPre(dt); else if(S.kind==='rocket') rocketPre(dt); else if(S.kind==='wire') wirePre(dt);
   _step(dt);
   if(S.banner){ S.banner.life-=dt; if(S.banner.life<=0) S.banner=null; }
   if(state!=='play') return;
-  ({cart:cartPost,rope:ropePost,chase:chasePost,snake:snakePost,brawl:brawlPost,rocket:rocketPost,lift:liftPost,boss:bossPost,mag:magPost,relay:relayPost})[S.kind](dt);
+  ({cart:cartPost,rope:ropePost,chase:chasePost,snake:snakePost,brawl:brawlPost,rocket:rocketPost,lift:liftPost,boss:bossPost,mag:magPost,relay:relayPost,wire:wirePost})[S.kind](dt);
 };
 
 function cartPre(dt){
@@ -847,6 +932,7 @@ function heroDraw(f,p){
   if(!S.on||!p||!players||(p!==players[0]&&p!==players[1])||p.absent||p.dead) return f(p);
   if(S.kind==='rope'&&p.rope){ drawRope(p); return f(p); }
   if(S.kind==='rocket'&&p.rocket){ drawRocket(p); return f(p); }
+  if(S.kind==='wire'&&p.wire){ drawWheel(p); return f(p); }
   if(S.kind==='mag'&&p.mag){ if(p.mag.g<0){ const cx=p.x+p.w/2, cy=p.y+p.h/2; ctx.save(); ctx.translate(cx,cy); ctx.scale(1,-1); ctx.translate(-cx,-cy); f(p); ctx.restore(); } else f(p); return; }
   if(PLATF[S.kind]){ f(p); drawSmash(p); return; }
   if(S.kind==='cart'){
@@ -913,6 +999,7 @@ function drawWorld(){
   else if(S.kind==='lift') drawLift();
   else if(S.kind==='mag') drawMag();
   else if(S.kind==='relay') drawRelay();
+  else if(S.kind==='wire') drawWire(B);
   else if(S.kind==='boss') drawBoss();
   else if(S.kind==='rope'){
     const ax=solo?[16*T]:[15*T,17*T]; ctx.save(); for(const x of ax){ ctx.fillStyle='#6f8191'; ctx.beginPath(); ctx.arc(x,B.ay+2,9,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#22324d'; ctx.beginPath(); ctx.arc(x,B.ay+2,4,0,Math.PI*2); ctx.fill(); } ctx.restore();
@@ -945,6 +1032,7 @@ function drawWarn(B){
     if(B.gates){ for(const q of B.gates){ const wx=q.x*T-10, d=wx-rightW; if(d<-T*0.5||d>reach*1.3||wx<lead) continue; const tau=Math.max(0,(wx-lead)/v), g=gateGap(q,(S.gt||0)+tau); items.push({d,wx,yW:(g[0]+g[1])/2,txt:'ОКНО',dir:0,c:'#7fe08a'}); } }
     else for(const o of B.obsList||[]){ const wx=o[0]*T, d=wx-rightW; if(d<-T*0.5||d>reach*1.2||wx<lead) continue; items.push({d,wx,yW:(o[2]+o[3]/2)*T,txt:'СТЕНА',dir:0,c:'#ff6b6b'}); }
   } else if(S.kind==='mag'){ const lead=Math.max(...live().map(p=>p.x+p.w)); for(const sg of B.segs){ const wx=sg.x0*T, d=wx-rightW; if(d<-T*0.5||d>reach*1.4||wx<lead) continue; const k=sg.k; items.push({d,wx,yW:k==='f'||k==='q'?MF-30:k==='c'||k==='p'?MC+30:(MC+MF)/2,txt:k==='f'?'ПОЛ!':k==='c'?'ПОТОЛОК!':k==='p'?'СТЕНА С ПОЛА':k==='q'?'СТЕНА С ПОТОЛКА':'ПИЛА',dir:k==='f'?-1:k==='c'?1:0,c:k==='s'?'#ffd166':'#ff6b6b'}); } }
+  else if(S.kind==='wire'){ const lead=Math.max(...live().map(p=>p.x+p.w)); for(const o of B.obs){ if(o.dead) continue; const wx=o.x*T, d=wx-rightW; if(d<-T*0.5||d>reach*1.1||wx<lead) continue; for(const ln of o.lanes) items.push({d,wx,yW:LYW[ln]-40,txt:'ШОК',dir:0,c:'#ff6b6b'}); } }
   else return;
   items.sort((a,b)=>a.d-b.d); const t=clock;
   for(let k=0;k<Math.min(3,items.length);k++){ const it=items[k], x=VW-38-k*58, y=clamp(it.yW*z+V.oy,70,VH-70), a=clamp(1-Math.max(0,it.d)/reach*0.4,.55,1), pul=1+0.12*Math.sin(t*14);
@@ -1090,6 +1178,13 @@ function hudExtra(B,L){
     ctx.fillStyle='rgba(6,10,22,.85)'; rr(ctx,fx-8,fy-14,fw+16,28,10); ctx.fill(); ctx.fillStyle=low?'#ff4d5e':S.fuel<25?'#ffb347':'#7fe08a'; rr(ctx,fx,fy-6,fw*S.fuel/100,12,5); ctx.fill();
     label('ТОПЛИВО',fx,fy-24,12,'#e8effa','left'); if(S.fuel<=0) label('ТОПЛИВО КОНЧИЛОСЬ — ЛОВИ ШЕСТЕРЁНКИ!',VW/2,VH*0.2,18,'#ff6b6b'); }
     if(S.hintT>0){ ctx.globalAlpha=Math.min(1,S.hintT); label(B.tube?'↑ / W вверх   ·   ↓ / S вниз   ·   лети в зелёное окошко заслонки':'↑ / W вверх   ·   ↓ / S вниз   ·   огонь по дронам   ·   шестерёнки = топливо',VW/2,VH-56,15,'#e8effa'); ctx.globalAlpha=1; } }
+  if(S.kind==='wire'){ const w=520, x=VW/2-w/2, y=VH-26;
+    ctx.fillStyle='rgba(6,10,22,.8)'; rr(ctx,x-8,y-10,w+16,20,10); ctx.fill(); ctx.fillStyle='rgba(156,195,255,.25)'; rr(ctx,x,y-3,w,6,3); ctx.fill();
+    for(const f of B.flags){ ctx.fillStyle=f.on?'#7fe08a':'#6f8191'; ctx.fillRect(x+w*f.x/B.finishX-1,y-8,3,16); }
+    ctx.fillStyle='#62d6ff'; ctx.beginPath(); ctx.arc(x+w*clamp(S.ballX/T/B.finishX,0,1),y,6,0,7); ctx.fill();
+    for(const p of L){ const k=clamp(p.x/T/B.finishX,0,1); ctx.fillStyle=p.kind==='spark'?'#ff8a3d':'#62c7c1'; ctx.beginPath(); ctx.arc(x+w*k,y,6,0,Math.PI*2); ctx.fill(); }
+    if(L.length){ const gap=(Math.min(...L.map(p=>p.x))-S.ballX)/T, near=gap<7; label('шар: '+Math.max(0,Math.round(gap*1.5))+' м',VW-T*1.2,VH-28,18,near&&Math.floor(clock*6)%2?'#ff6b6b':'#e8effa','right'); }
+    if(S.hintT>0){ ctx.globalAlpha=Math.min(1,S.hintT); label('↑ / W — провод выше   ·   ↓ / S — провод ниже   ·   обходи искры, не дай шару догнать',VW/2,VH-56,15,'#e8effa'); ctx.globalAlpha=1; } }
   if(S.kind==='chase'&&S.press){ const x=VW-T*0.9, y0=T*1.6, y1=VH-T*1.6, Hh=(B.H-3)*T;
     ctx.fillStyle='rgba(6,10,22,.8)'; rr(ctx,x-9,y0-8,18,y1-y0+16,9); ctx.fill();
     const py=y0+(y1-y0)*clamp(S.press.y/Hh,0,1); ctx.fillStyle='rgba(255,77,94,.5)'; rr(ctx,x-5,y0,10,Math.max(0,py-y0),4); ctx.fill(); ctx.fillStyle='#ff4d5e'; ctx.fillRect(x-9,py-2,18,4);
@@ -1153,6 +1248,7 @@ setState=function(s){
       <p><b style="color:#7fe0d0">Магнит.</b> Способность переворачивает гравитацию: бегаешь по потолку и полу. Шипы на полу — по потолку, на потолке — по полу; в стенах щель сверху или снизу.</p>
       <p><b style="color:#c79bff">Ритм.</b> Гонка по бит: пульс внизу — удар. Жёлтая стрелка — прыжок, красная — пригнись, ящик-мишень — стреляй. Всё в такт!</p>
       <p><b style="color:#7fe0ff">Серфинг.</b> Доска по волнам. Прыжок — через красные буи-мины и скалы, способность — пригнуться под медуз. На бирюзовой волне-трамплине можно прыгнуть особенно высоко — в воздухе висят шестерёнки. Это по желанию: волну можно и просто проехать.</p>
+      <p><b style="color:#9cc3ff">Колесо на проводе.</b> Едешь по одному из трёх проводов, сзади гонится электрошар. <b>Прыжок</b> — на провод выше, <b>способность</b> — на провод ниже. Искры на проводе обходи: врежешься — замедлишься, и шар нагонит. Если догонит — минус сердце и назад к флажку.</p>
       <p><b style="color:#ff9a8a">Погоня за Механиком.</b> Стреляйте в Механика на доске и сбейте его до финиша, его мины перепрыгивайте.</p>
       <p>Вдвоём каждый управляет своим героем; врезался один — оба возвращаются назад.</p></div>
       <div class="btns"><button class="primary" id="btHB" type="button">Назад · Esc</button></div></div>`;

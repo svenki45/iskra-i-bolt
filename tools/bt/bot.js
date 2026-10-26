@@ -21,12 +21,24 @@ window.BOT=(function(){
     if(cx>=xt&&cx<x1){ inp.jump=true; inp.jp=true; jt[pi]=8; }
     return inp;
   }
+  // колесо на проводе: заранее уходим на свободный провод
+  function wireIn(p,pi){
+    const S=BT.S,B=S.L.bt,W=p.wire,inp=Object.assign({},N); if(p.absent||p.down) return inp; if(!W){ inp.dir=1; return inp; } if(S.freeze>0) return inp;
+    const v=Math.max(S.v,200), obs=B.obs.filter(o=>!o.dead&&o.x*T+44>p.x).sort((a,b)=>a.x-b.x), o=obs[0], o2=obs[1];
+    let want=W.lane;
+    if(o&&(o.x*T-(p.x+p.w))/v<0.8){
+      const fr=[0,1,2].filter(l=>!o.lanes.includes(l)), both=o2&&(o2.x*T-(p.x+p.w))/v<1.3?fr.filter(l=>!o2.lanes.includes(l)):fr, pool=both.length?both:fr;
+      if(!pool.includes(W.lane)||!fr.includes(W.lane)){ pool.sort((a,b)=>Math.abs(a-W.lane)-Math.abs(b-W.lane)); want=pool[0]; }
+    }
+    if(want<W.lane){ inp.jump=true; inp.jp=true; } else if(want>W.lane){ inp.ab=true; inp.ap=true; }
+    return inp;
+  }
   function play(kind,maxSec,tr){
     BT.S.log=[]; const P=players, log=[]; let f=0, hp0=P.map(p=>p.hp), t0=levelTime;
     const B=BT.S.L.bt, maxF=Math.round((maxSec||150)*60);
     for(;f<maxF;f++){
       if(state!=='play') break;
-      for(let i=0;i<2;i++) cur[i]=(kind==='cart')?cartIn(P[i],i):Object.assign({},N);
+      for(let i=0;i<2;i++) cur[i]=(kind==='cart')?cartIn(P[i],i):(kind==='wire')?wireIn(P[i],i):Object.assign({},N);
       __T.step(1/60);
       if(tr){ const q=P[tr.pi], x=q.x/T; if(x>tr.lo&&x<tr.hi) (BOT.tr=BOT.tr||[]).push([f,+x.toFixed(2),Math.round(q.y),Math.round(q.vy),Math.round(BT.S.v),q.onGround?1:0,cur[tr.pi].jump?1:0]); }
       P.forEach((p,i)=>{ if(p.hp<hp0[i]){ log.push(p.kind+'@'+(p.x/T).toFixed(1)+' t='+(f/60).toFixed(1)); } hp0[i]=p.hp; });
