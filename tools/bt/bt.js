@@ -1,7 +1,7 @@
 /* ===== ИСПЫТАНИЯ (тестовая Steam-сборка desktop-bt): уровни-аттракционы в духе старых аркад =====
    Вставляется сборщиком tools/bt/build.py внутрь кода игры (перед const GAME_VER) — только в копию desktop-bt.
    Основная игра этот файл не видит. Механики свои: доска, трос, пресс, змеи, канал, драка, ракета, погоня за Механиком. */
-/*BT_N=11*/
+/*BT_N=12*/
 var BTX={z:0,lx:0,ly:0};   // подсказки камере (читаются в draw)
 const BT=(()=>{
 const S={on:false,kind:null,L:null,cp:null,v:0,boost:0,freeze:0,banner:null,warnBeep:-1,hintT:0,padCd:{}};
@@ -46,6 +46,8 @@ const DEFS=[
    hint:'Вы скользите по извилистой трубе. Прыжок (W / ↑) — вверх, способность (S / ↓) — вниз. В заслонках ходит «окошко» — подгадай и пролети через него.'},
   {kind:'lift',name:'Лифт-шахта',desc:'платформа едет вверх · пилы и шипы',motif:'Масляный подвал',hue:265,par:75,dur:60,
    hint:'Лифт поднимается по шахте. Низкие пилы — прыгай, высокие — не прыгай, красные шипы на полу и стенах — отойди заранее. Болт: способность на земле сбивает пилы и прикрывает Искру.'},
+  {kind:'boss',name:'Кузнец',desc:'босс-робот · три фазы, смэш и огонь',motif:'Литейная',hue:8,par:100,
+   hint:'Огромный робот-Кузнец. Топот — волны по полу (перепрыгни), ракеты — уходи с красных полос, в ярости летят пилы. Болт: способность вблизи — смэш. Искра: стреляй и рывком жги. Три фазы!'},
   {kind:'cart',name:'Погоня за Механиком',desc:'гонка на доске · сбей Механика до финиша',motif:'Ржавый цех',hue:20,par:50,base:330,top:420,boost:130,lead:16,rival:12,
    hint:'Механик удирает на своей доске и бросает мины. Стреляй в него и сбей до финиша! Мины перепрыгивай.',
    track:'r14 w r12 g r12 w r10 p2 r12 g r12 f r10 w r12 g r10 b r18 w r10 p2 r12 g r12 h w r12 f r10 g r12 w r10 p3 r12 g r10 w r12 b r18 w r12 g r12 w r14'}
@@ -112,7 +114,7 @@ function ropeLevel(D){
 }
 
 /* ================= испытания 4–9 ================= */
-const PLATF={chase:1,snake:1,brawl:1,lift:1};
+const PLATF={chase:1,snake:1,brawl:1,lift:1,boss:1};
 // ---------- погоня вниз: пресс сверху ----------
 function chaseLevel(D){
   const W=32, H=104, A=3, B=28;
@@ -304,6 +306,74 @@ function drawLift(){
         else { const m=Math.round(r.h/26); for(let k=0;k<m;k++){ const y=r.y+k*r.h/m; ctx.beginPath(); if(h.side<0){ ctx.moveTo(r.x,y); ctx.lineTo(r.x+r.w,y+r.h/m/2); ctx.lineTo(r.x,y+r.h/m); } else { ctx.moveTo(r.x+r.w,y); ctx.lineTo(r.x,y+r.h/m/2); ctx.lineTo(r.x+r.w,y+r.h/m); } ctx.closePath(); ctx.fill(); } } } } }
   ctx.restore();
 }
+
+// ---------- босс «Кузнец»: арена, три фазы ----------
+const BGY=(h)=>LFL-h;
+function bossLevel(D){ const L=brawlLevel(D); L.bt={kind:'boss'}; return L; }
+function setupBoss(L){ BTX.z=1; const D=diffLv(), mx=Math.round(300*(D<0?0.75:1+0.2*D)); S.haz=null;
+  S.bo={x:15*T-50,y:BGY(112),w:100,h:112,vy:0,hp:mx,max:mx,ph:1,st:'intro',t:1.8,cd:2.2,face:-1,flash:0,atk:null,dead:0};
+  S.waves=[]; S.rk=[]; S.sawz=[]; S.hintT=8; exitLocked=true; S.opened=false; banner('КУЗНЕЦ!','#ff6b6b',1.6); sfx('boost'); }
+function damageBoss(d,src){ const b=S.bo; if(!b||b.hp<=0||b.st==='intro'||b.st==='roar') return; b.hp=Math.max(0,b.hp-d); b.flash=.1; sfx('hit'); try{ dmgNum(b.x+b.w/2+(Math.random()*40-20),b.y-6,d,src||'spark',false,true); }catch(e){}
+  if(b.hp<=0){ b.dead=0.01; b.st='dead'; S.waves=[]; S.rk=[]; S.sawz=[]; shake=Math.max(shake,14); flash('#ffffff',.5); banner('КУЗНЕЦ ПОБЕЖДЁН!','#7fe08a',1.8); sfx('kill'); return; }
+  const k=b.hp/b.max, np=k<=0.34?3:k<=0.67?2:1;
+  if(np>b.ph){ b.ph=np; b.st='roar'; b.t=1.3; b.atk=null; S.waves=[]; S.rk=[]; S.sawz=[]; shake=Math.max(shake,12); flash('#ff3b4e',.4); banner(np===2?'ФАЗА 2: РАКЕТЫ':'ФАЗА 3: ЯРОСТЬ!','#ff9a8a',1.6); sfx('slam'); } }
+function bossRect(){ const b=S.bo; return {x:b.x+8,y:b.y+6,w:b.w-16,h:b.h-6}; }
+function bossHurt(p,kx){ if(p.down||p.inv>0) return false; _hurt(p); p.vy=-380; p.vx=kx; shake=Math.max(shake,6); sfx('hit'); return true; }
+function bossPost(dt){
+  const b=S.bo, L=live(); S.hintT=Math.max(0,S.hintT-dt); if(!b) return; b.flash=Math.max(0,b.flash-dt);
+  if(b.st==='dead'){ b.dead+=dt; if(Math.random()<dt*20) burst(b.x+Math.random()*b.w,b.y+Math.random()*b.h,10,['#ffd166','#ff8a3d','#fff'],300,.5); if(b.dead>1.6&&!S.opened){ S.opened=true; exitLocked=false; banner('ВЫХОД ОТКРЫТ!','#7fe08a',1.6); sfx('win'); } return; }
+  const near=L.length?L.reduce((a,q)=>Math.abs(q.x-b.x)<Math.abs(a.x-b.x)?q:a):null, gy=BGY(b.h);
+  b.t-=dt; const sp=[0,62,78,98][b.ph], D=diffLv();
+  if(b.st==='intro'||b.st==='roar'){ if(b.t<=0){ b.st='walk'; b.cd=1.2; } }
+  else if(b.st==='walk'){ if(near){ const dx=near.x+near.w/2-(b.x+b.w/2); b.face=Math.sign(dx)||b.face; if(Math.abs(dx)>30) b.x+=Math.sign(dx)*sp*dt; } b.x=Math.max(T,Math.min(31*T-b.w,b.x)); b.cd-=dt;
+    if(b.cd<=0){ const opts=['stomp']; if(b.ph>=2) opts.push('rocket','rocket'); if(b.ph>=3) opts.push('saws'); b.atk=opts[Math.floor(Math.random()*opts.length)]; b.st='wind'; b.t=b.atk==='stomp'?0.75:0.9; if(b.atk==='saws') b.t=0.7; sfx('pk_shield'); } }
+  else if(b.st==='wind'){ if(b.t<=0){
+      if(b.atk==='stomp'){ b.st='jump'; b.vy=-760; sfx('jump'); }
+      else if(b.atk==='rocket'){ const n=2+b.ph; for(let i=0;i<n;i++){ const tgt=L.length?L[i%L.length]:null; const x=tgt?tgt.x+tgt.w/2+(i>=L.length?(Math.random()*160-80):0):(8+Math.random()*16)*T; S.rk.push({x:Math.max(2*T,Math.min(30*T,x)),t:-i*0.18,warn:1.0,boom:.4}); } sfx('slam'); b.st='rest'; b.t=1.3; }
+      else { for(const hi of [false,true]) S.sawz.push({x:b.x+b.w/2,y:LFL-(hi?100:17),vx:(hi?-1:1)*(300+30*D),hi,born:S.lt0||0}); S.sawz.push({x:b.x+b.w/2,y:LFL-17,vx:-(300+30*D),hi:false}); sfx('slam'); b.st='rest'; b.t=1.4; } } }
+  else if(b.st==='jump'){ b.y+=b.vy*dt; b.vy+=1900*dt; if(b.y>=gy){ b.y=gy; b.vy=0; b.st='rest'; b.t=0.9; shake=Math.max(shake,12); hitstop=Math.max(hitstop,.05); sfx('slam'); const sv=300+50*b.ph; S.waves.push({x:b.x+b.w/2,vx:-sv},{x:b.x+b.w/2,vx:sv}); rings.push({x:b.x+b.w/2,y:LFL-6,r:8,max:120,life:.4,c:'#ffb347',w:6}); burst(b.x+b.w/2,LFL-6,24,['#ffd166','#ff8a3d','#fff'],400,.5); } }
+  else if(b.st==='rest'){ if(b.t<=0){ b.st='walk'; b.cd=[0,2.4,1.9,1.5][b.ph]; } }
+  for(const w of S.waves){ w.x+=w.vx*dt; if(w.x<T||w.x>31*T) w.dead=true; }
+  S.waves=S.waves.filter(w=>!w.dead);
+  for(const r of S.rk){ r.t+=dt; } S.rk=S.rk.filter(r=>r.t<r.warn+r.boom);
+  for(const z of S.sawz){ z.x+=z.vx*dt; if(z.x<T||z.x>31*T) z.dead=true; } S.sawz=S.sawz.filter(z=>!z.dead);
+  // урон героям
+  const br=bossRect();
+  for(const p of L){ if(p.down||p.inv>0) continue;
+    if(overlap(p,br)&&b.st!=='intro'){ if(bossHurt(p,(p.x+p.w/2<b.x+b.w/2?-1:1)*320)){ texts.push({x:p.x+p.w/2,y:p.y-30,t:'БАХ!',life:.9,c:'#ff6b6b',pop:true}); continue; } }
+    for(const w of S.waves) if(overlap(p,{x:w.x-16,y:LFL-34,w:32,h:34})){ if(bossHurt(p,Math.sign(w.vx)*200)) texts.push({x:p.x+p.w/2,y:p.y-30,t:'ВОЛНА!',life:.9,c:'#ff6b6b',pop:true}); break; }
+    if(p.inv>0) continue;
+    for(const r of S.rk) if(r.t>=r.warn&&overlap(p,{x:r.x-30,y:0,w:60,h:LFL})){ if(bossHurt(p,0)) texts.push({x:p.x+p.w/2,y:p.y-30,t:'РАКЕТА!',life:.9,c:'#ff6b6b',pop:true}); break; }
+    if(p.inv>0) continue;
+    for(const z of S.sawz) if(overlap(p,{x:z.x-15,y:z.y-15,w:30,h:30})){ if(bossHurt(p,Math.sign(z.vx)*200)) texts.push({x:p.x+p.w/2,y:p.y-30,t:'ПИЛА!',life:.9,c:'#ff6b6b',pop:true}); break; } }
+  for(const r of S.rk) if(r.t>=r.warn&&!r.bang){ r.bang=true; burst(r.x,LFL-20,22,['#ffd166','#ff8a3d','#fff'],420,.5); shake=Math.max(shake,5); sfx('hit'); }
+  // урон боссу: выстрелы и рывок Искры
+  if(b.st!=='intro'&&b.st!=='roar'){
+    for(const bl of bullets){ if(bl.life<=0||!bl.hit||bl.hit.has('boss')) continue; if(overlap(bl,br)){ bl.hit.add('boss'); damageBoss(Math.max(1,Math.round((bl.dmg||1)*2.2)),bl.owner==='bolt'?'slam':'spark'); if(!bl.pierce) bl.life=0; } }
+    for(const p of L){ if(p.kind==='spark'&&p.dash>0&&b.dashHit!==p.dashN&&overlap({x:p.x-6,y:p.y-6,w:p.w+12,h:p.h+12},br)){ b.dashHit=p.dashN; damageBoss(4,'power'); burst(p.x+p.w/2,p.y+p.h/2,14,['#ffd166','#ff8a3d'],260,.4); texts.push({x:b.x+b.w/2,y:b.y-20,t:'ОГОНЬ!',life:.7,c:'#ffb347'}); } } }
+  platformPost(dt);
+}
+function drawBoss(){
+  const b=S.bo; if(!b) return; const t=clock, cx=b.x+b.w/2;
+  // красные полосы ракет и волны
+  for(const r of S.rk){ if(r.t<0) continue; if(r.t<r.warn){ ctx.save(); ctx.globalAlpha=(Math.floor(t*10)%2?.4:.2); ctx.fillStyle='#ff4d5e'; ctx.fillRect(r.x-30,0,60,LFL); ctx.globalAlpha=.9; ctx.fillStyle='#ff6b6b'; ctx.beginPath(); ctx.arc(r.x,LFL-14,10+r.t*14,0,7); ctx.fill(); ctx.restore(); }
+    else { ctx.save(); const k=(r.t-r.warn)/r.boom; ctx.globalAlpha=1-k*.5; const gr=ctx.createLinearGradient(0,0,0,LFL); gr.addColorStop(0,'rgba(255,240,180,.1)'); gr.addColorStop(1,'#ffb347'); ctx.fillStyle=gr; ctx.fillRect(r.x-30*(1-k*.3),0,60*(1-k*.3),LFL); ctx.restore(); } }
+  for(const w of S.waves){ ctx.save(); ctx.fillStyle='#ffb347'; ctx.beginPath(); ctx.moveTo(w.x-18,LFL); ctx.quadraticCurveTo(w.x,LFL-46,w.x+18,LFL); ctx.closePath(); ctx.fill(); ctx.fillStyle='rgba(255,240,180,.8)'; ctx.beginPath(); ctx.moveTo(w.x-9,LFL); ctx.quadraticCurveTo(w.x,LFL-26,w.x+9,LFL); ctx.closePath(); ctx.fill(); ctx.restore(); }
+  for(const z of S.sawz){ ctx.save(); ctx.translate(z.x,z.y); ctx.rotate(t*14*Math.sign(z.vx)); ctx.fillStyle='#cfd8e0'; ctx.beginPath(); for(let k=0;k<16;k++){ const a=k/16*Math.PI*2, r=k%2?12:19; ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r); } ctx.closePath(); ctx.fill(); ctx.fillStyle='#5b6b7a'; ctx.beginPath(); ctx.arc(0,0,6,0,7); ctx.fill(); ctx.restore(); }
+  // сам робот
+  ctx.save(); const dead=b.st==='dead', wind=b.st==='wind', sq=wind?0.9:b.st==='jump'?1.08:1, sh=dead?Math.max(0,1-b.dead/1.6):1;
+  ctx.translate(cx,b.y+b.h); ctx.scale(1,sq*sh); ctx.translate(-cx,-(b.y+b.h)); if(dead) ctx.globalAlpha=sh;
+  const wob=b.st==='walk'?Math.sin(t*9)*3:0, shk=(wind||b.st==='roar')?Math.sin(t*50)*2:0, x0=b.x+shk;
+  ctx.fillStyle='#3b4552'; ctx.fillRect(x0+14,b.y+b.h-30+wob,26,30); ctx.fillRect(x0+b.w-40,b.y+b.h-30-wob,26,30);
+  const g=ctx.createLinearGradient(x0,0,x0+b.w,0); g.addColorStop(0,'#6b7886'); g.addColorStop(.5,'#9aa8b6'); g.addColorStop(1,'#5d6b78'); ctx.fillStyle=g; rr(ctx,x0+4,b.y+26,b.w-8,b.h-52,14); ctx.fill();
+  ctx.fillStyle=b.flash>0?'#ffffff':(b.ph===3?'#ff4d5e':b.ph===2?'#ff9a3d':'#ffd166'); for(let k=0;k<5;k++){ ctx.beginPath(); ctx.moveTo(x0+14+k*16,b.y+58); ctx.lineTo(x0+26+k*16,b.y+58); ctx.lineTo(x0+14+k*16,b.y+74); ctx.lineTo(x0+2+k*16,b.y+74); ctx.closePath(); ctx.fill(); }
+  const ay=wind?-18:wob; ctx.fillStyle='#46525f'; rr(ctx,x0-18,b.y+34+ay,24,56,8); ctx.fill(); rr(ctx,x0+b.w-6,b.y+34+ay,24,56,8); ctx.fill(); ctx.fillStyle='#2b333c'; ctx.beginPath(); ctx.arc(x0-6,b.y+96+ay,17,0,7); ctx.fill(); ctx.beginPath(); ctx.arc(x0+b.w+6,b.y+96+ay,17,0,7); ctx.fill();
+  ctx.fillStyle=g; rr(ctx,x0+22,b.y-6,b.w-44,38,10); ctx.fill(); ctx.fillStyle='#0b1220'; rr(ctx,x0+28,b.y+4,b.w-56,16,6); ctx.fill();
+  const ex=x0+b.w/2+b.face*10; ctx.fillStyle=b.flash>0?'#fff':(b.ph>=3?'#ff3b4e':'#ff6b6b'); ctx.shadowColor='#ff3b4e'; ctx.shadowBlur=12; ctx.beginPath(); ctx.arc(ex-10,b.y+12,5,0,7); ctx.arc(ex+10,b.y+12,5,0,7); ctx.fill(); ctx.shadowBlur=0;
+  ctx.strokeStyle='#46525f'; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(x0+b.w/2,b.y-6); ctx.lineTo(x0+b.w/2,b.y-24); ctx.stroke(); ctx.fillStyle=Math.floor(t*6)%2?'#ff4d5e':'#7a2630'; ctx.beginPath(); ctx.arc(x0+b.w/2,b.y-26,5,0,7); ctx.fill();
+  if(b.flash>0){ ctx.globalAlpha=.45; ctx.fillStyle='#fff'; rr(ctx,x0+4,b.y+26,b.w-8,b.h-52,14); ctx.fill(); }
+  ctx.restore();
+}
 function placeRocket(sp){ for(const p of players){ if(p.absent) continue; const off=solo?0:(p.kind==='spark'?-0.8:0.8); p.x=sp.x*T+4; p.y=(sp.y+off)*T-p.h/2; p.vx=p.vy=0; p.rocket={vy:0,crash:false}; p.onGround=false; } }
 function setupRocket(L){
   const B=L.bt; BTX.z=1.7; BTX.lx=VW*0.22/1.7; for(const f of B.flags) f.on=!!(S.cp&&S.cp.x>=f.x);
@@ -378,6 +448,7 @@ function smash(p){
   p.smashCd=0.7; p.smashT=0.22; sfx('slam'); shake=Math.max(shake,6); hitstop=Math.max(hitstop,.04);
   const cx=p.x+p.w/2+p.face*48, cy=p.y+p.h*0.55, zone={x:cx-62,y:p.y-24,w:124,h:p.h+34};
   rings.push({x:cx,y:cy,r:8,max:80,life:.3,c:'#62c7c1',w:5}); burst(cx,cy,16,['#9cc3ff','#62c7c1','#fff'],320,.4);
+  if(S.bo&&S.bo.hp>0&&overlap({x:S.bo.x,y:S.bo.y,w:S.bo.w,h:S.bo.h},{x:zone.x-8,y:zone.y,w:zone.w+16,h:zone.h})) damageBoss(3,'slam');
   if(S.haz) for(const h of S.haz){ if(h.k==='saw'&&!h.dead&&S.lt>=h.t1&&overlap({x:h.x-16,y:h.y-16,w:32,h:32},zone)){ h.dead=true; burst(h.x,h.y,18,['#ffd166','#fff','#ff8a3d'],340,.5); texts.push({x:h.x,y:h.y-30,t:'СБИТА!',life:.8,c:'#62c7c1',pop:true}); sfx('kill'); } }
   let n=0; for(const en of enemies){ if(en.hp<=0||!overlap(en,zone)) continue; n++; damageEnemy(en,4,false,'slam'); knock(en,p.face*760,-420); }
   if(n) texts.push({x:cx,y:p.y-30,t:n>1?'СМЭШ ×'+n+'!':'СМЭШ!',life:.8,c:'#62c7c1',pop:true});
@@ -426,7 +497,7 @@ function cartExtraHit(p){
 function fishUp(f){ if(f.t<0) return 0; const t=f.t; return t<0.14?t/0.14*44:t<1.2?44:t<1.45?44*(1-(t-1.2)/0.25):0; }
 function cartExtraRewind(spot){ S.mines=S.mines.filter(m=>m.x<spot*T-T||m.x>(spot+16)*T); for(const f of S.L.bt.fish) if(f.x>spot) f.t=-1; if(S.R&&!S.R.dead) S.R.x=(spot+12)*T; }
 
-const BUILD={cart:D=>cartLevel(D),rope:D=>ropeLevel(D),chase:D=>chaseLevel(D),snake:D=>snakeLevel(D),rocket:D=>rocketLevel(D),lift:D=>liftLevel(D),tube:D=>tubeLevel(D),brawl:D=>brawlLevel(D)};
+const BUILD={cart:D=>cartLevel(D),rope:D=>ropeLevel(D),chase:D=>chaseLevel(D),snake:D=>snakeLevel(D),rocket:D=>rocketLevel(D),lift:D=>liftLevel(D),boss:D=>bossLevel(D),tube:D=>tubeLevel(D),brawl:D=>brawlLevel(D)};
 const LEVELS=DEFS.map(D=>BUILD[D.kind](D));
 
 /* ---------------- перехваты движка ---------------- */
@@ -442,7 +513,7 @@ loadLevel=function(i,keepHp){
   tutMarks=[];
   if(S.cp&&S.cp.lvl!==i) S.cp=null;
   for(const p of players){ p.duck=false; p.rope=null; p.rocket=null; p.smashCd=0; p.smashT=0; p.h0=H0[p.kind]; }
-  if(S.kind==='cart'){ setupCart(L); cartExtraSetup(L); } else if(S.kind==='rope') setupRope(L); else if(S.kind==='chase') setupChase(L); else if(S.kind==='snake') setupSnake(L); else if(S.kind==='brawl') setupBrawl(L); else if(S.kind==='rocket') setupRocket(L); else if(S.kind==='lift') setupLift(L);
+  if(S.kind==='cart'){ setupCart(L); cartExtraSetup(L); } else if(S.kind==='rope') setupRope(L); else if(S.kind==='chase') setupChase(L); else if(S.kind==='snake') setupSnake(L); else if(S.kind==='brawl') setupBrawl(L); else if(S.kind==='rocket') setupRocket(L); else if(S.kind==='lift') setupLift(L); else if(S.kind==='boss') setupBoss(L);
 };
 const _tutorInit=tutorInit;
 tutorInit=function(i){ _tutorInit(i); if(getLevel(i)&&getLevel(i).bt) tutMarks=[]; };
@@ -555,7 +626,7 @@ step=function(dt){
   _step(dt);
   if(S.banner){ S.banner.life-=dt; if(S.banner.life<=0) S.banner=null; }
   if(state!=='play') return;
-  ({cart:cartPost,rope:ropePost,chase:chasePost,snake:snakePost,brawl:brawlPost,rocket:rocketPost,lift:liftPost})[S.kind](dt);
+  ({cart:cartPost,rope:ropePost,chase:chasePost,snake:snakePost,brawl:brawlPost,rocket:rocketPost,lift:liftPost,boss:bossPost})[S.kind](dt);
 };
 
 function cartPre(dt){
@@ -669,6 +740,7 @@ function drawWorld(){
   else if(S.kind==='chase') drawChaseExtra(B);
   else if(S.kind==='snake') drawSnakeExtra();
   else if(S.kind==='lift') drawLift();
+  else if(S.kind==='boss') drawBoss();
   else if(S.kind==='rope'){
     const ax=solo?[16*T]:[15*T,17*T]; ctx.save(); for(const x of ax){ ctx.fillStyle='#6f8191'; ctx.beginPath(); ctx.arc(x,B.ay+2,9,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#22324d'; ctx.beginPath(); ctx.arc(x,B.ay+2,4,0,Math.PI*2); ctx.fill(); } ctx.restore();
     for(const z of B.zaps){ const st=zapOn(z), x0=z.x0*T, x1=(z.x1+1)*T, y=z.y*T+T/2;
@@ -709,6 +781,8 @@ function drawWarn(B){
 }
 function hud(){
   const B=S.L.bt, L=live();
+  if(S.kind==='boss'&&S.bo){ const b=S.bo, bw=420, bx=VW/2-bw/2, by=78; ctx.fillStyle='rgba(6,10,22,.88)'; rr(ctx,bx-10,by-14,bw+20,30,12); ctx.fill(); label('КУЗНЕЦ',bx,by-26,12,'#ff9a8a','left'); ctx.fillStyle='rgba(255,77,94,.2)'; rr(ctx,bx,by-6,bw,12,5); ctx.fill(); ctx.fillStyle=b.ph===3?'#ff4d5e':b.ph===2?'#ff9a3d':'#ffd166'; rr(ctx,bx,by-6,Math.max(0,bw*b.hp/b.max),12,5); ctx.fill(); ctx.fillStyle='#0b1220'; for(const k of [0.34,0.67]) ctx.fillRect(bx+bw*k-1,by-8,3,16);
+    if(S.hintT>0){ ctx.globalAlpha=Math.min(1,S.hintT); label('Болт: способность вблизи — смэш · Искра: огонь и рывок',VW/2,VH-40,15,'#e8effa'); ctx.globalAlpha=1; } }
   if(S.kind==='lift'){ const w=520, x=VW/2-w/2, y=VH-26, k=clamp((S.lt||0)/B.dur,0,1); ctx.fillStyle='rgba(6,10,22,.8)'; rr(ctx,x-8,y-10,w+16,20,10); ctx.fill(); ctx.fillStyle='#c79bff'; rr(ctx,x,y-3,Math.max(6,w*k),6,3); ctx.fill(); label(S.opened?'ПРИЕХАЛИ':'ПОДЪЁМ '+Math.round(k*100)+'%',VW/2,y-22,12,'#e8effa');
     if(S.hintT>0){ ctx.globalAlpha=Math.min(1,S.hintT); label('низкие пилы — прыжок · высокие — не прыгай · красное — отойди',VW/2,VH-62,15,'#e8effa'); ctx.globalAlpha=1; } } if(S.freeze<=0&&!S.dead) try{ drawWarn(B); }catch(e){}
   if(S.kind==='cart'){
@@ -873,6 +947,7 @@ setState=function(s){
       <p><b style="color:#c79bff">Ракета.</b> Прыжок — вверх, способность — вниз. Шестерёнки — топливо, без него ракета падает.</p>
       <p><b style="color:#5fd6a0">Труба.</b> Скользите по трубе: прыжок — вверх, способность — вниз. В заслонках гуляет зелёное окошко — пролетайте только через него.</p>
       <p><b style="color:#c79bff">Лифт-шахта.</b> Платформа едет вверх, из стен вылетают пилы и шипы. Низкие пилы перепрыгивай, под высокими не прыгай, от красных шипов отходи. Болт: способность сбивает пилы.</p>
+      <p><b style="color:#ff8a7a">Кузнец.</b> Босс-робот в три фазы: топот (волны по полу — перепрыгни), ракеты (уходи с красных полос), ярость (ещё и пилы). Болт бьёт смэшем вблизи, Искра стреляет и жжёт рывком.</p>
       <p><b style="color:#ff9a8a">Погоня за Механиком.</b> Стреляйте в Механика на доске и сбейте его до финиша, его мины перепрыгивайте.</p>
       <p>Вдвоём каждый управляет своим героем; врезался один — оба возвращаются назад.</p></div>
       <div class="btns"><button class="primary" id="btHB" type="button">Назад · Esc</button></div></div>`;
