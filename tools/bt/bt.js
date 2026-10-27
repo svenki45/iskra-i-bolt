@@ -948,12 +948,13 @@ function setupIso(L){
   let n=0; for(const p of players){ if(p.absent) continue; p.ix=120+n*60; p.iz=.35+n*.3; p.ih=0; p.ivh=0; p.iat=0; p.icd=0; p.ikick=false; p.ihit=0; p.ifc=1; p.imv=0; n++; p.hp=Math.max(p.hp,1); }
   S.hintT=8; banner('ЗАВОДСКОЙ ДВОР','#ffd166',1.4);
 }
+(()=>{ const st=document.createElement('style'); st.textContent='@keyframes hlp{0%,100%{box-shadow:0 0 0 0 rgba(255,209,102,.9),0 0 14px 4px rgba(255,209,102,.55);transform:scale(1)}50%{box-shadow:0 0 0 12px rgba(255,209,102,0),0 0 22px 8px rgba(255,209,102,.8);transform:scale(1.12)}} body[data-hl=jump] #touch .tb[data-a=jump],body[data-hl=ability] #touch .tb[data-a=ability],body[data-hl=fire] #touch .tb[data-a=fire]{animation:hlp .55s ease-in-out infinite;border-color:#ffd166!important;background:rgba(255,209,102,.28)!important}'; document.head.appendChild(st); })();
 // сенсор: на «Заводском дворе» кнопки получают другие подписи (клавиши те же: вверх=«прыжок», вниз=«способность», удар=«огонь», прыжок=«бонус»)
 setInterval(()=>{ try{
-  const el=document.getElementById('touch'); if(!el) return; const on=S.on&&S.kind==='iso'&&state==='play';
-  el.querySelectorAll('.tb[data-a]').forEach(b=>{ const a=b.dataset.a, want=on?({jump:'<span style="font-size:1.5em;line-height:1">▲</span><small>вглубь</small>',ability:'<span style="font-size:1.5em;line-height:1">▼</span><small>к нам</small>',fire:'<span style="font-size:1.4em;line-height:1">✊</span><small>удар</small>',use:'<span style="font-size:1.4em;line-height:1">⤒</span><small>прыжок</small>'})[a]:null;
-    if(want){ if(b.dataset.iso!=='1'){ b.dataset.orig=b.innerHTML; b.innerHTML=want; b.dataset.iso='1'; } }
-    else if(b.dataset.iso==='1'){ b.innerHTML=b.dataset.orig||b.innerHTML; b.dataset.iso='0'; } });
+  const el=document.getElementById('touch'); if(!el) return; const on=S.on&&(S.kind==='iso'||S.kind==='cart')&&state==='play'; const cartM=S.kind==='cart';
+  el.querySelectorAll('.tb[data-a]').forEach(b=>{ const a=b.dataset.a, want=on&&cartM?(a==='ability'?'<span style="font-size:1.5em;line-height:1">▼</span><small>пригнись</small>':null):on?({jump:'<span style="font-size:1.5em;line-height:1">▲</span><small>вглубь</small>',ability:'<span style="font-size:1.5em;line-height:1">▼</span><small>к нам</small>',fire:'<span style="font-size:1.4em;line-height:1">✊</span><small>удар</small>',use:'<span style="font-size:1.4em;line-height:1">⤒</span><small>прыжок</small>'})[a]:null;
+    if(want){ if(b.dataset.iso!=='1'){ b.dataset.orig=b.innerHTML; b.dataset.iso='1'; } if(b.dataset.cur!==want){ b.innerHTML=want; b.dataset.cur=want; } }
+    else if(b.dataset.iso==='1'){ b.innerHTML=b.dataset.orig||b.innerHTML; b.dataset.iso='0'; b.dataset.cur=''; } });
 }catch(e){} },250);
 function isoInput(p){
   const pi=players.indexOf(p), k=(solo?['spark','bolt']:[p.kind]).map(n=>binds[n].kb), pk=(solo?['spark','bolt']:[p.kind]).map(n=>binds[n].pad);
@@ -1541,6 +1542,20 @@ function drawWarn(B){
     ctx.fillStyle=it.c; ctx.beginPath(); if(it.dir<0){ ctx.moveTo(0,-16); ctx.lineTo(13,-1); ctx.lineTo(-13,-1); } else if(it.dir>0){ ctx.moveTo(0,-1); ctx.lineTo(13,-16); ctx.lineTo(-13,-16); } else { ctx.arc(0,-9,8,0,Math.PI*2); } ctx.closePath(); ctx.fill();
     ctx.restore(); ctx.save(); ctx.globalAlpha=a; label(it.txt,x,y+16,10,it.c); ctx.restore(); }
 }
+// заметная, но компактная подсказка: яркая плашка со стрелкой и названием действия + кольцо вокруг нужной кнопки; чем ближе препятствие — тем резче
+function keyName(act){ try{ const k=binds[(solo?soloHero:'spark')||'spark'].kb[act]||''; return k.replace(/^Key/,'').replace('Arrow','').replace('Up','↑').replace('Down','↓').replace('Left','←').replace('Right','→').replace('Slash','/'); }catch(e){ return ''; } }
+function drawCue(cue,txt,k,col){
+  const cx=VW-T*3.9, cy=VH*0.40, near=clamp(1-k,0,1), pul=1+.06*Math.sin(clock*(8+near*10)), W=232, H=84;
+  ctx.save(); ctx.translate(cx,cy); ctx.scale(pul,pul);
+  ctx.globalAlpha=.55*(1-((clock*1.4)%1)); ctx.strokeStyle=col; ctx.lineWidth=4; rr(ctx,-W/2-8-((clock*1.4)%1)*26,-H/2-8-((clock*1.4)%1)*14,W+16+((clock*1.4)%1)*52,H+16+((clock*1.4)%1)*28,26); ctx.stroke(); ctx.globalAlpha=1;
+  ctx.fillStyle='rgba(6,10,22,.92)'; rr(ctx,-W/2,-H/2,W,H,22); ctx.fill(); ctx.strokeStyle=col; ctx.lineWidth=4; rr(ctx,-W/2,-H/2,W,H,22); ctx.stroke();
+  ctx.fillStyle=col; ctx.beginPath(); const ax=-W/2+44;
+  if(cue==='jump'){ ctx.moveTo(ax,-22); ctx.lineTo(ax+22,10); ctx.lineTo(ax-22,10); } else if(cue==='ability'){ ctx.moveTo(ax,22); ctx.lineTo(ax+22,-10); ctx.lineTo(ax-22,-10); } else { ctx.arc(ax,0,18,0,7); }
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+  label(txt,cx+34,cy-8,txt.length>9?19:24,col); 
+  const hint=touchUI&&touchUI.on?(cue==='jump'?'жми ▲':cue==='ability'?'жми ➤':'жми ✦'):('кнопка '+(keyName(cue)||'')); label(hint,cx+34,cy+22,15,'#e8effa');
+}
 function hud(){
   const B=S.L.bt, L=live();
   if(S.kind==='relay'){ const m=Math.floor(S.rt/60), sc=Math.floor(S.rt%60), low=S.rt<20; ctx.fillStyle='rgba(6,10,22,.85)'; rr(ctx,VW/2-70,70,140,32,12); ctx.fill(); label((m+':'+String(sc).padStart(2,'0')),VW/2,87,20,low&&Math.floor(clock*4)%2?'#ff6b6b':'#ffd166'); label('ОБЩЕЕ ВРЕМЯ',VW/2,64,10,'#e8effa');
@@ -1564,12 +1579,11 @@ function hud(){
     if(S.freeze<=0&&L.length){ const front=Math.max(...L.map(p=>p.x+p.w)), v=Math.max(S.v,180), wt=warnTime();
       const o=B.obs.concat(S.dyn||[]).filter(o=>(o.x1+1)*T>front-8).sort((a,b)=>a.x0-b.x0)[0];
       if(o){ const tt=(o.x0*T-front)/v; if(tt<wt){
-        const up=o.t==='jump', sh=o.t==='shoot', blink=Math.floor(clock*(tt<wt*.45?12:6))%2===0, cx=VW-T*2.6, cy=VH*0.42;
+        const up=o.t==='jump', sh=o.t==='shoot', cue=sh?'fire':up?'jump':'ability';
         if(S.warnBeep!==o){ S.warnBeep=o; tone(up?880:440,up?1320:330,.08,'square',.035); }
-        ctx.save(); ctx.globalAlpha=blink?1:.45; ctx.fillStyle=sh?'#7fe08a':up?'#ffd166':'#ff6b6b'; ctx.strokeStyle='#0b1830'; ctx.lineWidth=4;
-        ctx.beginPath(); ctx.arc(cx,cy,34,0,Math.PI*2); ctx.fill(); ctx.stroke();
-        ctx.fillStyle='#0b1830'; ctx.beginPath(); if(sh){ ctx.arc(cx,cy,15,0,7); ctx.moveTo(cx+11,cy); ctx.arc(cx,cy,11,0,7,true); ctx.moveTo(cx-24,cy-1.5); ctx.rect(cx-24,cy-1.5,48,3); ctx.rect(cx-1.5,cy-24,3,48); } else if(up){ ctx.moveTo(cx,cy-20); ctx.lineTo(cx+18,cy+10); ctx.lineTo(cx-18,cy+10); } else { ctx.moveTo(cx,cy+20); ctx.lineTo(cx+18,cy-10); ctx.lineTo(cx-18,cy-10); } ctx.closePath(); ctx.fill();
-        ctx.restore(); label(sh?'СТРЕЛЯЙ':up?(o.pit?'ЯМА — ПРЫЖОК':'ПРЫЖОК'):'ПРИГНИСЬ',cx,cy+52,14,sh?'#7fe08a':up?'#ffd166':'#ff6b6b'); } } }
+        drawCue(cue,sh?'СТРЕЛЯЙ':up?(o.pit?'ЯМА — ПРЫЖОК':'ПРЫЖОК'):'ПРИГНИСЬ',tt/wt,sh?'#7fe08a':up?'#ffd166':'#ff6b6b');
+        S.cueNow=cue; } } }
+    if(S.cueNow!==S.cueSent){ S.cueSent=S.cueNow; document.body.dataset.hl=S.cueNow||''; } S.cueNow=null;
   } else if(S.kind==='rope'){
     const x=VW-T*0.9, y0=T*1.6, y1=VH-T*1.6, Hh=(B.H-3)*T;
     ctx.fillStyle='rgba(6,10,22,.8)'; rr(ctx,x-9,y0-8,18,y1-y0+16,9); ctx.fill();

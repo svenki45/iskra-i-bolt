@@ -760,7 +760,7 @@ function fit(){
   { const OX=tch&&!pm?(TL.ox||0):0, OY=tch&&!pm?(TL.oy||0):0; $('screen').style.transform=(OX||OY)?`translate(${OX}px,${OY}px)`:''; }
   const R=(typeof resBox==='function')?resBox():null;
   if(R){ cv.width=R.w; cv.height=R.h; }
-  else { const dpr=(typeof settings!=='undefined'&&settings.quality==='low')?1:Math.min(2,window.devicePixelRatio||1);
+  else { const dpr=(typeof settings!=='undefined'&&settings.quality==='low')?1:Math.min(window.MOBILE_BUILD?1.5:2,window.devicePixelRatio||1);
     cv.width=Math.max(1,Math.round(w*dpr)); cv.height=Math.max(1,Math.round(h*dpr)); }
   scale=cv.width/VW;
 }
@@ -5585,7 +5585,7 @@ const R3D=(()=>{
     glc=document.createElement('canvas'); glc.id='cv3d';
     glc.style.cssText='position:absolute;inset:0;width:100%;height:100%;display:block';
     cv.parentNode.insertBefore(glc,cv); cv.style.position='relative'; cv.style.background='transparent';
-    renderer=new THREE.WebGLRenderer({canvas:glc,antialias:true,alpha:false,powerPreference:'high-performance'});
+    renderer=new THREE.WebGLRenderer({canvas:glc,antialias:!window.MOBILE_BUILD,alpha:false,powerPreference:'high-performance'});
     glc.addEventListener('webglcontextlost',e=>{ e.preventDefault(); R.fail('WebGL context lost'); });
     renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFShadowMap;
     scene=new THREE.Scene();
@@ -5984,7 +5984,7 @@ const R3D=(()=>{
     if(lastStaticGen!==staticGen){ lastStaticGen=staticGen;
       // если размер фона изменился (другой уровень), GPU-текстуру нужно пересоздать, иначе новый рисунок ляжет в угол старой
       softBack(); backTex.dispose(); backTex=new THREE.CanvasTexture(softC); backTex.anisotropy=4; backMat.map=backTex; backMat.needsUpdate=true; }
-    if(!window.MOBILE_BUILD||(R.fr||0)%2===0||R.fxDirty!==levelIdx){ R.fxDirty=levelIdx; fxUpdate(); }
+    if(!window.MOBILE_BUILD||(R.fr||0)%(WW>6000?5:2)===0||R.fxDirty!==levelIdx){ R.fxDirty=levelIdx; fxUpdate(); }
     // camera matches the 2D transform: screen = game*z + o
     const cx=(VW/2-ox)/z, cy=(VH/2-oy)/z;
     cam.position.set(cx,-cy,DIST/z); cam.lookAt(cx,-cy,0); cam.updateProjectionMatrix();
@@ -6001,7 +6001,7 @@ const R3D=(()=>{
     syncPool(pool.mover,movers,()=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshLambertMaterial({color:0xcfd8e6})); m.castShadow=true; m.receiveShadow=true; scene.add(m); return m; },(m,o)=>{ m.position.set(o.x+o.w/2,-(o.y+o.h/2),FRONT-DEPTH/2); m.scale.set(o.w,o.h,DEPTH*0.9); });
     if(R.ext) updateExtras();
     for(const h of R.hooks){ try{ h({scene,THREE,cx,cy,z,R}); }catch(e){ if(!R.hookErr){ R.hookErr=1; console.error('3D hook',e); } } }
-    R.fr=(R.fr||0)+1; renderer.shadowMap.autoUpdate=false; renderer.shadowMap.needsUpdate=!window.MOBILE_BUILD||R.fr%2===0||R.moved;
+    R.fr=(R.fr||0)+1; renderer.shadowMap.autoUpdate=false; renderer.shadowMap.needsUpdate=!window.MOBILE_BUILD||R.fr%(WW>6000?4:2)===0||R.moved;
     renderer.render(scene,cam);
     if(!R.checked){ R.checked=true; try{ const bad=(renderer.info.programs||[]).filter(p=>p.diagnostics&&!p.diagnostics.runnable); const gl=renderer.getContext(); const ge=gl.getError();
       if(bad.length) R.fail('шейдер не собрался: '+((bad[0].diagnostics.fragmentShader&&bad[0].diagnostics.fragmentShader.log)||(bad[0].diagnostics.vertexShader&&bad[0].diagnostics.vertexShader.log)||bad[0].diagnostics.programLog||'?'));
