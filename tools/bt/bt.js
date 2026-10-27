@@ -864,7 +864,7 @@ function iceHud(B,L){
   for(const p of L){ const k=clamp(p.x/T/B.finishX,0,1); ctx.fillStyle=p.kind==='spark'?'#ff8a3d':'#62c7c1'; ctx.beginPath(); ctx.arc(x+w*k,y,6,0,Math.PI*2); ctx.fill(); }
   if(L.length){ const gap=(Math.min(...L.map(p=>p.x))-S.snowX)/T, near=gap<6; label('лавина: '+Math.max(0,Math.round(gap*1.5))+' м',VW-T*1.2,VH-28,18,near&&Math.floor(clock*6)%2?'#ff6b6b':'#e8effa','right'); }
   if(S.wait>0) label('лавина сойдёт через '+Math.ceil(S.wait),VW/2,VH*0.2,18,'#9fe4f5');
-  if(S.hintT>0){ ctx.globalAlpha=Math.min(1,S.hintT); label('лёд скользкий: тормозишь не сразу · прыжок — через шипы и ямы · широкие ямы — на льдине · лавина догоняет',VW/2,VH-56,15,'#e8effa'); ctx.globalAlpha=1; }
+  if(S.hintT>0){ hintCard('лёд скользкий: тормозишь не сразу · прыжок — через шипы и ямы · широкие ямы — на льдине · лавина догоняет',56); }
 }
 
 // ---------- вращающаяся комната: ветряки с вращающимися лопастями ----------
@@ -928,7 +928,7 @@ function rotHud(B,L){
   for(const m of B.mills){ ctx.fillStyle='rgba(255,138,61,.55)'; ctx.fillRect(x+w*(m.x-m.L)/B.finishX,y-3,w*2*m.L/B.finishX,6); }
   for(const f of B.flags){ ctx.fillStyle=f.on?'#7fe08a':'#6f8191'; ctx.fillRect(x+w*f.x/B.finishX-1,y-8,3,16); }
   for(const p of L){ const k=clamp(p.x/T/B.finishX,0,1); ctx.fillStyle=p.kind==='spark'?'#ff8a3d':'#62c7c1'; ctx.beginPath(); ctx.arc(x+w*k,y,6,0,Math.PI*2); ctx.fill(); }
-  if(S.hintT>0){ ctx.globalAlpha=Math.min(1,S.hintT); label('жди, пока лопасть пройдёт, и беги · между ветряками можно стоять · флажки сохраняют место',VW/2,VH-56,15,'#e8effa'); ctx.globalAlpha=1; }
+  if(S.hintT>0){ hintCard('жди, пока лопасть пройдёт, и беги · между ветряками можно стоять · флажки сохраняют место',56); }
 }
 
 /* ---------------- «Заводской двор»: драка в глубину (как в beat'em-up) ---------------- */
@@ -950,10 +950,28 @@ function setupIso(L){
 }
 (()=>{ const st=document.createElement('style'); st.textContent='@keyframes hlp{0%,100%{box-shadow:0 0 0 0 rgba(255,209,102,.9),0 0 14px 4px rgba(255,209,102,.55);transform:scale(1)}50%{box-shadow:0 0 0 12px rgba(255,209,102,0),0 0 22px 8px rgba(255,209,102,.8);transform:scale(1.12)}} body[data-hl=jump] #touch .tb[data-a=jump],body[data-hl=ability] #touch .tb[data-a=ability],body[data-hl=fire] #touch .tb[data-a=fire]{animation:hlp .55s ease-in-out infinite;border-color:#ffd166!important;background:rgba(255,209,102,.28)!important}'; document.head.appendChild(st); })();
 // сенсор: на «Заводском дворе» кнопки получают другие подписи (клавиши те же: вверх=«прыжок», вниз=«способность», удар=«огонь», прыжок=«бонус»)
+const TG=(g,sub,sz)=>`<span style="font-size:${sz||1.5}em;line-height:1">${g}</span><small>${sub}</small>`;
+const TLBL={
+  cart:(a,k)=>({ability:TG('▼','пригнись'),fire:TG('✦','стреляй'),left:'dim',right:'dim',use:'dim'})[a],
+  rope:(a,k)=>({left:TG('◀','раскачка'),right:TG('▶','раскачка'),jump:TG('▲','подтянись'),ability:TG('▼','быстрее'),fire:'dim',use:'dim'})[a],
+  rocket:(a,k)=>({jump:TG('▲','вверх'),ability:TG('▼','вниз'),left:'dim',right:'dim',use:'dim',fire:S.L&&S.L.bt&&S.L.bt.tube?'dim':TG('✦','огонь')})[a],
+  wire:(a,k)=>({jump:TG('▲','выше'),ability:TG('▼','ниже'),left:'dim',right:'dim',fire:'dim',use:'dim'})[a],
+  lift:(a,k)=>({jump:TG('▲','прыжок')})[a],
+  relay:(a,k)=>({jump:TG('▲','прыжок'),ability:TG('✋','взять / бросить',1.3)})[a],
+  chase:(a,k)=>({jump:TG('▲','прыжок'),ability:TG('➤',k==='bolt'?'смэш':'рывок',1.4)})[a],
+  brawl:(a,k)=>({jump:TG('▲','прыжок'),ability:TG('➤',k==='bolt'?'смэш':'рывок',1.4),fire:TG('✦','огонь',1.4)})[a],
+  boss:(a,k)=>({jump:TG('▲','прыжок'),ability:TG('➤',k==='bolt'?'смэш':'рывок',1.4),fire:TG('✦','огонь',1.4)})[a],
+  maze:(a,k)=>({jump:TG('▲','прыжок'),ability:TG('➤',k==='bolt'?'смэш':'рывок',1.4),fire:TG('✦','выстрел',1.4)})[a],
+  snake:(a,k)=>({jump:TG('▲','прыжок')})[a],
+  ice:(a,k)=>({jump:TG('▲','прыжок')})[a],
+  rot:(a,k)=>({jump:TG('▲','прыжок')})[a],
+  iso:(a,k)=>({jump:TG('▲','вглубь'),ability:TG('▼','к нам'),fire:TG('✊','удар',1.4),use:TG('⤒','прыжок',1.4)})[a]
+};
+// сенсор: подписи кнопок под тип испытания (ненужные кнопки гаснут)
 setInterval(()=>{ try{
-  const el=document.getElementById('touch'); if(!el) return; const on=S.on&&(S.kind==='iso'||S.kind==='cart')&&state==='play'; const cartM=S.kind==='cart';
-  el.querySelectorAll('.tb[data-a]').forEach(b=>{ const a=b.dataset.a, want=on&&cartM?(a==='ability'?'<span style="font-size:1.5em;line-height:1">▼</span><small>пригнись</small>':null):on?({jump:'<span style="font-size:1.5em;line-height:1">▲</span><small>вглубь</small>',ability:'<span style="font-size:1.5em;line-height:1">▼</span><small>к нам</small>',fire:'<span style="font-size:1.4em;line-height:1">✊</span><small>удар</small>',use:'<span style="font-size:1.4em;line-height:1">⤒</span><small>прыжок</small>'})[a]:null;
-    if(want){ if(b.dataset.iso!=='1'){ b.dataset.orig=b.innerHTML; b.dataset.iso='1'; } if(b.dataset.cur!==want){ b.innerHTML=want; b.dataset.cur=want; } }
+  const el=document.getElementById('touch'); if(!el) return; const f=S.on&&state==='play'?TLBL[S.kind]:null;
+  el.querySelectorAll('.tb[data-a]').forEach(b=>{ const a=b.dataset.a; let w=f?f(a,b.dataset.k):null; const dim=w==='dim'; if(dim) w=null; if(b.dataset.dim!==(dim?'1':'')){ b.dataset.dim=dim?'1':''; b.style.opacity=dim?'.28':''; }
+    if(w){ if(b.dataset.iso!=='1'){ b.dataset.orig=b.innerHTML; b.dataset.iso='1'; } if(b.dataset.cur!==w){ b.innerHTML=w; b.dataset.cur=w; } }
     else if(b.dataset.iso==='1'){ b.innerHTML=b.dataset.orig||b.innerHTML; b.dataset.iso='0'; b.dataset.cur=''; } });
 }catch(e){} },250);
 function isoInput(p){
@@ -1110,7 +1128,7 @@ function isoDraw(){
   ctx.restore();
   if(flashA>0){ ctx.globalAlpha=Math.min(.6,flashA); ctx.fillStyle=flashC||'#fff'; ctx.fillRect(0,0,VW,VH); ctx.globalAlpha=1; }
   drawHud();
-  if(S.hintT>0){ ctx.globalAlpha=Math.min(1,S.hintT); label(touchUI.on?'← →  ходить   ·   ▲▼  в глубину   ·   ✊  удар   ·   ⤒  прыжок':'← →  ходить   ·   W/S (↑/↓)  в глубину   ·   удар (E)   ·   прыжок (Q)',VW/2,VH-30,17,'#e8effa'); ctx.globalAlpha=1; }
+  if(S.hintT>0){ hintCard(touchUI.on?'← →  ходить   ·   ▲▼  в глубину   ·   ✊  удар   ·   ⤒  прыжок':'← →  ходить   ·   W/S (↑/↓)  в глубину   ·   удар (E)   ·   прыжок (Q)',30); }
   if(S.banner){ const b=S.banner, a=Math.min(1,b.life*3,(b.max-b.life)*8+.2); ctx.globalAlpha=a; label(b.t,VW/2,150,46,b.c); ctx.globalAlpha=1; }
 }
 
@@ -1557,15 +1575,32 @@ function drawCue(cue,txt,k,col){
   label(txt,cx+34,cy-8,txt.length>9?19:24,col); 
   const hint=touchUI&&touchUI.on?(cue==='jump'?'жми ▲':cue==='ability'?'жми ➤':'жми ✦'):('кнопка '+(keyName(cue)||'')); label(hint,cx+34,cy+22,15,'#e8effa');
 }
+
+// единая плашка-подсказка: стеклянные «чипсы» внизу, плавно появляются и тают; на сенсоре клавиши заменяются значками кнопок
+function hintCard(txt,yo){
+  if(S.hintT>(S._hp||0)+.5) S.hcT0=clock; S._hp=S.hintT;
+  const a=Math.min(1,S.hintT*1.2,(clock-(S.hcT0||0))*2.2); if(a<=0.01) return;
+  const tch=touchUI&&touchUI.on; if(tch) txt=txt.replace(/↑ \/ W/g,'▲').replace(/↓ \/ S/g,'▼').replace(/← →/g,'◀ ▶').replace(/W\/S \(↑\/↓\)/g,'▲▼').replace(/удар \(E\)/g,'✊ удар').replace(/прыжок \(Q\)/g,'⤒ прыжок');
+  const parts=txt.split(/\s*·\s*/).map(x=>x.trim()).filter(Boolean); ctx.save(); ctx.font="600 15px Rubik,'Segoe UI',Arial,sans-serif"; ctx.textBaseline='middle'; ctx.textAlign='left';
+  const padX=14, gap=8, H=32, ws=parts.map(x=>Math.ceil(ctx.measureText(x).width)+padX*2); const max=VW-60; const rows=[[]]; let cur=0;
+  parts.forEach((x,i)=>{ if(cur+ws[i]>max&&rows[rows.length-1].length){ rows.push([]); cur=0; } rows[rows.length-1].push(i); cur+=ws[i]+gap; });
+  const slide=(1-a)*14; let y=VH-(yo||40)-6-(rows.length-1)*(H+6)+slide;
+  ctx.globalAlpha=a*.96;
+  for(const row of rows){ const tw=row.reduce((q,i)=>q+ws[i]+gap,-gap); let x=VW/2-tw/2;
+    for(const i of row){ const w=ws[i]; ctx.fillStyle='rgba(10,18,40,.84)'; rr(ctx,x,y-H/2,w,H,H/2); ctx.fill(); ctx.lineWidth=1.6; ctx.strokeStyle=i===0?'rgba(255,209,102,.8)':'rgba(156,195,255,.4)'; rr(ctx,x,y-H/2,w,H,H/2); ctx.stroke();
+      ctx.fillStyle=i===0?'#ffe9a8':'#e8effa'; ctx.fillText(parts[i],x+padX,y+1); x+=w+gap; }
+    y+=H+6; }
+  ctx.restore();
+}
 function hud(){
   const B=S.L.bt, L=live();
   if(S.kind==='relay'){ const m=Math.floor(S.rt/60), sc=Math.floor(S.rt%60), low=S.rt<20; ctx.fillStyle='rgba(6,10,22,.85)'; rr(ctx,VW/2-70,70,140,32,12); ctx.fill(); label((m+':'+String(sc).padStart(2,'0')),VW/2,87,20,low&&Math.floor(clock*4)%2?'#ff6b6b':'#ffd166'); label('ОБЩЕЕ ВРЕМЯ',VW/2,64,10,'#e8effa');
-    if(S.hintT>0){ ctx.globalAlpha=Math.min(1,S.hintT); label('способность рядом с напарником — взять на плечи · ещё раз — бросить вперёд (с прыжком — подбросить вверх)',VW/2,VH-44,15,'#e8effa'); ctx.globalAlpha=1; } }
+    if(S.hintT>0){ hintCard('способность рядом с напарником — взять на плечи · ещё раз — бросить вперёд (с прыжком — подбросить вверх)',44); } }
   if(S.kind==='cart'&&B.rhythm&&L.length){ const lead=Math.max(...L.map(q=>q.x+q.w)), k=(lead/T-16)/5, ph=k-Math.floor(k), pu=Math.pow(1-ph,2), cx=VW/2, cy=VH-64; ctx.save(); ctx.globalAlpha=.35+.65*pu; ctx.strokeStyle=(Math.floor(k)%4===0)?'#ffd166':'#c79bff'; ctx.lineWidth=4; ctx.beginPath(); ctx.arc(cx,cy,12+26*pu,0,7); ctx.stroke(); ctx.fillStyle=ctx.strokeStyle; ctx.beginPath(); ctx.arc(cx,cy,7,0,7); ctx.fill(); ctx.restore(); }
   if(S.kind==='boss'&&S.bo){ const b=S.bo, bw=420, bx=VW/2-bw/2, by=78; ctx.fillStyle='rgba(6,10,22,.88)'; rr(ctx,bx-10,by-14,bw+20,30,12); ctx.fill(); label('КУЗНЕЦ',bx,by-26,12,'#ff9a8a','left'); ctx.fillStyle='rgba(255,77,94,.2)'; rr(ctx,bx,by-6,bw,12,5); ctx.fill(); ctx.fillStyle=b.ph===3?'#ff4d5e':b.ph===2?'#ff9a3d':'#ffd166'; rr(ctx,bx,by-6,Math.max(0,bw*b.hp/b.max),12,5); ctx.fill(); ctx.fillStyle='#0b1220'; for(const k of [0.34,0.67]) ctx.fillRect(bx+bw*k-1,by-8,3,16);
-    if(S.hintT>0){ ctx.globalAlpha=Math.min(1,S.hintT); label('Болт: способность вблизи — смэш · Искра: огонь и рывок',VW/2,VH-40,15,'#e8effa'); ctx.globalAlpha=1; } }
+    if(S.hintT>0){ hintCard('Болт: способность вблизи — смэш · Искра: огонь и рывок',40); } }
   if(S.kind==='lift'){ const w=520, x=VW/2-w/2, y=VH-26, k=clamp((S.lt||0)/B.dur,0,1); ctx.fillStyle='rgba(6,10,22,.8)'; rr(ctx,x-8,y-10,w+16,20,10); ctx.fill(); ctx.fillStyle='#c79bff'; rr(ctx,x,y-3,Math.max(6,w*k),6,3); ctx.fill(); label(S.opened?'ПРИЕХАЛИ':'ПОДЪЁМ '+Math.round(k*100)+'%',VW/2,y-22,12,'#e8effa');
-    if(S.hintT>0){ ctx.globalAlpha=Math.min(1,S.hintT); label('низкие пилы — прыжок · высокие — не прыгай · красное — отойди',VW/2,VH-62,15,'#e8effa'); ctx.globalAlpha=1; } } if(S.freeze<=0&&!S.dead) try{ drawWarn(B); }catch(e){}
+    if(S.hintT>0){ hintCard('низкие пилы — прыжок · высокие — не прыгай · красное — отойди',62); } } if(S.freeze<=0&&!S.dead) try{ drawWarn(B); }catch(e){}
   if(S.kind==='cart'){
     const w=520, x=VW/2-w/2, y=VH-26;
     ctx.fillStyle='rgba(6,10,22,.8)'; rr(ctx,x-8,y-10,w+16,20,10); ctx.fill();
@@ -1592,7 +1627,7 @@ function hud(){
     for(const f of B.flags){ ctx.fillStyle=f.on?'#7fe08a':'#6f8191'; ctx.fillRect(x-8,y0+(y1-y0)*f.y*T/Hh-1,16,3); }
     for(const p of L){ const k=clamp(p.y/Hh,0,1); ctx.fillStyle=p.kind==='spark'?'#ff8a3d':'#62c7c1'; ctx.beginPath(); ctx.arc(x,y0+(y1-y0)*k,6,0,Math.PI*2); ctx.fill(); ctx.strokeStyle='#0b1830'; ctx.lineWidth=2; ctx.stroke(); }
     const d=L.length?Math.round(Math.max(...L.map(p=>p.y))/T*1.5):0; label(d+' м',x-16,y1+22,15,'#e8effa','right');
-    if(S.hintT>0){ ctx.globalAlpha=Math.min(1,S.hintT); label('← → раскачка   ·   ↓ / S быстрее   ·   ↑ / W подтянуться',VW/2,VH-26,15,'#e8effa'); ctx.globalAlpha=1; }
+    if(S.hintT>0){ hintCard('← → раскачка   ·   ↓ / S быстрее   ·   ↑ / W подтянуться',26); }
   }
   hudExtra(B,L);
   if(S.banner){ const b=S.banner, a=Math.min(1,b.life*3), s=1+Math.max(0,(b.life-b.max+0.18))*2.5; ctx.save(); ctx.globalAlpha=a; ctx.translate(VW/2,VH*0.3); ctx.scale(s,s); label(b.t,0,0,46,b.c); ctx.restore(); }
@@ -1695,26 +1730,26 @@ function hudExtra(B,L){
     if(!B.tube){ const fw=180, fx=VW-T*0.8-fw, fy=VH-30, low=S.fuel<25&&Math.floor(clock*6)%2;
     ctx.fillStyle='rgba(6,10,22,.85)'; rr(ctx,fx-8,fy-14,fw+16,28,10); ctx.fill(); ctx.fillStyle=low?'#ff4d5e':S.fuel<25?'#ffb347':'#7fe08a'; rr(ctx,fx,fy-6,fw*S.fuel/100,12,5); ctx.fill();
     label('ТОПЛИВО',fx,fy-24,12,'#e8effa','left'); if(S.fuel<=0) label('ТОПЛИВО КОНЧИЛОСЬ — ЛОВИ ШЕСТЕРЁНКИ!',VW/2,VH*0.2,18,'#ff6b6b'); }
-    if(S.hintT>0){ ctx.globalAlpha=Math.min(1,S.hintT); label(B.tube?'↑ / W вверх   ·   ↓ / S вниз   ·   лети в зелёное окошко заслонки':'↑ / W вверх   ·   ↓ / S вниз   ·   огонь по дронам   ·   шестерёнки = топливо',VW/2,VH-56,15,'#e8effa'); ctx.globalAlpha=1; } }
+    if(S.hintT>0){ hintCard(B.tube?'↑ / W вверх   ·   ↓ / S вниз   ·   лети в зелёное окошко заслонки':'↑ / W вверх   ·   ↓ / S вниз   ·   огонь по дронам   ·   шестерёнки = топливо',56); } }
   if(S.kind==='wire'){ const w=520, x=VW/2-w/2, y=VH-26;
     ctx.fillStyle='rgba(6,10,22,.8)'; rr(ctx,x-8,y-10,w+16,20,10); ctx.fill(); ctx.fillStyle='rgba(156,195,255,.25)'; rr(ctx,x,y-3,w,6,3); ctx.fill();
     for(const f of B.flags){ ctx.fillStyle=f.on?'#7fe08a':'#6f8191'; ctx.fillRect(x+w*f.x/B.finishX-1,y-8,3,16); }
     ctx.fillStyle='#62d6ff'; ctx.beginPath(); ctx.arc(x+w*clamp(S.ballX/T/B.finishX,0,1),y,6,0,7); ctx.fill();
     for(const p of L){ const k=clamp(p.x/T/B.finishX,0,1); ctx.fillStyle=p.kind==='spark'?'#ff8a3d':'#62c7c1'; ctx.beginPath(); ctx.arc(x+w*k,y,6,0,Math.PI*2); ctx.fill(); }
     if(L.length){ const gap=(Math.min(...L.map(p=>p.x))-S.ballX)/T, near=gap<7; label('шар: '+Math.max(0,Math.round(gap*1.5))+' м',VW-T*1.2,VH-28,18,near&&Math.floor(clock*6)%2?'#ff6b6b':'#e8effa','right'); }
-    if(S.hintT>0){ ctx.globalAlpha=Math.min(1,S.hintT); label('↑ / W — провод выше   ·   ↓ / S — провод ниже   ·   обходи искры, не дай шару догнать',VW/2,VH-56,15,'#e8effa'); ctx.globalAlpha=1; } }
+    if(S.hintT>0){ hintCard('↑ / W — провод выше   ·   ↓ / S — провод ниже   ·   обходи искры, не дай шару догнать',56); } }
   if(S.kind==='maze'){ ctx.fillStyle='rgba(6,10,22,.85)'; rr(ctx,VW/2-80,70,160,30,12); ctx.fill(); label('РЫЧАГИ '+S.nOn+' / 3',VW/2,86,16,S.nOn>=3?'#7fe08a':'#ffd166'); mazeArrow();
-    if(S.hintT>0){ ctx.globalAlpha=Math.min(1,S.hintT); label('встань на красные плиты · лифты между этажами · охотника оглушай выстрелом, смэшем или рывком',VW/2,VH-30,15,'#e8effa'); ctx.globalAlpha=1; } }
+    if(S.hintT>0){ hintCard('встань на красные плиты · лифты между этажами · охотника оглушай выстрелом, смэшем или рывком',30); } }
   if(S.kind==='chase'&&S.press){ const x=VW-T*0.9, y0=T*1.6, y1=VH-T*1.6, Hh=(B.H-3)*T;
     ctx.fillStyle='rgba(6,10,22,.8)'; rr(ctx,x-9,y0-8,18,y1-y0+16,9); ctx.fill();
     const py=y0+(y1-y0)*clamp(S.press.y/Hh,0,1); ctx.fillStyle='rgba(255,77,94,.5)'; rr(ctx,x-5,y0,10,Math.max(0,py-y0),4); ctx.fill(); ctx.fillStyle='#ff4d5e'; ctx.fillRect(x-9,py-2,18,4);
     for(const f of B.flags){ ctx.fillStyle=f.on?'#7fe08a':'#6f8191'; ctx.fillRect(x-8,y0+(y1-y0)*B.layers[f.i].y*T/Hh-1,16,3); }
     for(const p of L){ ctx.fillStyle=p.kind==='spark'?'#ff8a3d':'#62c7c1'; ctx.beginPath(); ctx.arc(x,y0+(y1-y0)*clamp(p.y/Hh,0,1),6,0,Math.PI*2); ctx.fill(); }
     if(L.length){ const d=Math.min(...L.map(p=>p.y))-S.press.y; label('пресс: '+Math.max(0,Math.round(d/T*1.5))+' м',x-16,y1+22,15,d<4*T?'#ff6b6b':'#e8effa','right'); }
-    if(S.hintT>0){ ctx.globalAlpha=Math.min(1,S.hintT); label('Беги к дыре в полу и прыгай вниз · способность Болта на земле — СМЭШ',VW/2,VH-26,15,'#e8effa'); ctx.globalAlpha=1; } }
-  if(S.kind==='snake'&&S.hintT>0){ ctx.globalAlpha=Math.min(1,S.hintT); label('Запрыгивай на змею и катайся · спрыгивай на следующую опору',VW/2,VH-26,15,'#e8effa'); ctx.globalAlpha=1; }
+    if(S.hintT>0){ hintCard('Беги к дыре в полу и прыгай вниз · способность Болта на земле — СМЭШ',26); } }
+  if(S.kind==='snake'&&S.hintT>0){ hintCard('Запрыгивай на змею и катайся · спрыгивай на следующую опору',26); }
   if(S.kind==='brawl'){ label('ВОЛНА '+Math.max(1,S.wave)+' / '+WAVES.length+(S.opened?' · ВЫХОД ОТКРЫТ':' · врагов: '+(enemies.length+S.queue.length)),VW/2,80,15,S.opened?'#7fe08a':'#ffd166');
-    if(S.hintT>0){ ctx.globalAlpha=Math.min(1,S.hintT); label('Болт: способность на земле — СМЭШ (враги летят в стены) · Искра: рывок жжёт врагов',VW/2,VH-26,15,'#e8effa'); ctx.globalAlpha=1; } }
+    if(S.hintT>0){ hintCard('Болт: способность на земле — СМЭШ (враги летят в стены) · Искра: рывок жжёт врагов',26); } }
 }
 
 /* ---------------- меню испытаний ---------------- */
