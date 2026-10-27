@@ -634,6 +634,17 @@ body.touch #tutTip{top:auto;bottom:16%;font-size:14px}
   body.touch .ctl .hero .crow{display:grid!important;grid-template-columns:1fr 200px!important;align-items:center;min-height:42px;gap:10px}
   body.touch .ctl .hero .crow>span:first-child{text-align:left}
   body.touch .ctl .hero .crow>.padopt,body.touch .ctl .hero .crow>.muted{justify-self:stretch;min-height:36px}
+  body.touch .ctl .hero .crow>[data-cap="kb"],body.touch .ctl .hero .crow:has(.muted),body.touch .ctl .crow.head{display:none!important}
+  body.touch .ctl .hero .crow{min-height:34px!important;grid-template-columns:1fr 150px!important}
+  body.touch .ctl .hero,body.touch .ctl .hero:has(>.paddiag){display:flex!important;flex-direction:column!important;padding:8px 12px!important;gap:4px!important}
+  body.touch .ctl .hero>*{grid-column:auto!important}
+  body.touch .ctl .hero .crow:not(.head):not(:has(.muted)){display:grid!important}
+  body.touch .ctl .hero>.paddiag{display:none!important}
+  body.touch .ctl h2{margin:0 0 2px!important;font-size:22px!important}
+  body.touch .ctl .card,body.touch .card.ctl{padding-block:10px!important}
+  body.touch .ctl .opt{background:linear-gradient(180deg,rgba(40,62,104,.95),rgba(14,28,56,.95))!important;border:1px solid rgba(156,195,255,.45)!important;box-shadow:0 3px 0 #060d1c,0 5px 8px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.18)!important;border-radius:9px!important}
+  body.touch .ctl .opt.on{border-color:var(--brass)!important;box-shadow:0 3px 0 #060d1c,0 0 0 2px var(--brass),inset 0 1px 0 rgba(255,255,255,.18)!important}
+  body.touch .ctl .opt:active{transform:translateY(3px);box-shadow:0 0 0 #060d1c,inset 0 1px 0 rgba(255,255,255,.1)!important}
   body.touch .ctl .padstyle{margin:4px 0}
   body.touch .ctl .mapctl{max-width:640px}
   body.touch .ctl .btns{margin-top:6px}
