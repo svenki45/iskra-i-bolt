@@ -1142,6 +1142,89 @@ function ropePost(dt){
   for(const f of B.flags){ if(f.on) continue; const p=L.find(q=>q.y>f.y*T); if(p){ f.on=true; S.cp={lvl:levelIdx,y:f.y*T}; sfx('pk_shield'); texts.push({x:B.A*T+60,y:f.y*T-20,t:'ФЛАЖОК!',life:1.4,c:'#7fe08a',pop:true}); } }
 }
 
+
+/* ---------------- водные уровни (Канал, Серфинг): 3D-вода без пола, труба, водный скутер ---------------- */
+const W3={g:null,sc:[null,null],pipe:null,pipeLen:0};
+const wet=()=>!!(S.on&&S.kind==='cart'&&S.L&&S.L.bt&&(S.L.bt.water||S.L.bt.surf));
+const w3d=()=>wet()&&typeof R3D!=='undefined'&&R3D.on&&R3D.ready&&R3D.active();
+// для 3D-сцены пол прячем (останется только вода), потолок убираем (в канале вместо него труба); балки-«пригибайся» остаются
+window.BT_VGRID=function(g){ if(!wet()) return g; const W=g[0].length, o=g.map(r=>r.slice());
+  for(let x=1;x<W-1;x++){ const pillar=o[TOP+1][x]==='#'; if(!pillar) for(let y=0;y<=TOP;y++) o[y][x]='.'; o[FL][x]='.'; }
+  return o; };
+function pipeTex(T3){
+  const c=document.createElement('canvas'); c.width=256; c.height=256; const g=c.getContext('2d');
+  const gr=g.createLinearGradient(0,0,256,0); gr.addColorStop(0,'#1c2433'); gr.addColorStop(.28,'#46566e'); gr.addColorStop(.5,'#5d7088'); gr.addColorStop(.72,'#46566e'); gr.addColorStop(1,'#1c2433');
+  g.fillStyle=gr; g.fillRect(0,0,256,256);
+  let sd=7; const rnd=()=>{ sd=(sd*16807)%2147483647; return sd/2147483647; };
+  for(let i=0;i<70;i++){ g.fillStyle=`rgba(${rnd()<.5?255:0},${rnd()<.5?255:0},${rnd()<.5?255:0},${.025+rnd()*.03})`; g.fillRect(rnd()*256,rnd()*256,10+rnd()*40,10+rnd()*30); }
+  for(let i=0;i<9;i++){ const x=rnd()*256, y=rnd()*256; const rg=g.createLinearGradient(x,y,x,y+80); rg.addColorStop(0,'rgba(120,70,30,.22)'); rg.addColorStop(1,'rgba(120,70,30,0)'); g.fillStyle=rg; g.fillRect(x,y,3+rnd()*4,80); }
+  g.strokeStyle='#121824'; g.lineWidth=3; for(let k=1;k<6;k++){ g.beginPath(); g.moveTo(k*256/6,0); g.lineTo(k*256/6,256); g.stroke(); g.strokeStyle='rgba(255,255,255,.12)'; g.lineWidth=1; g.beginPath(); g.moveTo(k*256/6+2,0); g.lineTo(k*256/6+2,256); g.stroke(); g.strokeStyle='#121824'; g.lineWidth=3; }
+  g.fillStyle='#8396b1'; g.fillRect(0,0,256,14); g.fillStyle='#202a3a'; g.fillRect(0,14,256,4); g.fillStyle='rgba(255,255,255,.25)'; g.fillRect(0,0,256,2);
+  g.fillStyle='#2a3446'; for(let x=14;x<256;x+=28){ g.beginPath(); g.arc(x,7,3.2,0,7); g.fill(); g.fillStyle='rgba(255,255,255,.35)'; g.beginPath(); g.arc(x-.8,6,1.2,0,7); g.fill(); g.fillStyle='#2a3446'; }
+  const tx=new T3.CanvasTexture(c); tx.wrapS=tx.wrapT=T3.RepeatWrapping; tx.anisotropy=4; return tx;
+}
+function makeScooter(T3,body,acc){
+  const g=new T3.Group(), M=(c,e,em)=>new T3.MeshLambertMaterial({color:c,emissive:e||0,emissiveIntensity:em||1});
+  const hull=new T3.Mesh(new T3.CapsuleGeometry(11,52,6,16),M(body)); hull.rotation.z=Math.PI/2; hull.scale.set(.72,1,1.25); hull.position.set(0,-8,0); hull.castShadow=true; g.add(hull);
+  const deck=new T3.Mesh(new T3.BoxGeometry(50,3,22),M(0x1d2735)); deck.position.set(-2,1,0); g.add(deck);
+  const strip=new T3.Mesh(new T3.BoxGeometry(44,1.6,5),M(acc,acc,.8)); strip.position.set(-2,2.8,0); g.add(strip);
+  const nose=new T3.Mesh(new T3.SphereGeometry(8.5,16,12),M(acc)); nose.scale.set(1.3,.7,1.3); nose.position.set(30,-3,0); g.add(nose);
+  const stem=new T3.Mesh(new T3.CylinderGeometry(2.2,3,30,10),M(0x303c50)); stem.position.set(21,15,0); stem.rotation.z=-.22; g.add(stem);
+  const bar=new T3.Mesh(new T3.CylinderGeometry(2,2,26,10),M(0x1a2230)); bar.rotation.x=Math.PI/2; bar.position.set(20,30,0); g.add(bar);
+  for(const s of [-1,1]){ const gp=new T3.Mesh(new T3.SphereGeometry(3.2,10,8),M(0x0e131c)); gp.position.set(20,30,s*13); g.add(gp); }
+  const lamp=new T3.Mesh(new T3.SphereGeometry(3.6,10,8),M(0xfff2b0,0xffe27a,1.4)); lamp.position.set(33,-1.5,0); g.add(lamp);
+  const jet=new T3.Mesh(new T3.CylinderGeometry(5,6.2,12,12),M(0x151b27)); jet.rotation.z=Math.PI/2; jet.position.set(-37,-8,0); g.add(jet);
+  const fin=new T3.Mesh(new T3.BoxGeometry(12,9,2),M(acc)); fin.position.set(-30,5,0); fin.rotation.z=.25; g.add(fin);
+  return g;
+}
+function w3Hook(c){
+  const {scene,THREE:T3,cx,R}=c;
+  if(!wet()){ if(W3.g) W3.g.visible=false; if(R.back) R.back.visible=true; if(R.fx) R.fx.visible=true; if(R.sh) R.sh.visible=true; return; }
+  const B=S.L.bt, LEN=B.len*T, WY=FL*T-4;
+  if(!W3.g){ const g=new T3.Group(); scene.add(g); W3.g=g;
+    const wm=new T3.MeshLambertMaterial({color:0x1f6fb0,emissive:0x061f3a,transparent:true,opacity:.78,depthWrite:false});
+    W3.vol=new T3.Mesh(new T3.BoxGeometry(1,1,1),wm); W3.vol.renderOrder=3; g.add(W3.vol);
+    const sg=new T3.PlaneGeometry(2600,100,160,5); sg.rotateX(-Math.PI/2); W3.sg=sg; W3.sbase=Float32Array.from(sg.attributes.position.array);
+    W3.sf=new T3.Mesh(sg,new T3.MeshLambertMaterial({color:0x3aa6e6,emissive:0x0a2c4c,transparent:true,opacity:.72,depthWrite:false})); W3.sf.renderOrder=4; g.add(W3.sf);
+    W3.sc[0]=makeScooter(T3,0xff8a3d,0xffd166); W3.sc[1]=makeScooter(T3,0x5fc8c0,0xcfd8e6); for(const s of W3.sc) g.add(s);
+  }
+  W3.g.visible=true;
+  // труба — только в Канале; в Серфинге остаётся обычный фон
+  const pipeOn=!!(B.water&&!B.surf);
+  if(pipeOn&&(!W3.pipe||W3.pipeLen!==LEN)){ if(W3.pipe){ scene.remove(W3.pipe); W3.pipe.geometry.dispose(); }
+    const tx=pipeTex(T3); tx.repeat.set(1,LEN/320);
+    const geo=new T3.CylinderGeometry(520,520,LEN+600,72,1,true,Math.PI/2,Math.PI);
+    const mat=new T3.MeshLambertMaterial({map:tx,color:0x9aa8bc,emissive:0x04070d,side:T3.BackSide}); const m=new T3.Mesh(geo,mat); m.rotation.z=Math.PI/2; m.position.set(LEN/2,-470,-150); m.receiveShadow=false; scene.add(m); W3.pipe=m; W3.pipeLen=LEN; }
+  if(W3.pipe) W3.pipe.visible=pipeOn;
+  if(R.back) R.back.visible=!pipeOn; if(R.fx) R.fx.visible=!pipeOn; if(R.sh) R.sh.visible=!pipeOn;
+  // вода: объём под линией героев + живая поверхность
+  W3.vol.scale.set(LEN+800,520,150); W3.vol.position.set(LEN/2,-(WY+260),-45);
+  const pa=W3.sg.attributes.position.array, base=W3.sbase, t=clock, ox=cx-1300;
+  for(let i=0;i<pa.length;i+=3){ const wx=ox+base[i]+1300; pa[i+1]=Math.sin(wx*.05+t*3.6)*2.6+Math.sin(wx*.021-t*2.2)*2.2+Math.sin(wx*.13+base[i+2]*.2+t*5)*.9; }
+  W3.sg.attributes.position.needsUpdate=true; W3.sg.computeVertexNormals(); W3.sf.position.set(cx,-WY,-45);
+  // скутеры
+  const pk=['spark','bolt'];
+  for(let i=0;i<2;i++){ const p=players[i], g=W3.sc[i]; if(!p||p.absent||p.dead){ g.visible=false; continue; }
+    g.visible=true; const air=!(p.onGround||p.wasGround);
+    const bob=air?0:Math.sin(clock*7+i*2)*1.2;
+    g.position.set(p.x+p.w/2,-(p.y+p.h-16)+bob,-30); g.rotation.z=clamp(-p.vy*0.0005,-.38,.38); g.rotation.x=0; }
+}
+if(typeof R3D!=='undefined'&&R3D.hooks) R3D.hooks.push(w3Hook);
+// герой на скутере: руки на руле; в прыжке откидывается назад, как «супермен» в мотокроссе
+function drawScooterRider(f,p){
+  const cx=p.x+p.w/2, feet=p.y+p.h, barX=cx+22, barY=feet-16-30, air=!(p.onGround||p.wasGround);
+  p._lean=(p._lean||0)+((air&&!p.duck?1.0:0)-(p._lean||0))*.22;
+  ctx.save(); ctx.translate(barX,barY); ctx.rotate(p._lean); ctx.translate(-barX,-barY);
+  if(p.duck){ const h=p.h,y=p.y,sx=p.sx,sy=p.sy; p.y=y+h-H0[p.kind]; p.h=H0[p.kind]; p.sx=1.22; p.sy=HD[p.kind]/H0[p.kind]*1.08; ctx.save(); ctx.translate(0,-16); f(p); ctx.restore(); p.h=h; p.y=y; p.sx=sx; p.sy=sy; }
+  else { ctx.save(); ctx.translate(0,-16); f(p); ctx.restore(); }
+  const arm=p.kind==='bolt'?'#cfd8e6':'#ff8a3d', sh=p.duck?feet-36:feet-16-(p.kind==='bolt'?32:24);
+  ctx.lineCap='round'; ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.lineWidth=7; ctx.beginPath(); ctx.moveTo(cx+6,sh+1); ctx.lineTo(barX,barY+1); ctx.stroke();
+  ctx.strokeStyle=arm; ctx.lineWidth=5; ctx.beginPath(); ctx.moveTo(cx+6,sh); ctx.lineTo(barX,barY); ctx.stroke();
+  ctx.fillStyle='#10161f'; ctx.beginPath(); ctx.arc(barX,barY,4.4,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+  if(S.v>40&&!air&&Math.random()<.5) addP({x:cx-34,y:feet-4,vx:-S.v*.35-Math.random()*90,vy:-30-Math.random()*70,life:.45,max:.45,c:Math.random()<.5?'#e8fbff':'#9fdcff',s:3.2,g:.6});
+}
+
 /* ---------------- рисование ---------------- */
 const _drawBolt=drawBolt, _drawSpark=drawSpark;
 drawBolt=function(p){ if(S.on&&p===players[1]&&grid) { try{ drawWorld(); }catch(e){} } heroDraw(_drawBolt,p); };
@@ -1154,6 +1237,7 @@ function heroDraw(f,p){
   if(S.kind==='mag'&&p.mag){ if(p.mag.g<0){ const cx=p.x+p.w/2, cy=p.y+p.h/2; ctx.save(); ctx.translate(cx,cy); ctx.scale(1,-1); ctx.translate(-cx,-cy); f(p); ctx.restore(); } else f(p); return; }
   if(PLATF[S.kind]){ f(p); drawSmash(p); return; }
   if(S.kind==='cart'){
+    if(w3d()){ drawScooterRider(f,p); return; }
     if(p.duck){ const h=p.h,y=p.y,sx=p.sx,sy=p.sy; p.y=y+h-H0[p.kind]; p.h=H0[p.kind]; p.sx=1.22; p.sy=HD[p.kind]/H0[p.kind]*1.08; ctx.save(); ctx.translate(0,-6); f(p); ctx.restore(); p.h=h; p.y=y; p.sx=sx; p.sy=sy; }
     else { ctx.save(); ctx.translate(0,-6); f(p); ctx.restore(); }
     drawBoard(p); return;
@@ -1309,16 +1393,17 @@ function hud(){
 function drawCartExtra(B){
   const V=viewRect();
   if(B.water){ const y=FL*T-5, x0=Math.max(0,V.x-20), x1=V.x+V.w+20;
-    ctx.save(); const gr=ctx.createLinearGradient(0,y-6,0,y+22); gr.addColorStop(0,'rgba(120,210,255,.55)'); gr.addColorStop(1,'rgba(40,120,200,.15)'); ctx.fillStyle=gr;
+    if(!w3d()){ ctx.save(); const gr=ctx.createLinearGradient(0,y-6,0,y+22); gr.addColorStop(0,'rgba(120,210,255,.55)'); gr.addColorStop(1,'rgba(40,120,200,.15)'); ctx.fillStyle=gr;
     ctx.beginPath(); ctx.moveTo(x0,y+24); for(let x=x0;x<=x1;x+=16) ctx.lineTo(x,y+Math.sin(x*0.05+clock*4)*3); ctx.lineTo(x1,y+24); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle='rgba(220,245,255,.7)'; ctx.lineWidth=2; ctx.beginPath(); for(let x=x0;x<=x1;x+=16){ const yy=y+Math.sin(x*0.05+clock*4)*3; x===x0?ctx.moveTo(x,yy):ctx.lineTo(x,yy); } ctx.stroke();
+    ctx.strokeStyle='rgba(220,245,255,.7)'; ctx.lineWidth=2; ctx.beginPath(); for(let x=x0;x<=x1;x+=16){ const yy=y+Math.sin(x*0.05+clock*4)*3; x===x0?ctx.moveTo(x,yy):ctx.lineTo(x,yy); } ctx.stroke(); ctx.restore(); }
+    ctx.save();
     for(const o of B.obs) if(o.pit){ const cx=(o.x0+o.x1+1)/2*T; if(cx<V.x-80||cx>V.x+V.w+80) continue; ctx.strokeStyle='rgba(20,60,120,.85)'; ctx.lineWidth=3;
       for(let r=6;r<(o.x1-o.x0+1)*T/2;r+=7){ ctx.beginPath(); ctx.ellipse(cx,FL*T+4,r,r*.28,0,clock*3+r,clock*3+r+4.2); ctx.stroke(); } }
     ctx.restore();
     if(state==='play'&&S.v>60) for(const p of live()) if(p.wasGround&&Math.random()<.7) addP({x:p.x,y:FL*T-6,vx:-S.v*.3-Math.random()*80,vy:-60-Math.random()*120,life:.4,max:.4,c:Math.random()<.5?'#bfefff':'#7fc7ff',s:3,g:.8}); }
   if(B.surf){
     ctx.save();
-    for(let k=0;k<2;k++){ const yb=FL*T+8+k*10; ctx.fillStyle=k?'rgba(30,110,190,.18)':'rgba(120,210,255,.12)'; ctx.beginPath(); ctx.moveTo(V.x-20,yb+34); for(let x=V.x-20;x<=V.x+V.w+20;x+=18) ctx.lineTo(x,yb+Math.sin(x*0.018+clock*(2.2+k))*(7+k*3)); ctx.lineTo(V.x+V.w+20,yb+34); ctx.closePath(); ctx.fill(); }
+    if(!w3d()) for(let k=0;k<2;k++){ const yb=FL*T+8+k*10; ctx.fillStyle=k?'rgba(30,110,190,.18)':'rgba(120,210,255,.12)'; ctx.beginPath(); ctx.moveTo(V.x-20,yb+34); for(let x=V.x-20;x<=V.x+V.w+20;x+=18) ctx.lineTo(x,yb+Math.sin(x*0.018+clock*(2.2+k))*(7+k*3)); ctx.lineTo(V.x+V.w+20,yb+34); ctx.closePath(); ctx.fill(); }
     ctx.restore();
     for(const r of B.ramps){ const x0=r.x*T, w=4*T; if(x0+w<V.x-60||x0>V.x+V.w+60) continue;
       ctx.save(); const gr=ctx.createLinearGradient(0,FL*T-32,0,FL*T); gr.addColorStop(0,'rgba(190,245,255,.95)'); gr.addColorStop(1,'rgba(60,170,230,.55)'); ctx.fillStyle=gr;

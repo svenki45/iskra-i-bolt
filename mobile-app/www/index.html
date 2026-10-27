@@ -5525,7 +5525,7 @@ overlay.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest
 /* ===== 2.5D renderer prototype (Three.js) — draws the world in 3D under the 2D canvas.
    Game logic is untouched: this only reads grid/players/enemies/boss/crates/movers each frame. ===== */
 const R3D=(()=>{
-  const R={on:true, ready:false};
+  const R={on:true, ready:false, hooks:[]};
   if(typeof THREE==='undefined') { R.on=false; return R; }
   let renderer, scene, cam, glc, backMat, backTex, lightDir, sparkLight, hemi;
   let softC=null, softT=null, fxC=null, fxX=null, fxTex=null, fxMat=null, fxMesh=null;
@@ -5952,7 +5952,7 @@ const R3D=(()=>{
     glc.style.display='block'; document.body.classList.add('r3');
     const k=window.MOBILE_BUILD?Math.min(1,1.5*cv.clientWidth/Math.max(1,cv.width)):1, w=Math.round(cv.width*k),h=Math.round(cv.height*k); if(glc.width!==w||glc.height!==h){ renderer.setSize(w,h,false); }
     const lvlKey=levelIdx+'|'+(arena?arena.type:'')+'|'+gridVer;
-    if(lvlKey!==tileKey){ tileKey=lvlKey; buildTiles(); }
+    if(lvlKey!==tileKey){ tileKey=lvlKey; const _gr=grid; if(window.BT_VGRID){ try{ grid=window.BT_VGRID(grid)||grid; }catch(e){} } try{ buildTiles(); } finally{ grid=_gr; } }
     if(lastStaticGen!==staticGen){ lastStaticGen=staticGen;
       // если размер фона изменился (другой уровень), GPU-текстуру нужно пересоздать, иначе новый рисунок ляжет в угол старой
       softBack(); backTex.dispose(); backTex=new THREE.CanvasTexture(softC); backTex.anisotropy=4; backMat.map=backTex; backMat.needsUpdate=true; }
@@ -5972,6 +5972,7 @@ const R3D=(()=>{
     syncPool(pool.crate,crates,()=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshLambertMaterial({color:0xb07a42})); m.castShadow=true; m.receiveShadow=true; scene.add(m); return m; },(m,c)=>{ const D=Math.min(DEPTH*0.9,c.w*1.6); m.position.set(c.x+c.w/2,-(c.y+c.h/2),CZ-D/2); m.scale.set(c.w,c.h,D); });
     syncPool(pool.mover,movers,()=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshLambertMaterial({color:0xcfd8e6})); m.castShadow=true; m.receiveShadow=true; scene.add(m); return m; },(m,o)=>{ m.position.set(o.x+o.w/2,-(o.y+o.h/2),FRONT-DEPTH/2); m.scale.set(o.w,o.h,DEPTH*0.9); });
     if(R.ext) updateExtras();
+    for(const h of R.hooks){ try{ h({scene,THREE,cx,cy,z,R}); }catch(e){ if(!R.hookErr){ R.hookErr=1; console.error('3D hook',e); } } }
     R.fr=(R.fr||0)+1; renderer.shadowMap.autoUpdate=false; renderer.shadowMap.needsUpdate=!window.MOBILE_BUILD||R.fr%2===0||R.moved;
     renderer.render(scene,cam);
     if(!R.checked){ R.checked=true; try{ const bad=(renderer.info.programs||[]).filter(p=>p.diagnostics&&!p.diagnostics.runnable); const gl=renderer.getContext(); const ge=gl.getError();
