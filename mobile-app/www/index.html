@@ -607,7 +607,11 @@ body.touch #tutTip{top:auto;bottom:16%;font-size:14px}
   body.touch .custcard .hero>*{grid-column:2}
   body.touch .custcard .hero>h3{grid-column:1/-1}
   body.touch .custcard .hero>canvas{grid-column:1!important;grid-row:2/span 6;width:104px!important;height:104px!important}
-  body.touch .custcard .ftabs{margin-bottom:4px}
+  body.touch .custcard .ftabs{margin:0 0 6px}
+  body.touch .custcard .ftabs .opt{padding:7px 16px!important;font-size:14px!important;font-weight:700}
+  body.touch .custcard .hero{min-height:196px;align-content:start!important}
+  body.touch .custcard .hero .opts{gap:5px}
+  body.touch .custcard .hero .opt{padding:5px 9px;font-size:12.5px}
   body.touch .cheatgrid{grid-template-columns:1fr 1fr}
   body.touch .cheatgrid>button:last-child{grid-column:1/-1}
   body.touch .cheatgrid .opt{padding:8px 12px!important}
@@ -3089,9 +3093,9 @@ function setState(s){
     const sec=(kind,f,n)=>(!one||custTab===f)?`${one?'':`<span class="lab">${n}</span>`}<div class="opts">${f==='skin'?row(kind,SKINS[kind],'skin',true)+picker(kind):row(kind,LIST[f],f,false)}</div>`:'';
     const ftabs=one?`<div class="opts ftabs">${CF.map(([f,n])=>`<button type="button" class="opt ${custTab===f?'on':''}" data-ftab="${f}">${n}</button>`).join('')}</div>`:'';
     overlay.innerHTML=`<div class="card wide custcard"><span class="eyebrow">Мастерская</span><h2>Внешний вид</h2>
-      <div class="shop">
-        <div class="hero s"><h3>Искра</h3><canvas id="pvS" width="240" height="240" aria-label="Превью Искры"></canvas>${ftabs}${CF.map(([f,n])=>sec('spark',f,n)).join('')}</div>
-        <div class="hero b"><h3>Болт</h3><canvas id="pvB" width="240" height="240" aria-label="Превью Болта"></canvas>${ftabs}${CF.map(([f,n])=>sec('bolt',f,n)).join('')}</div>
+      ${ftabs}<div class="shop">
+        <div class="hero s"><h3>Искра</h3><canvas id="pvS" width="240" height="240" aria-label="Превью Искры"></canvas>${CF.map(([f,n])=>sec('spark',f,n)).join('')}</div>
+        <div class="hero b"><h3>Болт</h3><canvas id="pvB" width="240" height="240" aria-label="Превью Болта"></canvas>${CF.map(([f,n])=>sec('bolt',f,n)).join('')}</div>
       </div>
       <p style="font-size:13px" id="shopNote">Закрытые вещи открываются достижениями. Нажмите на закрытую, чтобы узнать какими.</p>
       <div class="btns"><button class="primary" id="bBack" type="button">Готово · Esc</button></div></div>`;
