@@ -35,6 +35,10 @@ if k != 1:
     sys.exit('build.py: не найден BUILD_STAMP')
 sub('<title>Искра и Болт</title>', '<title>Искра и Болт — испытания</title>')
 sub('const TOTAL=100;', f'const TOTAL={n};')
+sub("if(levelIdx+1>=49) unlock('lv50');","if(levelIdx+1>=21) unlock('lv50');")
+sub('Доберитесь до 50-го уровня.','Доберитесь до 21-го уровня.')
+for _o in ('Пройдите все 100 уровней.','Открыты все 100 уровней','Все 100 уровней собраны'):
+    sub(_o, _o.replace('100', str(n)))
 # камера: испытания задают свой зум и сдвиг вперёд (BTX объявлен в bt.js через var)
 sub('const want=Math.max(1,Math.min(1.45,VW/(x1-x0+620),VH/(y1-y0+380)));',
     'const want=BTX.z||Math.max(1,Math.min(1.8,VW/(x1-x0+440),VH/(y1-y0+270)));')
