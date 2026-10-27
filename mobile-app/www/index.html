@@ -1718,7 +1718,7 @@ const HATS=[{id:'none',n:'Без шапки'},{id:'cap',n:'Кепка'},{id:'bow
 const LIMBS=[{id:'on',n:'Ручки и ножки'},{id:'off',n:'Без них'}];
 const TRAILS=[{id:'none',n:'Нет'},{id:'sparkle',n:'Блёстки'},{id:'hearts',n:'Сердечки'},{id:'stars',n:'Звёзды'},{id:'rainbow',n:'Радуга'},{id:'notes',n:'Ноты'},{id:'smoke',n:'Дымок'}];
 const EYES=[{id:'normal',n:'Обычные'},{id:'happy',n:'Довольные'},{id:'angry',n:'Сердитые'},{id:'sleepy',n:'Сонные'},{id:'stars',n:'Звёздочки'}];
-const DEF_SETTINGS={res:'auto',win:'full',r3d:true,padStyle:'auto',master:0.8,music:0.6,sfx:0.8,mute:false,quality:'high',particles:1,shake:true,glow:true,ambient:true,vignette:true,trails:true,flash:true,retro:false,perf:false,hints:true};
+const DEF_SETTINGS={res:'auto',win:'full',r3d:true,padStyle:'auto',master:0.8,music:0.6,sfx:0.8,mute:false,quality:'high',particles:1,shake:true,glow:true,ambient:true,vignette:true,trails:true,flash:true,perf:false,hints:true};
 const PRESETS={low:{particles:0.35,glow:false,ambient:false,vignette:false,trails:false},medium:{particles:0.7,glow:true,ambient:true,vignette:true,trails:false},high:{particles:1,glow:true,ambient:true,vignette:true,trails:true}};
 let demo=false;
 const store={get(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:JSON.parse(v); }catch(e){ return d; } }, set(k,v){ if(demo) return; try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }};
@@ -3088,7 +3088,7 @@ function setState(s){
           <div class="srow2"><span class="lab">Разрешение</span><select class="optsel" id="selRes" aria-label="Разрешение">${RES_LIST.map(([k,n])=>`<option value="${k}" ${(settings.res||'auto')===k?'selected':''}>${n}</option>`).join('')}</select></div>
           ${window.desk?`<div class="srow2"><span class="lab">Режим экрана</span><select class="optsel" id="selWin" aria-label="Режим экрана">${SCREEN_MODES.map(([k,n])=>`<option value="${k}" ${(settings.win||'full')===k?'selected':''}>${n}</option>`).join('')}</select></div><p class="optnote">«Окно без рамки» растягивает игру на весь экран без рамки окна. При переходе в этот режим и обратно окно игры открывается заново.</p>`:''}
           ${sl('particles','Частицы',settings.particles)}
-          <div class="tgrid">${tg('glow','Свечение','Свет от Искры, кнопок, выхода')}${tg('ambient','Фон мастерской','Шестерни и пыль на заднем плане')}${tg('trails','Следы','Хвосты за пулями и пыль из-под ног')}${tg('vignette','Виньетка','Затемнение по краям экрана')}${tg('shake','Тряска экрана','При ударах и взрывах')}${tg('flash','Вспышки экрана','При уроне и победе над боссом')}${tg('retro','Ретро-экран','Полосы как на старом мониторе')}${tg('perf','Счётчик FPS и сети','FPS, фризы, нагрузка, пинг и потери пакетов (F3)')}</div></div>
+          <div class="tgrid">${tg('glow','Свечение','Свет от Искры, кнопок, выхода')}${tg('ambient','Фон мастерской','Шестерни и пыль на заднем плане')}${tg('trails','Следы','Хвосты за пулями и пыль из-под ног')}${tg('vignette','Виньетка','Затемнение по краям экрана')}${tg('shake','Тряска экрана','При ударах и взрывах')}${tg('flash','Вспышки экрана','При уроне и победе над боссом')}${tg('perf','Счётчик FPS и сети','FPS, фризы, нагрузка, пинг и потери пакетов (F3)')}</div></div>
       <div class="btns"><button class="primary" id="bCatBack" type="button">Назад · Esc</button></div>`;
     } else if(setCat==='lang'){
       body=`<div class="mgrid lgrid">${LANGS.map(([k,n])=>`<button type="button" class="${LANG===k?'primary':'secondary'}" data-lang="${k}">${n}</button>`).join('')}</div>
@@ -3107,7 +3107,7 @@ function setState(s){
     overlay.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{ sfx('nav'); setCat=b.dataset.cat; reSet(); });
     if($('bCatBack')) $('bCatBack').onclick=()=>{ setCat=null; reSet(); };
     for(const id of ['master','music','sfx','particles']){ const el=$(id); if(!el) continue; el.oninput=()=>{ settings[id]=el.value/100; $(id+'O').textContent=el.value+'%'; if(id==='particles') settings.quality='custom'; saveSettings(); applyVolumes(); if(id==='sfx'||id==='master') sfx('gear'); }; }
-    for(const id of ['mute','glow','ambient','trails','vignette','shake','flash','retro','perf','hints']){ const el=$(id); if(!el) continue; el.onchange=()=>{ settings[id]=el.checked; if(!['mute','shake','flash','retro','perf','hints'].includes(id)) settings.quality='custom'; saveSettings(); applyVolumes(); perfShow(); reSet(); }; }
+    for(const id of ['mute','glow','ambient','trails','vignette','shake','flash','perf','hints']){ const el=$(id); if(!el) continue; el.onchange=()=>{ settings[id]=el.checked; if(!['mute','shake','flash','perf','hints'].includes(id)) settings.quality='custom'; saveSettings(); applyVolumes(); perfShow(); reSet(); }; }
     overlay.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{ settings.quality=b.dataset.q; Object.assign(settings,PRESETS[b.dataset.q]); saveSettings(); fit(); reSet(); });
     if($('selRes')) $('selRes').onchange=e=>{ settings.res=e.target.value; saveSettings(); applyScreen(); fit(); sfx('nav'); };
     if($('selWin')) $('selWin').onchange=e=>{ settings.win=e.target.value; saveSettings(); applyScreen(); setTimeout(fit,400); sfx('nav'); };
@@ -4482,7 +4482,7 @@ function draw(){
   if(LIVE&&state!=='title'&&settings.ambient) for(let v=0;v*VH<WH;v++) for(let s=0;s*VW<WW;s++){ ctx.save(); ctx.translate(s*VW,v*VH); drawLive(); ctx.restore(); }
   if(state!=='title') ctx.drawImage(wallLayer,0,0,WW,WH); }
   g3=r3ok&&!!R3D.ext;   // true — вода, лава, двери, плиты, выход, флажки и предметы рисуются настоящими 3D-объектами, 2D-версии пропускаем
-  if(state==='title'){ if(titleWide){ drawTitleScene(); } else drawTitleScene(); return; }
+  if(state==='title'){ drawTitleScene(); return; }
   if(state==='ending'){ drawEnding(); return; }
   if(state==='prologue'){ drawPrologue(); return; }
   if(!r3ok){ drawDecor(false); if(settings.ambient) drawAmbient(); }   // в 3D эти «обои» рисуются на отдельной плоскости позади блоков (R3D.fxUpdate)
@@ -5137,11 +5137,10 @@ function drawLights(){
 function drawOverlays(){
   if(settings.vignette){
     if(!vignetteC){ vignetteC=document.createElement('canvas'); vignetteC.width=640; vignetteC.height=360; const g=vignetteC.getContext('2d'); const gr=g.createRadialGradient(320,180,120,320,180,380); gr.addColorStop(0,'rgba(0,0,0,0)'); gr.addColorStop(1,'rgba(2,6,16,.55)'); g.fillStyle=gr; g.fillRect(0,0,640,360); }
-    ctx.drawImage(vignetteC,0,0,VW,VH);
+    ctx.drawImage(vignetteC,0,0,state==='title'?TVW:VW,VH);
   }
-  if(settings.retro){ ctx.fillStyle='rgba(0,0,0,.18)'; for(let y=0;y<VH;y+=4) ctx.fillRect(0,y,VW,1.6); }
   if(state==='gameover'||state==='dying'){ const k=state==='dying'?Math.min(1,(2.4-deathTimer)/2.4):1; ctx.fillStyle=`rgba(10,0,4,${.55*k})`; ctx.fillRect(0,0,VW,VH); const vg=ctx.createRadialGradient(VW/2,VH/2,VH*.25,VW/2,VH/2,VH*.85); vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,`rgba(0,0,0,${.75*k})`); ctx.fillStyle=vg; ctx.fillRect(0,0,VW,VH); }
-  if(flashA>0){ ctx.globalAlpha=flashA; ctx.fillStyle=flashC; ctx.fillRect(0,0,VW,VH); ctx.globalAlpha=1; }
+  if(flashA>0){ ctx.globalAlpha=flashA; ctx.fillStyle=flashC; ctx.fillRect(0,0,state==='title'?TVW:VW,VH); ctx.globalAlpha=1; }
   if(titleT>0&&state==='play'){
     const L=getLevel(levelIdx), a=Math.min(1,titleT*1.5, (2.2-titleT)*4);
     ctx.save(); ctx.globalAlpha=a; ctx.textAlign='center'; ctx.textBaseline='middle';
