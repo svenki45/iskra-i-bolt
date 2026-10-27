@@ -1785,12 +1785,14 @@ setState=function(s){
         ${DEFS.map((D,i)=>{ const b=bestOf(i); return `<button class="${i===0?'primary mbig':'secondary'}" data-bt="${i}" type="button">${i+1}. ${D.name}<small>${D.desc}${b?' · рекорд '+b.toFixed(1)+' с':''}</small></button>`; }).join('')}
         <button class="secondary" id="btMode" type="button">Режим игры<small>${modeName()}</small></button>
         <button class="secondary" id="btDiff" type="button">Сложность<small style="color:${DIFFS[df].c}">${DIFFS[df].n}</small></button>
+        <button class="secondary" id="btLook" type="button">Внешний вид<small>цвет, шапка, след</small></button>
         <button class="secondary" id="btHelp" type="button">Как играть<small>управление в испытаниях</small></button>
         <button class="secondary" id="bSet" type="button">Настройки<small>звук, графика, управление</small></button>
       </div></div>`;
     overlay.querySelectorAll('[data-bt]').forEach(b=>b.onclick=()=>startBt(+b.dataset.bt));
     $('btMode').onclick=()=>{ modesBack='menu'; setState('modes'); };
     $('btDiff').onclick=()=>{ const k=DORDER[(DORDER.indexOf(diffId())+1)%DORDER.length]; run.diff=k; saveRun(); sfx('nav'); setState('menu'); setTimeout(()=>{ try{ $('btDiff').focus(); }catch(e){} },0); };
+    $('btLook').onclick=()=>setState('custom');
     $('btHelp').onclick=()=>setState('bthelp');
     $('bSet').onclick=()=>{ setBack='menu'; setCat=null; setState('settings'); };
     return; }

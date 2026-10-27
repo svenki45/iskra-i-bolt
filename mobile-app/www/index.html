@@ -610,6 +610,13 @@ body.touch #tutTip{top:auto;bottom:16%;font-size:14px}
   body.touch .cheatgrid>button:last-child{grid-column:1/-1}
   body.touch .cheatgrid .opt{padding:8px 12px!important}
   body.touch .shopfull .ushop{grid-template-columns:repeat(4,minmax(0,1fr))!important;max-height:none!important;overflow:visible!important}
+  body.touch .ucard{justify-content:flex-start;align-self:stretch}
+  body.touch .ucard p{min-height:4.2em!important;display:flex;align-items:center;justify-content:center}
+  body.touch .ucard .pips{margin-top:auto}
+  body.touch .ucard .buy,body.touch .ucard .owned{margin-top:2px;min-height:38px;display:flex;align-items:center;justify-content:center;box-sizing:border-box;padding-block:0}
+  .ushop>p{grid-column:1/-1;text-align:center}
+  body.touch .ucard.bought{animation:none!important}
+  body.touch .ucard{transition:none}
   body.touch .help .hlist.big li,body.touch .help .hlist li{font-size:13.5px!important;line-height:1.35;font-family:var(--body)!important;margin:0 0 6px}
   body.touch .help .hlist{margin:0;padding-left:18px}
   body.touch .help .helpbody{max-height:none;overflow:visible}
@@ -773,7 +780,7 @@ function fit(){
   let w=Math.floor(VW*s), h=Math.floor(VH*s);
   titleWide=0; TVW=VW;
   if(document.body.classList.contains('touch')&&document.body.classList.contains('titling')&&r.width>0&&r.height>0){ const s2=r.height/VH; if(r.width/s2>VW+4){ titleWide=(r.width/s2-VW)/2; w=Math.floor(r.width); h=Math.floor(r.height); TVW=VW+titleWide*2; } }
-  const cw=w, ch=h; if(tch&&!pm){ w=Math.floor(w*(TL.sx||1)); h=Math.floor(h*(TL.sy||1)); }
+  const cw=w, ch=h; if(document.body.classList.contains('touch')&&(state==='gameover'||state==='done'||state==='win')&&r.width>0&&r.height>0){ w=Math.floor(r.width); h=Math.floor(r.height); } else if(tch&&!pm){ w=Math.floor(w*(TL.sx||1)); h=Math.floor(h*(TL.sy||1)); }
   $('screen').style.width=w+'px'; $('screen').style.height=h+'px';
   { const OX=tch&&!pm?(TL.ox||0):0, OY=tch&&!pm?(TL.oy||0):0; $('screen').style.transform=(OX||OY)?`translate(${OX}px,${OY}px)`:''; }
   const R=(typeof resBox==='function')?resBox():null;
