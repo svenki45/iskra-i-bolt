@@ -404,6 +404,9 @@ body.b3d .overlay button.primary{box-shadow:0 7px 0 #9a6c16,0 12px 22px rgba(0,0
 body.b3d .overlay button.secondary,body.b3d .overlay .opt,body.b3d #bOne,body.b3d #bOnline{box-shadow:0 6px 0 rgba(5,10,24,.9),0 11px 20px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.18)}
 body.b3d #bTwo{box-shadow:0 7px 0 #9a6c16,0 12px 22px rgba(0,0,0,.45),inset 0 2px 0 rgba(255,255,255,.45)}
 body.b3d .overlay button.primary:hover,body.b3d .overlay button.secondary:hover,body.b3d .overlay .opt:hover,body.b3d .overlay button:focus-visible,body.b3d.kbnav .overlay button:focus,body.b3d #bOne:hover,body.b3d #bTwo:hover,body.b3d #bOnline:hover{transform:perspective(700px) rotateX(10deg) translateY(-4px) scale(1.02);filter:brightness(1.08)}
+/* при наведении кнопка приподнимается и наклоняется — невидимая подложка не даёт ей «убегать» из-под курсора (иначе кнопка дёргается, курсор мигает) */
+body.b3d .overlay button.primary,body.b3d .overlay button.secondary,body.b3d #bOne,body.b3d #bTwo,body.b3d #bOnline{position:relative}
+body.b3d .overlay button.primary::after,body.b3d .overlay button.secondary::after,body.b3d #bOne::after,body.b3d #bTwo::after,body.b3d #bOnline::after{content:'';position:absolute;left:-3px;right:-3px;top:-2px;bottom:-10px;background:transparent}
 body.b3d .overlay button.primary:active,body.b3d .overlay button.secondary:active,body.b3d .overlay .opt:active,body.b3d #bOne:active,body.b3d #bTwo:active,body.b3d #bOnline:active{transform:perspective(700px) translateY(5px);box-shadow:0 1px 0 rgba(5,10,24,.9),0 3px 8px rgba(0,0,0,.4)}
 body.b3d .overlay .opt.on{box-shadow:0 3px 0 #9a6c16,0 6px 12px rgba(0,0,0,.4);transform:perspective(700px) translateY(3px)}
 /* 3D sliders & checkboxes */
@@ -2792,7 +2795,7 @@ function setState(s){
         ${LS>=0?`<button class="primary mbig" id="bCont" type="button">Продолжить<small>слот ${LS+1} · ${MODE_NAME(slots[LS].mode)} · ${(slots[LS].run&&DIFFS[slots[LS].run.diff]||DIFFS.normal).n}${slots[LS].run&&slots[LS].run.ng?' НИ+'+slots[LS].run.ng:''} · уровень ${Math.min(TOTAL,slots[LS].best+1)}</small></button>
         <button class="secondary" id="bNew" type="button">Новая игра<small>выбрать слот</small></button>
         <button class="secondary" id="bLoad" type="button">Загрузить<small>${slots.filter(Boolean).length} из ${SLOT_N} слотов</small></button>`:`<button class="primary mbig" id="bNew" type="button">Играть<small>новая игра</small></button>`}
-        ${(best>0||cheat)?`<button class="secondary" id="bLv" type="button">Выбрать уровень<small>★ ${starCount()} из 300</small></button>`:''}
+        ${(best>0||cheat)?`<button class="secondary" id="bLv" type="button">Выбрать уровень<small>★ ${starCount()} из ${TOTAL*3}</small></button>`:''}
         <button class="secondary" id="bMode" type="button">Режим игры<small>${NET.role?'онлайн · '+NET.code:solo?'1 игрок · '+(soloHero==='spark'?'Искра':'Болт'):'2 игрока'}</small></button>
         <button class="secondary" id="bShopM" type="button">Лавка<small>${run.wallet.toLocaleString('ru-RU')} очков</small></button>
         <button class="secondary" id="bShop" type="button">Внешний вид<small>цвет, шапка, след</small></button>
@@ -2955,7 +2958,7 @@ function setState(s){
     $('cZero').onclick=()=>{ run.score=0; run.wallet=0; saveRun(); const el=document.getElementById('score'); if(el) el.textContent='0'; sfx('off'); setState('cheats'); };
     $('bChBack').onclick=()=>setState('menu');
   } else if(s==='levels'){
-    overlay.innerHTML=`<div class="card"><span class="eyebrow">${cheat?'Чит: открыты все 100 уровней':'Открыто уровней: '+maxPick()} · ★ ${starCount()} из 300</span><h2>Выбрать уровень</h2>
+    overlay.innerHTML=`<div class="card"><span class="eyebrow">${cheat?'Чит: открыты все '+TOTAL+' уровней':'Открыто уровней: '+maxPick()} · ★ ${starCount()} из ${TOTAL*3}</span><h2>Выбрать уровень</h2>
       <div class="pick"><label for="lvlPick">Номер уровня</label><input id="lvlPick" type="number" min="1" max="${maxPick()}" value="${Math.min(TOTAL,best+1)}"><button class="primary" id="bGo" type="button">Играть</button></div>
       ${(()=>{ const open=Math.min(TOTAL,maxPick()), decs=Math.ceil(open/10); if(!phoneUI()||decs<2) return ''; if(lvPage<0||lvPage>=decs) lvPage=Math.min(decs-1,Math.floor(Math.max(0,open-1)/10)); return `<div class="opts lvtabs">${Array.from({length:decs},(_,d)=>`<button type="button" class="opt ${lvPage===d?'on':''}" data-dec="${d}">${d*10+1}–${Math.min(open,d*10+10)}</button>`).join('')}</div>`; })()}
       <div class="lvgrid">${Array.from({length:Math.min(TOTAL,maxPick())},(_,i)=>i).filter(i=>!phoneUI()||Math.ceil(Math.min(TOTAL,maxPick())/10)<2||Math.floor(i/10)===lvPage).map(i=>{ const st=starsAll()[i]; return `<button type="button" class="opt lvb ${(i+1)%10===0?'bossb':''}" data-lv="${i}" title="${st&&st.bt?'Рекорд '+st.bt.toFixed(1)+' с':''}">${(i+1)%10===0?'Б':''}${i+1}${starHtml(st?st.s:0)}</button>`; }).join('')}</div>
