@@ -13,7 +13,7 @@ except Exception:
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 src = (ROOT / 'mobile-app/www/index.html').read_text(encoding='utf-8')
-bt = (ROOT / 'tools/bt/bt.js').read_text(encoding='utf-8')
+bt = (ROOT / 'tools/bt/bt.js').read_text(encoding='utf-8') + '\n' + (ROOT / 'tools/bt/bg.js').read_text(encoding='utf-8')
 n = int(re.search(r'/\*BT_N=(\d+)\*/', bt).group(1))
 
 def sub(old, new):
