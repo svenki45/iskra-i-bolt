@@ -1,7 +1,5 @@
 name: Desktop (Steam test build)
 on:
-  push:
-    paths: ['desktop-app/**', '.github/workflows/desktop.yml']
   workflow_dispatch:
 permissions:
   contents: write
