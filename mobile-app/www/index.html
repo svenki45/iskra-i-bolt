@@ -310,7 +310,7 @@ body.touch .press{display:none}
 body.touch .start.mode{padding:10px 18px;font-size:clamp(15px,min(3vw,6vh),26px)}
 body.touch #bOnline{padding:6px 14px;font-size:13px}
 #bOnline small{display:inline;margin-left:8px;font-weight:500;opacity:.75}
-body.touch.playing{touch-action:none}
+body.touch.playing{touch-action:none} body.touch.tedit{touch-action:manipulation} #tedbar,#tedbar *{touch-action:manipulation}
 body.touch.playing .stage{justify-content:center}
 #touch .tb.sel{border-color:#ffd166!important;box-shadow:0 0 0 3px rgba(255,209,102,.5)}
 body.tedit #touch .tb{animation:wob 1.2s ease-in-out infinite}
@@ -5156,7 +5156,7 @@ addEventListener('touchstart',()=>{ if(!touchUI.on) setTouch(true); audioInit();
 // no pinch / double-tap zoom while playing
 for(const ev of ['gesturestart','gesturechange','dblclick']) document.addEventListener(ev,e=>{ if(document.body.classList.contains('touch')) e.preventDefault(); },{passive:false});
 document.addEventListener('touchstart',e=>{ if(e.target.closest&&e.target.closest('#touch')) e.preventDefault(); },{passive:false});
-document.addEventListener('touchmove',e=>{ if(document.body.classList.contains('playing')&&document.body.classList.contains('touch')) e.preventDefault(); },{passive:false});
+document.addEventListener('touchmove',e=>{ if(document.body.classList.contains('playing')&&document.body.classList.contains('touch')&&!(e.target.closest&&e.target.closest('#tedbar'))) e.preventDefault(); },{passive:false});
 document.addEventListener('touchend',e=>{ if(e.target.closest&&e.target.closest('#touch')) e.preventDefault(); },{passive:false});
 addEventListener('keydown',e=>{ if(e.target&&e.target.tagName==='INPUT') return; if(touchUI.on&&!e.repeat&&e.isTrusted&&e.key&&e.key.length>0&&!/^(Unidentified|Process)$/.test(e.key)){ if(window.MOBILE_BUILD) setPadMode(true); else setTouch(false); } },true);
 function setPadMode(on){ if(document.body.classList.contains('padmode')===on) return; document.body.classList.toggle('padmode',on); try{ fit(); }catch(e){} }
