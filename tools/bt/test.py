@@ -25,7 +25,7 @@ with sync_playwright() as p:
             pg.goto('file:///tmp/claude-0/bt/test.html'); time.sleep(1.5)
             CI = lvl if CAMP_RAW else pg.evaluate(f"__T.go('BT.CAMP.findIndex(e=>e.k===\"t\"&&e.t=={lvl})')")
             setm = "setMode(false)" if m == 'duo' else f"setMode(true,'{m}')"
-            pg.evaluate(f"__T.go(\"{setm}; run.diff='{d}'; saveRun(); BT.S.cp=null; startGame({CI},true)\")")
+            pg.evaluate(f"__T.go(\"{setm}; settings.hints=false; run.diff='{d}'; saveRun(); BT.S.cp=null; startGame({CI},true)\")")
             for _ in range(60):
                 time.sleep(0.4)
                 if pg.evaluate("__T.go('state')") == 'play': break

@@ -3332,12 +3332,13 @@ function wipeProgress(all){
   best=0; for(const sf of ['','-spark','-bolt']){ try{ localStorage.setItem('iskra-bolt-sheet'+sf,'0'); localStorage.removeItem('iskra-bolt-run'+sf); }catch(e){} }
   run={score:0,wallet:0,up:{},offer:[],refresh:0,reward:null,inv:{},diff:'normal',ng:0};
   if(all){ for(const sf of ['','-spark','-bolt']){ try{ localStorage.removeItem('iskra-bolt-stars'+sf); localStorage.removeItem('iskra-bolt-bt-best'+sf); }catch(e){} } LVS={}; try{ localStorage.removeItem('iskra-bolt-lvlstats'); }catch(e){} }
+  try{ localStorage.removeItem('iskra-bolt-bt-seen'); }catch(e){}
   for(const k in cache) delete cache[k];
 }
 function doNewGame(slotIdx){
   if(slotIdx==null) slotIdx=newSlotTarget>=0?newSlotTarget:Math.max(0,slots.findIndex(x=>!x));
   slots[slotIdx]=null; activeSlot=slotIdx; store.set('iskra-bolt-slot',slotIdx);
-  achGot={}; store.set('iskra-bolt-ach',achGot); stats={gears:0,kills:0,stomps:0,bosses:[],pw:[]}; saveStats(); hintsLearned={}; store.set('iskra-bolt-hints',hintsLearned);
+  achGot={}; store.set('iskra-bolt-ach',achGot); stats={gears:0,kills:0,stomps:0,bosses:[],pw:[]}; saveStats(); hintsLearned={}; store.set('iskra-bolt-hints',hintsLearned); try{ localStorage.removeItem('iskra-bolt-bt-seen'); }catch(e){}
   best=0; try{ localStorage.setItem('iskra-bolt-sheet'+modeSuffix(),'0'); }catch(e){}
   for(const k in cache) delete cache[k];
   run={score:0,wallet:0,up:{},offer:[],refresh:0,reward:null,inv:{},diff:pendingDiff||'normal',ng:0};
