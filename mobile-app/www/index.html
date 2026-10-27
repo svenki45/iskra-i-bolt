@@ -4918,6 +4918,7 @@ function drawTitlePlatform(fy){ titleBelt+=(drawTitlePlatform.sp||1)*0.016; cons
   ctx.shadowBlur=0; ctx.strokeStyle='rgba(255,255,255,.35)'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(...back[0]); ctx.lineTo(...back[1]); ctx.stroke();
   ctx.restore(); }
 function drawTitleScene(){
+  const TFY=window.MOBILE_BUILD?0.5:0.64;
   // opaque, alive backdrop that reacts to the highlighted mode
   const tgt=titleFocus==='one'?[1,0]:titleFocus==='two'?[0,1]:[0,0];
   titleMix=titleMix.map((v,i)=>v+(tgt[i]-v)*0.06);
@@ -4933,7 +4934,7 @@ function drawTitleScene(){
   glow(VW*0.22+Math.sin(clock*.4)*40,VH*0.55,420,`rgba(255,120,40,${.10+.22*m1+.12*m2})`);
   glow(VW*0.78+Math.cos(clock*.35)*40,VH*0.5,420,`rgba(70,200,190,${.10+.06*m1+.22*m2})`);
   // perspective floor grid
-  ctx.save(); const hz=VH*0.64; ctx.beginPath(); ctx.rect(0,hz,VW,VH-hz); ctx.clip();
+  ctx.save(); const hz=(VH*TFY); ctx.beginPath(); ctx.rect(0,hz,VW,VH-hz); ctx.clip();
   const gc=m2>m1?'120,220,210':'255,170,90';
   ctx.strokeStyle=`rgba(${gc},${.10+.12*Math.max(m1,m2)})`; ctx.lineWidth=1.2;
   for(let i=-16;i<=16;i++){ ctx.beginPath(); ctx.moveTo(VW/2+i*14,hz); ctx.lineTo(VW/2+i*160,VH); ctx.stroke(); }
@@ -4946,16 +4947,16 @@ function drawTitleScene(){
   ctx.globalAlpha=1;
   const gears=[[VW*0.16,VH*0.3,150,.25,'rgba(231,181,74,.14)'],[VW*0.86,VH*0.72,190,-.18,'rgba(156,195,255,.12)'],[VW*0.78,VH*0.18,90,.5,'rgba(255,138,61,.14)'],[VW*0.25,VH*0.85,110,-.35,'rgba(98,199,193,.13)']];
   for(const [x,y,r,sp,c] of gears){ ctx.save(); ctx.translate(x,y); ctx.rotate(clock*sp); ctx.strokeStyle=c; ctx.lineWidth=6; ctx.beginPath(); const n=24; for(let i=0;i<=n;i++){ const a=i/n*Math.PI*2, rr2=i%2?r*.86:r, a2=a+Math.PI/n; ctx.lineTo(Math.cos(a)*rr2,Math.sin(a)*rr2); ctx.lineTo(Math.cos(a2)*rr2,Math.sin(a2)*rr2); } ctx.closePath(); ctx.stroke(); ctx.lineWidth=3; ctx.beginPath(); ctx.arc(0,0,r*.5,0,Math.PI*2); ctx.stroke(); for(let i=0;i<6;i++){ const a=i/6*Math.PI*2; ctx.beginPath(); ctx.moveTo(Math.cos(a)*r*.12,Math.sin(a)*r*.12); ctx.lineTo(Math.cos(a)*r*.5,Math.sin(a)*r*.5); ctx.stroke(); } ctx.restore(); }
-  drawWorkshop(VH*0.64); drawBossSilhouettes(VH*0.64);
+  drawWorkshop((VH*TFY)); drawBossSilhouettes((VH*TFY));
   // spotlight
   const gr=ctx.createRadialGradient(VW/2,VH*0.68,10,VW/2,VH*0.68,360); gr.addColorStop(0,'rgba(255,209,102,.16)'); gr.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=gr; ctx.fillRect(0,0,VW,VH);
   // floor line
-  const fy=VH*0.64; drawTitlePlatform(fy);
+  const fy=(VH*TFY); drawTitlePlatform(fy);
   // heroes: scene depends on the highlighted mode, and they watch the mouse
   const TS=drawTitleScene.ts||(drawTitleScene.ts={sx:VW/2+40,bx:VW/2-80,sy0:0,svy:0,by0:0,bvy:0,last:performance.now(),slamT:0,wave:0});
   const now=performance.now(), dt=Math.min(.05,(now-TS.last)/1000); TS.last=now;
   const mode=titleFocus==='two'?'duo':titleFocus==='one'?(soloHero==='bolt'?'bolt':'spark'):'idle';
-  if(TS.lastMode!==mode){ if(TS.lastMode!==undefined&&mode!=='idle'){ const sx=TS.sx+12, bx=TS.bx+17; if(mode!=='bolt'){ burst(sx,VH*.64-20,22,['#fff','#ffd166','#ff8a3d'],320,.5); flash('#ff8a3d',.12); } if(mode!=='spark'){ burst(bx,VH*.64-30,18,['#fff','#9cc3ff','#62c7c1'],280,.5); shake=Math.max(shake,4); } sfx('pick'); } TS.lastMode=mode; }
+  if(TS.lastMode!==mode){ if(TS.lastMode!==undefined&&mode!=='idle'){ const sx=TS.sx+12, bx=TS.bx+17; if(mode!=='bolt'){ burst(sx,(VH*TFY)-20,22,['#fff','#ffd166','#ff8a3d'],320,.5); flash('#ff8a3d',.12); } if(mode!=='spark'){ burst(bx,(VH*TFY)-30,18,['#fff','#9cc3ff','#62c7c1'],280,.5); shake=Math.max(shake,4); } sfx('pick'); } TS.lastMode=mode; }
   { const lg=drawTitleScene.lg&&drawTitleScene.lg.isConnected?drawTitleScene.lg:(drawTitleScene.lg=document.querySelector('.logo')); if(lg){ const mx=titleMouse?(titleMouse.x/VW-.5):Math.sin(clock*.5)*.3, my=titleMouse?(titleMouse.y/VH-.4):Math.cos(clock*.4)*.15; lg.style.setProperty('--ry',(mx*18).toFixed(1)+'deg'); lg.style.setProperty('--rx',(6-my*12).toFixed(1)+'deg'); } }
   const M=titleMouse, near=(x,y)=>M&&Math.hypot(M.x-x,M.y-y)<90;
   let sTx, bTx, sY=fy-30, bY=fy-56, sSx=1, sSy=1, bSx=1, bSy=1, sFace=1, bFace=1, sTrail=false, bSlam=false;
