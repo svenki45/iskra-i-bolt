@@ -1263,6 +1263,7 @@ hurt=function(p){
   if(p.down&&!p.dead) die(p,'down');
 };
 
+window.BT_RESET=()=>{ S.cp=null; cpSave=null; };
 const _complete=complete;
 complete=function(){ if(S.on) S.cp=null; return _complete(); };
 
@@ -1830,6 +1831,7 @@ setState=function(s){
   if(s==='title'){ for(const id of ['bOnline','tArena','tEditor','tMyGame']){ const el=document.getElementById(id); if(el) el.remove(); }
     const two=document.getElementById('bTwo'); if(two){ const sm=two.querySelector('small'); if(sm) sm.textContent='за одной клавиатурой'; }
     const beta=overlay.querySelector('.logo .beta'); if(beta) beta.textContent='ИСПЫТАНИЯ'; }
+  if(s==='gameover'&&S.cp&&!document.getElementById('btFromStart')){ const g=document.getElementById('bGoMenu'); if(g){ g.insertAdjacentHTML('beforebegin','<button class="secondary" id="btFromStart" type="button">С самого начала</button>'); document.getElementById('btFromStart').onclick=()=>{ window.BT_RESET(); go=null; loadingTo(levelIdx,true); }; } }
   if(s==='done'){ const bx=overlay.querySelector('.btns'); if(bx&&!document.getElementById('btToMenu')){ bx.insertAdjacentHTML('beforeend','<button class="secondary" id="btToMenu" type="button">К испытаниям</button>'); $('btToMenu').onclick=()=>setState('menu'); }
     const eb=overlay.querySelector('.eyebrow'); if(eb) eb.textContent='Испытание '+(levelIdx+1)+' из '+TOTAL+' пройдено'; const nb=$('bNext'); if(nb) nb.firstChild.textContent='Следующее испытание · Enter'; }
   if(s==='loading'&&loadJob){ const ebs=overlay.querySelectorAll('.eyebrow'); if(ebs[0]) ebs[0].textContent='Испытание '+(loadJob.i+1)+' из '+TOTAL; if(ebs[1]) ebs[1].textContent=DIFFS[diffId()].n+' · '+modeName();

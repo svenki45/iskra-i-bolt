@@ -3173,7 +3173,7 @@ function setState(s){
     overlay.innerHTML=deco+`<div class="card"><span class="eyebrow">${own==null?'Пауза':'Пауза · поставил'+(own===1?'':'а')+' '+PNAME[own]}</span><h2>Перерыв</h2>
       ${own==null?'':`<p class="padst" id="pauseNote" style="color:${own?'#62c7c1':'#ff8a3d'}">Снять паузу может только ${PNAME[own]}: ${PKEY[own]} или Start на своём геймпаде.</p>`}
       <div class="mgrid pgrid2">${own==null?'<button class="primary wide2" id="bRes" type="button">Продолжить · Esc</button>':''}${cheat&&!NET.role&&!edTest?`<button class="secondary" id="bChPrev" type="button" ${levelIdx>0?'':'disabled'}>◀ Уровень ${levelIdx}<small>чит</small></button><button class="secondary" id="bChNext" type="button" ${levelIdx<TOTAL-1?'':'disabled'}>Уровень ${levelIdx+2} ▶<small>чит</small></button>`:''}<button class="secondary" id="bRe" type="button">Уровень заново</button><button class="secondary" id="bShopP" type="button">Лавка</button><button class="secondary" id="bHelpP" type="button">Помощь</button><button class="secondary" id="bSet2" type="button">Настройки</button><button class="secondary wide2" id="bMenu" type="button">В меню</button></div></div>`;
-    if($('bRes')) $('bRes').onclick=()=>{ pauseOwner=null; setState('play'); }; if($('bChPrev')) $('bChPrev').onclick=()=>{ if(levelIdx>0){ runClean=false; pauseOwner=null; loadLevel(levelIdx-1); setState('play'); } }; if($('bChNext')) $('bChNext').onclick=()=>{ if(levelIdx<TOTAL-1){ runClean=false; pauseOwner=null; loadLevel(levelIdx+1); setState('play'); } }; $('bSet2').onclick=()=>{ setBack='pause'; setCat=null; setState('settings'); }; $('bShopP').onclick=()=>{ shopFrom='pause'; setState('shop'); }; $('bHelpP').onclick=()=>{ helpBack='pause'; setState('help'); }; $('bRe').onclick=()=>{ loadingTo(levelIdx,true); }; $('bMenu').onclick=()=>{loadLevel(levelIdx);setState('menu');}; if(window.ibSys&&ibSys.quit){ const g=overlay.querySelector('.pgrid2'); if(g){ g.insertAdjacentHTML('beforeend','<button class="secondary wide2" id="bQuitP" type="button">Выйти из игры</button>'); $('bQuitP').onclick=()=>ibSys.quit(); } }
+    if($('bRes')) $('bRes').onclick=()=>{ pauseOwner=null; setState('play'); }; if($('bChPrev')) $('bChPrev').onclick=()=>{ if(levelIdx>0){ runClean=false; pauseOwner=null; loadLevel(levelIdx-1); setState('play'); } }; if($('bChNext')) $('bChNext').onclick=()=>{ if(levelIdx<TOTAL-1){ runClean=false; pauseOwner=null; loadLevel(levelIdx+1); setState('play'); } }; $('bSet2').onclick=()=>{ setBack='pause'; setCat=null; setState('settings'); }; $('bShopP').onclick=()=>{ shopFrom='pause'; setState('shop'); }; $('bHelpP').onclick=()=>{ helpBack='pause'; setState('help'); }; $('bRe').onclick=()=>{ try{ window.BT_RESET&&window.BT_RESET(); }catch(e){} loadingTo(levelIdx,true); }; $('bMenu').onclick=()=>{loadLevel(levelIdx);setState('menu');}; if(window.ibSys&&ibSys.quit){ const g=overlay.querySelector('.pgrid2'); if(g){ g.insertAdjacentHTML('beforeend','<button class="secondary wide2" id="bQuitP" type="button">Выйти из игры</button>'); $('bQuitP').onclick=()=>ibSys.quit(); } }
   } else if(s==='done'){
     const L=getLevel(levelIdx), nextBoss=(levelIdx+2)%10===0;
     overlay.innerHTML=`<div class="card"><span class="eyebrow">Уровень ${levelIdx+1} из ${TOTAL} готов</span><h2>${L.boss?'Босс повержен':L.name}</h2>
@@ -3432,7 +3432,7 @@ function handleMeta(){
   if(state==='play'||state==='dying'){
     if(state==='play'&&pressed.has('Escape')) tryPause(0);
     else if(state==='play'&&pressed.has('KeyP')) tryPause(solo?0:1);
-    else if(pressed.has('KeyR')&&state==='play'&&NET.role!=='guest') loadLevel(levelIdx);
+    else if(pressed.has('KeyR')&&state==='play'&&NET.role!=='guest'){ try{ window.BT_RESET&&window.BT_RESET(); }catch(e){} loadLevel(levelIdx); }
     else if(cheat&&(pressed.has('BracketRight')||pressed.has('PageDown'))&&levelIdx<TOTAL-1){ runClean=false; loadLevel(levelIdx+1); state='play'; }
     else if(cheat&&(pressed.has('BracketLeft')||pressed.has('PageUp'))&&levelIdx>0){ loadLevel(levelIdx-1); state='play'; }
   } else if(state==='pause'){
@@ -4462,12 +4462,12 @@ function draw(){
   if(r3&&!intro&&!outro&&players&&(state==='play'||state==='dying')){ const live=players.filter(p=>!p.absent&&!p.dead); if(live.length){
       let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9; for(const p of live){ x0=Math.min(x0,p.x); x1=Math.max(x1,p.x+p.w); y0=Math.min(y0,p.y); y1=Math.max(y1,p.y+p.h); }
       const want=Math.max(1,Math.min(1.45,VW/(x1-x0+620),VH/(y1-y0+380)));
-      const C=draw.c3||(draw.c3={x:(x0+x1)/2,y:(y0+y1)/2,z:want}); C.x+=((x0+x1)/2-C.x)*.08; C.y+=((y0+y1)/2-C.y)*.08; C.z+=(want-C.z)*.05;
+      const C=draw.c3||(draw.c3={x:(x0+x1)/2,y:(y0+y1)/2,z:want}); const kf=Math.max(.5,Math.min(3,(clock-(draw.lc||clock))*60)); draw.lc=clock; C.x+=((x0+x1)/2-C.x)*(1-Math.pow(1-.08,kf)); C.y+=((y0+y1)/2-C.y)*(1-Math.pow(1-.08,kf)); C.z+=(want-C.z)*(1-Math.pow(1-.05,kf));
       z=C.z; ox=Math.min(0,Math.max(VW-WW*z,VW/2-C.x*z)); oy=Math.min(0,Math.max(VH-WH*z,VH*0.58-C.y*z)); } }
   if(WW>VW&&!intro&&!outro&&players&&state!=='title'){ const live=players.filter(p=>!p.absent&&!p.dead); if(live.length){ const cx=live.reduce((a,p)=>a+p.x+p.w/2,0)/live.length;
-      const L=draw.cl||(draw.cl={x:cx,lv:-1}); if(L.lv!==levelIdx){ L.lv=levelIdx; L.x=cx; } L.x+=(cx-L.x)*.12; const zz=z||1; ox=Math.min(0,Math.max(VW-WW*zz,VW/2-L.x*zz)); } }
+      const L=draw.cl||(draw.cl={x:cx,lv:-1}); if(L.lv!==levelIdx){ L.lv=levelIdx; L.x=cx; } L.x+=(cx-L.x)*(1-Math.pow(.88,Math.max(.5,Math.min(3,(clock-(draw.lc2||clock))*60)))); draw.lc2=clock; const zz=z||1; ox=Math.min(0,Math.max(VW-WW*zz,VW/2-L.x*zz)); } }
   if(WH>VH&&!intro&&!outro&&players&&state!=='title'){ const live=players.filter(p=>!p.absent&&!p.dead); if(live.length){ const cy=live.reduce((a,p)=>a+p.y+p.h/2,0)/live.length;
-      const V=draw.cv||(draw.cv={y:cy,lv:-1}); if(V.lv!==levelIdx||V.g!==grid){ V.lv=levelIdx; V.g=grid; V.y=cy; } V.y+=(cy-V.y)*.12; const zz=z||1; oy=Math.min(0,Math.max(VH-WH*zz,VH*0.58-V.y*zz)); } }
+      const V=draw.cv||(draw.cv={y:cy,lv:-1}); if(V.lv!==levelIdx||V.g!==grid){ V.lv=levelIdx; V.g=grid; V.y=cy; } V.y+=(cy-V.y)*(1-Math.pow(.88,Math.max(.5,Math.min(3,(clock-(draw.lc3||clock))*60)))); draw.lc3=clock; const zz=z||1; oy=Math.min(0,Math.max(VH-WH*zz,VH*0.58-V.y*zz)); } }
   if((state==='dying'||state==='gameover')&&typeof atomFocus!=='undefined'&&atomFocus){ const F=atomFocus, pv=draw.view||{z:1,ox:0,oy:0}; if(!F.v) F.v={z:pv.z,ox:pv.ox,oy:pv.oy};
     const k=state==='gameover'?1:Math.min(1,(2.4-deathTimer)/1.6), e=k*k*(3-2*k), tz=F.v.z*(1+0.35*e), W=WW, tx=Math.min(0,Math.max(VW-W*tz,VW/2-F.x*tz)), ty=Math.min(0,Math.max(VH-WH*tz,VH/2-F.y*tz));
     z=tz; ox=F.v.ox+(tx-F.v.ox)*e; oy=F.v.oy+(ty-F.v.oy)*e; }
@@ -5984,7 +5984,7 @@ const R3D=(()=>{
     if(lastStaticGen!==staticGen){ lastStaticGen=staticGen;
       // если размер фона изменился (другой уровень), GPU-текстуру нужно пересоздать, иначе новый рисунок ляжет в угол старой
       softBack(); backTex.dispose(); backTex=new THREE.CanvasTexture(softC); backTex.anisotropy=4; backMat.map=backTex; backMat.needsUpdate=true; }
-    if(!window.MOBILE_BUILD||(R.fr||0)%(WW>6000?5:2)===0||R.fxDirty!==levelIdx){ R.fxDirty=levelIdx; fxUpdate(); }
+    if(!window.MOBILE_BUILD||(WW>6000?false:(R.fr||0)%2===0)||R.fxDirty!==levelIdx){ R.fxDirty=levelIdx; fxUpdate(); }
     // camera matches the 2D transform: screen = game*z + o
     const cx=(VW/2-ox)/z, cy=(VH/2-oy)/z;
     cam.position.set(cx,-cy,DIST/z); cam.lookAt(cx,-cy,0); cam.updateProjectionMatrix();
@@ -6001,7 +6001,7 @@ const R3D=(()=>{
     syncPool(pool.mover,movers,()=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshLambertMaterial({color:0xcfd8e6})); m.castShadow=true; m.receiveShadow=true; scene.add(m); return m; },(m,o)=>{ m.position.set(o.x+o.w/2,-(o.y+o.h/2),FRONT-DEPTH/2); m.scale.set(o.w,o.h,DEPTH*0.9); });
     if(R.ext) updateExtras();
     for(const h of R.hooks){ try{ h({scene,THREE,cx,cy,z,R}); }catch(e){ if(!R.hookErr){ R.hookErr=1; console.error('3D hook',e); } } }
-    R.fr=(R.fr||0)+1; renderer.shadowMap.autoUpdate=false; renderer.shadowMap.needsUpdate=!window.MOBILE_BUILD||R.fr%(WW>6000?4:2)===0||R.moved;
+    R.fr=(R.fr||0)+1; renderer.shadowMap.autoUpdate=false; renderer.shadowMap.needsUpdate=!window.MOBILE_BUILD||R.fr%2===0||R.moved;
     renderer.render(scene,cam);
     if(!R.checked){ R.checked=true; try{ const bad=(renderer.info.programs||[]).filter(p=>p.diagnostics&&!p.diagnostics.runnable); const gl=renderer.getContext(); const ge=gl.getError();
       if(bad.length) R.fail('шейдер не собрался: '+((bad[0].diagnostics.fragmentShader&&bad[0].diagnostics.fragmentShader.log)||(bad[0].diagnostics.vertexShader&&bad[0].diagnostics.vertexShader.log)||bad[0].diagnostics.programLog||'?'));
