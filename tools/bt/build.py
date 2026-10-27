@@ -54,3 +54,16 @@ sub("\nconst GAME_VER=",'\n' + bt + '\nconst GAME_VER=')
 out = ROOT / 'desktop-bt/index.html'
 out.write_text(src, encoding='utf-8')
 print(f'desktop-bt/index.html готов: {len(src)//1024} КБ, испытаний: {n}')
+
+# ---- веб-версия для телефона (iPhone/Android): страница bt/ на GitHub Pages, тот же код, что на ПК, + сенсорное управление ----
+web = src.replace('window.MOBILE_BUILD=false;window.BT_BUILD=true;', 'window.MOBILE_BUILD=true;window.BT_BUILD=true;')
+assert web != src
+web = web.replace('<meta name="apple-mobile-web-app-title" content="Искра и Болт">', '<meta name="apple-mobile-web-app-title" content="Испытания">')
+web = web.replace('<title>Искра и Болт — испытания</title>', '<title>Испытания — Искра и Болт</title>')
+wd = ROOT / 'bt'; wd.mkdir(exist_ok=True)
+(wd / 'index.html').write_text(web, encoding='utf-8')
+(wd / 'manifest.webmanifest').write_text('{"name": "Искра и Болт — Испытания", "short_name": "Испытания", "start_url": "./", "scope": "./", "display": "fullscreen", "orientation": "landscape", "background_color": "#0b1830", "theme_color": "#0b1830", "icons": [{"src": "icon-192.png", "sizes": "192x192", "type": "image/png"}, {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}]}', encoding='utf-8')
+(wd / 'sw.js').write_text("const C='ib-bt-v1';self.addEventListener('install',e=>{self.skipWaiting();});self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x)))).then(()=>self.clients.claim()));});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(fetch(e.request,{cache:'no-store'}).then(r=>{const cp=r.clone();caches.open(C).then(c=>c.put(e.request,cp));return r;}).catch(()=>caches.match(e.request)));});", encoding='utf-8')
+import shutil
+for f in ('icon-180.png', 'icon-192.png', 'icon-512.png'): shutil.copy(ROOT / f, wd / f)
+print(f'bt/index.html готов (телефон): {len(web)//1024} КБ')

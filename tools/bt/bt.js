@@ -948,6 +948,13 @@ function setupIso(L){
   let n=0; for(const p of players){ if(p.absent) continue; p.ix=120+n*60; p.iz=.35+n*.3; p.ih=0; p.ivh=0; p.iat=0; p.icd=0; p.ikick=false; p.ihit=0; p.ifc=1; p.imv=0; n++; p.hp=Math.max(p.hp,1); }
   S.hintT=8; banner('ЗАВОДСКОЙ ДВОР','#ffd166',1.4);
 }
+// сенсор: на «Заводском дворе» кнопки получают другие подписи (клавиши те же: вверх=«прыжок», вниз=«способность», удар=«огонь», прыжок=«бонус»)
+setInterval(()=>{ try{
+  const el=document.getElementById('touch'); if(!el) return; const on=S.on&&S.kind==='iso'&&state==='play';
+  el.querySelectorAll('.tb[data-a]').forEach(b=>{ const a=b.dataset.a, want=on?({jump:'<span style="font-size:1.5em;line-height:1">▲</span><small>вглубь</small>',ability:'<span style="font-size:1.5em;line-height:1">▼</span><small>к нам</small>',fire:'<span style="font-size:1.4em;line-height:1">✊</span><small>удар</small>',use:'<span style="font-size:1.4em;line-height:1">⤒</span><small>прыжок</small>'})[a]:null;
+    if(want){ if(b.dataset.iso!=='1'){ b.dataset.orig=b.innerHTML; b.innerHTML=want; b.dataset.iso='1'; } }
+    else if(b.dataset.iso==='1'){ b.innerHTML=b.dataset.orig||b.innerHTML; b.dataset.iso='0'; } });
+}catch(e){} },250);
 function isoInput(p){
   const pi=players.indexOf(p), k=(solo?['spark','bolt']:[p.kind]).map(n=>binds[n].kb), pk=(solo?['spark','bolt']:[p.kind]).map(n=>binds[n].pad);
   let L=0,R=0,U=0,D=0,J=0,A=0;
@@ -1102,7 +1109,7 @@ function isoDraw(){
   ctx.restore();
   if(flashA>0){ ctx.globalAlpha=Math.min(.6,flashA); ctx.fillStyle=flashC||'#fff'; ctx.fillRect(0,0,VW,VH); ctx.globalAlpha=1; }
   drawHud();
-  if(S.hintT>0){ ctx.globalAlpha=Math.min(1,S.hintT); label('← →  ходить   ·   W/S (↑/↓)  в глубину   ·   удар (E)   ·   прыжок (Q)',VW/2,VH-30,17,'#e8effa'); ctx.globalAlpha=1; }
+  if(S.hintT>0){ ctx.globalAlpha=Math.min(1,S.hintT); label(touchUI.on?'← →  ходить   ·   ▲▼  в глубину   ·   ✊  удар   ·   ⤒  прыжок':'← →  ходить   ·   W/S (↑/↓)  в глубину   ·   удар (E)   ·   прыжок (Q)',VW/2,VH-30,17,'#e8effa'); ctx.globalAlpha=1; }
   if(S.banner){ const b=S.banner, a=Math.min(1,b.life*3,(b.max-b.life)*8+.2); ctx.globalAlpha=a; label(b.t,VW/2,150,46,b.c); ctx.globalAlpha=1; }
 }
 
