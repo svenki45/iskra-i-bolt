@@ -1163,20 +1163,6 @@ function pipeTex(T3){
   g.fillStyle='#2a3446'; for(let x=14;x<256;x+=28){ g.beginPath(); g.arc(x,7,3.2,0,7); g.fill(); g.fillStyle='rgba(255,255,255,.35)'; g.beginPath(); g.arc(x-.8,6,1.2,0,7); g.fill(); g.fillStyle='#2a3446'; }
   const tx=new T3.CanvasTexture(c); tx.wrapS=tx.wrapT=T3.RepeatWrapping; tx.anisotropy=4; return tx;
 }
-function makeScooter(T3,body,acc){
-  const g=new T3.Group(), M=(c,e,em)=>new T3.MeshLambertMaterial({color:c,emissive:e||0,emissiveIntensity:em||1});
-  const hull=new T3.Mesh(new T3.CapsuleGeometry(11,52,6,16),M(body)); hull.rotation.z=Math.PI/2; hull.scale.set(.72,1,1.25); hull.position.set(0,-8,0); hull.castShadow=true; g.add(hull);
-  const deck=new T3.Mesh(new T3.BoxGeometry(50,3,22),M(0x1d2735)); deck.position.set(-2,1,0); g.add(deck);
-  const strip=new T3.Mesh(new T3.BoxGeometry(44,1.6,5),M(acc,acc,.8)); strip.position.set(-2,2.8,0); g.add(strip);
-  const nose=new T3.Mesh(new T3.SphereGeometry(8.5,16,12),M(acc)); nose.scale.set(1.3,.7,1.3); nose.position.set(30,-3,0); g.add(nose);
-  const stem=new T3.Mesh(new T3.CylinderGeometry(2.2,3,30,10),M(0x303c50)); stem.position.set(21,15,0); stem.rotation.z=-.22; g.add(stem);
-  const bar=new T3.Mesh(new T3.CylinderGeometry(2,2,26,10),M(0x1a2230)); bar.rotation.x=Math.PI/2; bar.position.set(20,30,0); g.add(bar);
-  for(const s of [-1,1]){ const gp=new T3.Mesh(new T3.SphereGeometry(3.2,10,8),M(0x0e131c)); gp.position.set(20,30,s*13); g.add(gp); }
-  const lamp=new T3.Mesh(new T3.SphereGeometry(3.6,10,8),M(0xfff2b0,0xffe27a,1.4)); lamp.position.set(33,-1.5,0); g.add(lamp);
-  const jet=new T3.Mesh(new T3.CylinderGeometry(5,6.2,12,12),M(0x151b27)); jet.rotation.z=Math.PI/2; jet.position.set(-37,-8,0); g.add(jet);
-  const fin=new T3.Mesh(new T3.BoxGeometry(12,9,2),M(acc)); fin.position.set(-30,5,0); fin.rotation.z=.25; g.add(fin);
-  return g;
-}
 function w3Hook(c){
   const {scene,THREE:T3,cx,R}=c;
   if(!wet()){ if(W3.g) W3.g.visible=false; if(R.back) R.back.visible=true; if(R.fx) R.fx.visible=true; if(R.sh) R.sh.visible=true; return; }
@@ -1186,7 +1172,6 @@ function w3Hook(c){
     W3.vol=new T3.Mesh(new T3.BoxGeometry(1,1,1),wm); W3.vol.renderOrder=3; g.add(W3.vol);
     const sg=new T3.PlaneGeometry(2600,100,160,5); sg.rotateX(-Math.PI/2); W3.sg=sg; W3.sbase=Float32Array.from(sg.attributes.position.array);
     W3.sf=new T3.Mesh(sg,new T3.MeshLambertMaterial({color:0x3aa6e6,emissive:0x0a2c4c,transparent:true,opacity:.72,depthWrite:false})); W3.sf.renderOrder=4; g.add(W3.sf);
-    W3.sc[0]=makeScooter(T3,0xff8a3d,0xffd166); W3.sc[1]=makeScooter(T3,0x5fc8c0,0xcfd8e6); for(const s of W3.sc) g.add(s);
   }
   W3.g.visible=true;
   // труба — только в Канале; в Серфинге остаётся обычный фон
@@ -1202,27 +1187,41 @@ function w3Hook(c){
   const pa=W3.sg.attributes.position.array, base=W3.sbase, t=clock, ox=cx-1300;
   for(let i=0;i<pa.length;i+=3){ const wx=ox+base[i]+1300; pa[i+1]=Math.sin(wx*.05+t*3.6)*2.6+Math.sin(wx*.021-t*2.2)*2.2+Math.sin(wx*.13+base[i+2]*.2+t*5)*.9; }
   W3.sg.attributes.position.needsUpdate=true; W3.sg.computeVertexNormals(); W3.sf.position.set(cx,-WY,-45);
-  // скутеры
-  const pk=['spark','bolt'];
-  for(let i=0;i<2;i++){ const p=players[i], g=W3.sc[i]; if(!p||p.absent||p.dead){ g.visible=false; continue; }
-    g.visible=true; const air=!(p.onGround||p.wasGround);
-    const bob=air?0:Math.sin(clock*7+i*2)*1.2;
-    g.position.set(p.x+p.w/2,-(p.y+p.h-16)+bob,-30); g.rotation.z=clamp(-p.vy*0.0005,-.38,.38); g.rotation.x=0; }
 }
 if(typeof R3D!=='undefined'&&R3D.hooks) R3D.hooks.push(w3Hook);
-// герой на скутере: руки на руле; в прыжке откидывается назад, как «супермен» в мотокроссе
-function drawScooterRider(f,p){
-  const cx=p.x+p.w/2, feet=p.y+p.h, barX=cx+22, barY=feet-16-30, air=!(p.onGround||p.wasGround);
-  p._lean=(p._lean||0)+((air&&!p.duck?1.0:0)-(p._lean||0))*.22;
-  ctx.save(); ctx.translate(barX,barY); ctx.rotate(p._lean); ctx.translate(-barX,-barY);
-  if(p.duck){ const h=p.h,y=p.y,sx=p.sx,sy=p.sy; p.y=y+h-H0[p.kind]; p.h=H0[p.kind]; p.sx=1.22; p.sy=HD[p.kind]/H0[p.kind]*1.08; ctx.save(); ctx.translate(0,-16); f(p); ctx.restore(); p.h=h; p.y=y; p.sx=sx; p.sy=sy; }
-  else { ctx.save(); ctx.translate(0,-16); f(p); ctx.restore(); }
-  const arm=p.kind==='bolt'?'#cfd8e6':'#ff8a3d', sh=p.duck?feet-36:feet-16-(p.kind==='bolt'?32:24);
-  ctx.lineCap='round'; ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.lineWidth=7; ctx.beginPath(); ctx.moveTo(cx+6,sh+1); ctx.lineTo(barX,barY+1); ctx.stroke();
-  ctx.strokeStyle=arm; ctx.lineWidth=5; ctx.beginPath(); ctx.moveTo(cx+6,sh); ctx.lineTo(barX,barY); ctx.stroke();
-  ctx.fillStyle='#10161f'; ctx.beginPath(); ctx.arc(barX,barY,4.4,0,Math.PI*2); ctx.fill();
+// 2D-скутер в духе Battletoads: герой пригнулся к рулю; в прыжке откидывается назад («супермен»), скутер задирает нос
+function scooterPitch(p){ return clamp(p.vy*0.0005,-.34,.34); }
+function drawScooterHull(p,pitch){
+  const cx=p.x+p.w/2, deck=p.y+p.h-14, sp=S.v, hot=p.kind==='bolt'?'#62c7c1':'#ff8a3d', hot2=p.kind==='bolt'?'#cfd8e6':'#ffd166';
+  ctx.save(); ctx.translate(cx,deck); ctx.rotate(pitch);
+  if(sp>40){ ctx.fillStyle='rgba(255,255,255,.75)'; for(let k=0;k<7;k++){ const fx=-40-k*10-((clock*110)%10), fy=14+Math.sin(clock*10+k*1.3)*2.5; ctx.globalAlpha=.75-k*.1; ctx.beginPath(); ctx.arc(fx,fy,4.6-k*.4,0,7); ctx.fill(); } ctx.globalAlpha=1; }
+  // корпус
+  const gr=ctx.createLinearGradient(0,-4,0,18); gr.addColorStop(0,hot2); gr.addColorStop(.25,hot); gr.addColorStop(1,'#14202f');
+  ctx.fillStyle=gr; ctx.beginPath(); ctx.moveTo(-40,2); ctx.quadraticCurveTo(-42,-6,-30,-8); ctx.lineTo(18,-8); ctx.quadraticCurveTo(34,-8,46,-1); ctx.quadraticCurveTo(38,11,24,15); ctx.lineTo(-26,15); ctx.quadraticCurveTo(-40,15,-40,2); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle='#0d1624'; ctx.lineWidth=2; ctx.stroke();
+  ctx.fillStyle='#1d2735'; ctx.beginPath(); ctx.moveTo(-30,-8); ctx.lineTo(16,-8); ctx.lineTo(10,-3); ctx.lineTo(-28,-3); ctx.closePath(); ctx.fill();   // сиденье-площадка
+  ctx.fillStyle=hot2; ctx.fillRect(-20,3,40,2.6); ctx.fillStyle='rgba(255,255,255,.45)'; ctx.fillRect(-26,-6,52,1.4);
+  ctx.fillStyle='#0f1622'; ctx.beginPath(); ctx.ellipse(-43,5,5,6,0,0,7); ctx.fill();   // сопло
+  ctx.fillStyle='#fff6c8'; ctx.shadowColor='#ffe27a'; ctx.shadowBlur=10*GLOW; ctx.beginPath(); ctx.arc(41,-2,3,0,7); ctx.fill(); ctx.shadowBlur=0;   // фара
+  ctx.strokeStyle='rgba(255,255,255,.8)'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(-34,17); for(let x=-34;x<=40;x+=6) ctx.lineTo(x,17+Math.sin(x*.2+clock*9)*1.6); ctx.stroke();   // пена у борта
   ctx.restore();
-  if(S.v>40&&!air&&Math.random()<.5) addP({x:cx-34,y:feet-4,vx:-S.v*.35-Math.random()*90,vy:-30-Math.random()*70,life:.45,max:.45,c:Math.random()<.5?'#e8fbff':'#9fdcff',s:3.2,g:.6});
+}
+function drawScooterRider(f,p){
+  const cx=p.x+p.w/2, deck=p.y+p.h-14, air=!(p.onGround||p.wasGround), pitch=scooterPitch(p);
+  const lx=22, ly=-30, bx=cx+Math.cos(pitch)*lx-Math.sin(pitch)*ly, by=deck+Math.sin(pitch)*lx+Math.cos(pitch)*ly;
+  p._lean=(p._lean||0)+(((air&&!p.duck)?1.0:.17)-(p._lean||0))*.22;
+  drawScooterHull(p,pitch);
+  ctx.save(); ctx.translate(bx,by); ctx.rotate(p._lean); ctx.translate(-bx,-by);
+  if(p.duck){ const h=p.h,y=p.y,sx=p.sx,sy=p.sy; p.y=y+h-H0[p.kind]; p.h=H0[p.kind]; p.sx=1.22; p.sy=HD[p.kind]/H0[p.kind]*1.08; ctx.save(); ctx.translate(0,-14); f(p); ctx.restore(); p.h=h; p.y=y; p.sx=sx; p.sy=sy; }
+  else { ctx.save(); ctx.translate(0,-14); f(p); ctx.restore(); }
+  const arm=p.kind==='bolt'?'#cfd8e6':'#ff8a3d', sh=p.duck?deck-14:deck-(p.kind==='bolt'?34:24);
+  ctx.lineCap='round'; ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.lineWidth=7; ctx.beginPath(); ctx.moveTo(cx+6,sh+1); ctx.lineTo(bx,by+1); ctx.stroke();
+  ctx.strokeStyle=arm; ctx.lineWidth=5; ctx.beginPath(); ctx.moveTo(cx+6,sh); ctx.lineTo(bx,by); ctx.stroke();
+  ctx.fillStyle='#10161f'; ctx.beginPath(); ctx.arc(bx,by,4.4,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+  // стойка руля рисуем поверх корпуса, под рукой
+  ctx.save(); ctx.translate(cx,deck); ctx.rotate(pitch); ctx.strokeStyle='#2a3648'; ctx.lineWidth=4; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(17,-6); ctx.lineTo(lx,ly+2); ctx.stroke(); ctx.restore();
+  if(S.v>40&&!air&&Math.random()<.18) addP({x:cx-44,y:p.y+p.h,vx:-S.v*.35-Math.random()*90,vy:-30-Math.random()*70,life:.45,max:.45,c:Math.random()<.5?"#e8fbff":"#9fdcff",s:2,g:.6});
 }
 
 /* ---------------- рисование ---------------- */
