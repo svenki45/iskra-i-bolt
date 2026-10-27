@@ -185,7 +185,7 @@ body.kbnav .overlay .primary:focus{transform:scale(1.04)}
 .hlist.ctl .hero h3 .padst{display:inline;font-family:var(--body);font-size:12px;letter-spacing:0}
 .padstyle{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center}
 .paddiag{display:flex;flex-direction:column;align-items:center;gap:4px;margin:2px 0 6px}
-.paddiag svg{width:100%;max-width:300px;height:auto}
+.paddiag svg{width:100%;max-width:300px;height:auto;transform:perspective(520px) rotateX(16deg);transform-origin:50% 70%;filter:drop-shadow(0 2px 0 #0b111d) drop-shadow(0 5px 0 #070b14) drop-shadow(0 12px 9px rgba(0,0,0,.55))}
 .plegend{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;font-size:12px;color:var(--muted)}
 .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:middle}
 .padopt{gap:4px}
@@ -635,11 +635,14 @@ body.touch #tutTip{top:auto;bottom:16%;font-size:14px}
   body.touch .ctl .hero .crow>span:first-child{text-align:left}
   body.touch .ctl .hero .crow>.padopt,body.touch .ctl .hero .crow>.muted{justify-self:stretch;min-height:36px}
   body.touch .ctl .hero .crow>[data-cap="kb"],body.touch .ctl .hero .crow:has(.muted),body.touch .ctl .crow.head{display:none!important}
-  body.touch .ctl .hero .crow{min-height:34px!important;grid-template-columns:1fr 150px!important}
-  body.touch .ctl .hero,body.touch .ctl .hero:has(>.paddiag){display:flex!important;flex-direction:column!important;padding:8px 12px!important;gap:4px!important}
-  body.touch .ctl .hero>*{grid-column:auto!important}
+  body.touch .ctl .hero .crow{min-height:34px!important;grid-template-columns:1fr 112px!important}
+  body.touch .ctl .hero,body.touch .ctl .hero:has(>.paddiag){display:grid!important;grid-template-columns:132px 1fr!important;column-gap:10px!important;row-gap:4px!important;align-content:start;padding:8px 12px!important}
+  body.touch .ctl .hero>*{grid-column:2!important}
+  body.touch .ctl .hero>h3{grid-column:1/-1!important}
+  body.touch .ctl .hero>.paddiag{grid-column:1!important;grid-row:2/span 6!important;align-self:center;display:flex!important}
+  body.touch .ctl .paddiag svg{max-width:132px!important}
+  body.touch .ctl .paddiag .padlegend,body.touch .ctl .paddiag>span{font-size:10px}
   body.touch .ctl .hero .crow:not(.head):not(:has(.muted)){display:grid!important}
-  body.touch .ctl .hero>.paddiag{display:none!important}
   body.touch .ctl h2{margin:0 0 2px!important;font-size:22px!important}
   body.touch .ctl .card,body.touch .card.ctl{padding-block:10px!important}
   body.touch .ctl .opt{background:linear-gradient(180deg,rgba(40,62,104,.95),rgba(14,28,56,.95))!important;border:1px solid rgba(156,195,255,.45)!important;box-shadow:0 3px 0 #060d1c,0 5px 8px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.18)!important;border-radius:9px!important}
