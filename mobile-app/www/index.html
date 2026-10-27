@@ -309,6 +309,8 @@ body.touch .tag{font-size:clamp(9px,1.2vw,12px);letter-spacing:.12em;margin-top:
 body.touch .press{display:none}
 body.touch .start.mode{padding:10px 18px;font-size:clamp(15px,min(3vw,6vh),26px)}
 body.touch #bOnline{padding:6px 14px;font-size:13px}
+body.touch .tbtns button{min-width:0!important;padding:6px 10px!important}
+body.touch .tbtns{gap:8px!important}
 #bOnline small{display:inline;margin-left:8px;font-weight:500;opacity:.75}
 body.touch.playing{touch-action:none} body.touch.tedit{touch-action:manipulation} #tedbar,#tedbar *{touch-action:manipulation}
 body.touch.playing .stage{justify-content:center}
@@ -772,7 +774,7 @@ function resWH(){ const m=(typeof settings!=='undefined'&&settings.res||'auto').
 function resBox(){ const r=resWH(); if(!r) return null; const w=Math.min(r.w,Math.round(r.h*16/9)); return {w,h:Math.round(w*9/16)}; }
 const SCREEN_MODES=[['full','Полный экран'],['window','В окне'],['borderless','Окно без рамки']];
 function applyScreen(){ if(!window.desk) return; const r=resWH()||{w:1600,h:900}; window.desk.setScreen({mode:settings.win||'full',w:r.w,h:r.h}); }
-let titleWide=0, TVW=VW;
+let titleWide=0, TVW=VW, custBack='menu';
 function fit(){
   const r=$('stage').getBoundingClientRect(); const tch=document.body.classList.contains('touch')&&document.body.classList.contains('playing'), TL=(typeof touchLayout!=='undefined')?touchLayout:{};
   const pm=document.body.classList.contains('padmode'), side=tch&&!TL.over&&!pm?touchSide()*2:0;
@@ -2860,12 +2862,12 @@ function setState(s){
     const fast=titleIntro.seen, word=(w,cls,d0,st)=>[...w].map((ch,i)=>`<span class="lt ${cls}" style="animation-delay:${(fast?d0*.25+i*.04:d0+i*st).toFixed(2)}s">${ch}</span>`).join('');
     overlay.innerHTML=`<div class="titlescr">
       <div class="logo" aria-label="Искра и Болт">${word('ИСКРА','s',0.3,0.2)}<span class="lt amp" style="animation-delay:${fast?.4:1.45}s">и</span>${word('БОЛТ','b',1.6,0.2)}<span class="beta">БЕТА</span><span class="b3dbadge" style="animation-delay:${titleIntro.seen?.5:2.75}s,${titleIntro.seen?.5:2.75}s"><i>3D</i></span></div>
-      <div class="startwrap"><div class="modes"><button class="${solo?'primary':'secondary'} start mode" id="bOne" type="button">1 ИГРОК<small>выбрать героя</small></button><button class="${solo?'secondary':'primary'} start mode" id="bTwo" type="button">2 ИГРОКА<small>${window.MOBILE_BUILD?"на одном телефоне":"за одной клавиатурой"}</small></button></div><div class="tbtns"><button class="secondary" id="bOnline" type="button">🌐 ОНЛАЙН<small>${window.MOBILE_BUILD?"подключиться к другу на ПК":"с другом по интернету"}</small></button><button class="secondary" id="tArena" type="button">⚔ АРЕНА<small>бои с ботами и онлайн</small></button><button class="secondary" id="tSet" type="button">⚙ НАСТРОЙКИ<small>звук, графика, управление</small></button>${window.MOBILE_BUILD?'':'<button class="secondary" id="tEditor" type="button">🛠 КОНСТРУКТОР<small>свои уровни</small></button><button class="secondary" id="tMyGame" type="button">📚 МОЯ ИГРА<small>из моих уровней</small></button>'}</div>
+      <div class="startwrap"><div class="modes"><button class="${solo?'primary':'secondary'} start mode" id="bOne" type="button">1 ИГРОК<small>выбрать героя</small></button><button class="${solo?'secondary':'primary'} start mode" id="bTwo" type="button">2 ИГРОКА<small>${window.MOBILE_BUILD?"на одном телефоне":"за одной клавиатурой"}</small></button></div><div class="tbtns"><button class="secondary" id="bOnline" type="button">🌐 ОНЛАЙН<small>${window.MOBILE_BUILD?"подключиться к другу на ПК":"с другом по интернету"}</small></button><button class="secondary" id="tArena" type="button">⚔ АРЕНА<small>бои с ботами и онлайн</small></button><button class="secondary" id="tLook" type="button">🎨 ВНЕШНИЙ ВИД<small>цвет, шапка, след</small></button><button class="secondary" id="tSet" type="button">⚙ НАСТРОЙКИ<small>звук, графика, управление</small></button>${window.MOBILE_BUILD?'':'<button class="secondary" id="tEditor" type="button">🛠 КОНСТРУКТОР<small>свои уровни</small></button><button class="secondary" id="tMyGame" type="button">📚 МОЯ ИГРА<small>из моих уровней</small></button>'}</div>
       </div>
     </div>`;
     for(const [id,k] of [['bOne','one'],['bTwo','two']]){ const el=$(id); el.addEventListener('mouseenter',()=>titleFocus=k); el.addEventListener('focus',()=>titleFocus=k); }
     $('bOne').onclick=()=>{ audioInit(); sfx('nav'); heroBack='title'; setState('hero'); };
-    if($('tArena')) $('tArena').onclick=()=>{ audioInit(); sfx('nav'); ARENA.open('title'); }; $('bOnline').onclick=()=>{ audioInit(); sfx('nav'); NET.status=''; netBack='title'; setState('net'); }; $('tSet').onclick=()=>{ audioInit(); sfx('nav'); setBack='title'; setCat=null; setState('settings'); }; if($('tEditor')){ $('tEditor').onclick=()=>{ audioInit(); sfx('nav'); ED.open(); }; $('tMyGame').onclick=()=>{ audioInit(); sfx('nav'); ED.open(); ED.game(); }; } $('bTwo').onclick=()=>{ setMode(false); goMenuFromTitle(); };
+    if($('tArena')) $('tArena').onclick=()=>{ audioInit(); sfx('nav'); ARENA.open('title'); }; $('bOnline').onclick=()=>{ audioInit(); sfx('nav'); NET.status=''; netBack='title'; setState('net'); }; $('tLook').onclick=()=>{ audioInit(); sfx('nav'); custBack='title'; setState('custom'); }; $('tSet').onclick=()=>{ audioInit(); sfx('nav'); setBack='title'; setCat=null; setState('settings'); }; if($('tEditor')){ $('tEditor').onclick=()=>{ audioInit(); sfx('nav'); ED.open(); }; $('tMyGame').onclick=()=>{ audioInit(); sfx('nav'); ED.open(); ED.game(); }; } $('bTwo').onclick=()=>{ setMode(false); goMenuFromTitle(); };
     if(window.ibSys&&ibSys.quit){ const tb=overlay.querySelector('.tbtns'); if(tb){ tb.insertAdjacentHTML('beforeend','<button class="secondary" id="tQuit" type="button">⏻ ВЫХОД<small>закрыть игру</small></button>'); $('tQuit').onclick=()=>ibSys.quit(); } }
     setTimeout(()=>{ try{ $(solo?'bOne':'bTwo').focus({preventScroll:true}); }catch(e){} },0);
   } else if(s==='menu'){
@@ -2886,7 +2888,7 @@ function setState(s){
         ${cheatMenu?`<button class="secondary" id="bCheats" type="button">Читы<small>${anyCheat()?'включены':'выключены'}</small></button>`:''}
       </div>
     </div>`;
-    $('bShop').onclick=()=>setState('custom'); $('bMode').onclick=()=>{ modesBack='menu'; setState('modes'); }; $('bShopM').onclick=()=>{ shopFrom='menu'; setState('shop'); }; $('bSet').onclick=()=>{ setBack='menu'; setCat=null; setState('settings'); }; $('bAch').onclick=()=>setState('ach');
+    $('bShop').onclick=()=>{ custBack='menu'; setState('custom'); }; $('bMode').onclick=()=>{ modesBack='menu'; setState('modes'); }; $('bShopM').onclick=()=>{ shopFrom='menu'; setState('shop'); }; $('bSet').onclick=()=>{ setBack='menu'; setCat=null; setState('settings'); }; $('bAch').onclick=()=>setState('ach');
     $('bHelp').onclick=()=>{ helpBack='menu'; setState('help'); };
     // «Онлайн» и «Арена» теперь в «Режим игры»
     if(cheatMenu) $('bCheats').onclick=()=>setState('cheats');
@@ -3103,7 +3105,7 @@ function setState(s){
     overlay.querySelectorAll('[data-cp]').forEach(inp=>{ const k=inp.dataset.cp;
       inp.oninput=()=>{ looks[k].color=inp.value; looks[k].skin='custom'; store.set('iskra-bolt-looks',looks); overlay.querySelectorAll(`[data-kind="${k}"][data-field="skin"]`).forEach(x=>x.classList.remove('on')); inp.parentElement.classList.add('on'); };
       inp.onchange=()=>{ unlock('stylist'); }; });
-    $('bBack').onclick=()=>setState('menu');
+    $('bBack').onclick=()=>{ const b=custBack||'menu'; custBack='menu'; setState(b); };
   } else if(s==='settings'){
     const sl=(id,label,val)=>`<div class="srow"><label for="${id}">${label}</label><input type="range" id="${id}" min="0" max="100" value="${Math.round(val*100)}"><output id="${id}O">${Math.round(val*100)}%</output></div>`;
     const tg=(id,label,hint)=>`<label class="tog"><input type="checkbox" id="${id}" ${settings[id]?'checked':''}><span><b>${label}</b><small>${hint}</small></span></label>`;
