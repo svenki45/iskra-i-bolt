@@ -1132,7 +1132,28 @@ function tryPause(who){ // who: 0/1 player, null = anyone
   if(pauseOwner==null||who===pauseOwner||solo){ pauseOwner=null; setState('play'); return; }
   sfx('off'); const n=document.getElementById('pauseNote'); if(n){ n.textContent='Пауза у игрока «'+PNAME[pauseOwner]+'»: снять её может только '+PNAME[pauseOwner]+' ('+PKEY[pauseOwner]+' или Start на своём геймпаде).'; n.classList.remove('shake'); void n.offsetWidth; n.classList.add('shake'); }
 }
+
+/* ===== адаптивные триггеры DualSense (WebHID, только ПК) ===== */
+const DS={dev:null,bt:false,seq:0,last:'',
+  async connect(ask){ try{ if(!navigator.hid) return false;
+      let d=(await navigator.hid.getDevices()).find(x=>x.vendorId===0x054c&&[0x0ce6,0x0df2].includes(x.productId));
+      if(!d&&ask){ const r=await navigator.hid.requestDevice({filters:[{vendorId:0x054c,productId:0x0ce6},{vendorId:0x054c,productId:0x0df2}]}); d=r[0]; }
+      if(!d) return false; if(!d.opened) await d.open(); this.dev=d; this.bt=!(d.collections||[]).some(c=>(c.outputReports||[]).some(r=>r.reportId===2)); this.last=''; return true; }catch(e){ this.dev=null; return false; } },
+  crc(buf){ let c=0xFFFFFFFF; for(const b of buf){ c^=b; for(let i=0;i<8;i++) c=(c>>>1)^(0xEDB88320&-(c&1)); } return (~c)>>>0; },
+  send(L,R){ const d=this.dev; if(!d||!d.opened) return; const key=L+'|'+R; if(key===this.last) return; this.last=key;
+    const common=new Uint8Array(47); common[0]=0x0C; // valid_flag0: правый (0x04) и левый (0x08) триггер
+    const eff=(o,on)=>{ if(on){ common[o]=0x01; common[o+1]=0x60; common[o+2]=0xA0; } else common[o]=0x05; };
+    eff(10,R); eff(21,L);
+    try{ if(!this.bt){ d.sendReport(0x02,common); }
+      else { const buf=new Uint8Array(78); buf[0]=0x31; buf[1]=(this.seq++&15)<<4; buf[2]=0x10; buf.set(common,3); const crc=this.crc(new Uint8Array([0xA2,...buf.slice(0,74)])); buf[74]=crc&255; buf[75]=(crc>>>8)&255; buf[76]=(crc>>>16)&255; buf[77]=(crc>>>24)&255; d.sendReport(0x31,buf.slice(1)); }
+    }catch(e){ this.dev=null; } },
+  tick(){ if(!navigator.hid) return; if(!this.dev){ if(!this.tried){ this.tried=true; this.connect(false); } return; }
+    const on=settings.adaptive!==false&&state==='play'; let L=false,R=false;
+    if(on) for(const k of ['spark','bolt']){ const f=binds[k].pad.fire; if(f===6) L=true; if(f===7) R=true; }
+    this.send(L,R); } };
+if(navigator.hid){ navigator.hid.addEventListener('disconnect',()=>{ DS.dev=null; DS.tried=false; }); navigator.hid.addEventListener('connect',()=>{ DS.tried=false; }); }
 function pollPadNav(dt){
+  try{ DS.tick(); }catch(e){}
   const list=pads(); if(!list.length) return;
   let dir=null, A=false, B=false, S=false;
   const navList=(state==='pause'&&pauseOwner!=null&&!solo)?[padFor(pauseOwner)].filter(Boolean):list;
@@ -1732,7 +1753,7 @@ const HATS=[{id:'none',n:'Без шапки'},{id:'cap',n:'Кепка'},{id:'bow
 const LIMBS=[{id:'on',n:'Ручки и ножки'},{id:'off',n:'Без них'}];
 const TRAILS=[{id:'none',n:'Нет'},{id:'sparkle',n:'Блёстки'},{id:'hearts',n:'Сердечки'},{id:'stars',n:'Звёзды'},{id:'rainbow',n:'Радуга'},{id:'notes',n:'Ноты'},{id:'smoke',n:'Дымок'}];
 const EYES=[{id:'normal',n:'Обычные'},{id:'happy',n:'Довольные'},{id:'angry',n:'Сердитые'},{id:'sleepy',n:'Сонные'},{id:'stars',n:'Звёздочки'}];
-const DEF_SETTINGS={res:'auto',win:'full',r3d:true,padStyle:'auto',master:0.8,music:0.6,sfx:0.8,mute:false,quality:'high',particles:1,shake:true,glow:true,ambient:true,vignette:true,trails:true,flash:true,perf:false,hints:true};
+const DEF_SETTINGS={res:'auto',win:'full',r3d:true,padStyle:'auto',master:0.8,music:0.6,sfx:0.8,mute:false,quality:'high',particles:1,shake:true,glow:true,ambient:true,vignette:true,trails:true,flash:true,perf:false,hints:true,adaptive:true};
 const PRESETS={low:{particles:0.35,glow:false,ambient:false,vignette:false,trails:false},medium:{particles:0.7,glow:true,ambient:true,vignette:true,trails:false},high:{particles:1,glow:true,ambient:true,vignette:true,trails:true}};
 let demo=false;
 const store={get(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:JSON.parse(v); }catch(e){ return d; } }, set(k,v){ if(demo) return; try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }};
@@ -3102,7 +3123,7 @@ function setState(s){
           <div class="srow2"><span class="lab">Разрешение</span><select class="optsel" id="selRes" aria-label="Разрешение">${RES_LIST.map(([k,n])=>`<option value="${k}" ${(settings.res||'auto')===k?'selected':''}>${n}</option>`).join('')}</select></div>
           ${window.desk?`<div class="srow2"><span class="lab">Режим экрана</span><select class="optsel" id="selWin" aria-label="Режим экрана">${SCREEN_MODES.map(([k,n])=>`<option value="${k}" ${(settings.win||'full')===k?'selected':''}>${n}</option>`).join('')}</select></div><p class="optnote">«Окно без рамки» растягивает игру на весь экран без рамки окна. При переходе в этот режим и обратно окно игры открывается заново.</p>`:''}
           ${sl('particles','Частицы',settings.particles)}
-          <div class="tgrid">${tg('glow','Свечение','Свет от Искры, кнопок, выхода')}${tg('ambient','Фон мастерской','Шестерни и пыль на заднем плане')}${tg('trails','Следы','Хвосты за пулями и пыль из-под ног')}${tg('vignette','Виньетка','Затемнение по краям экрана')}${tg('shake','Тряска экрана','При ударах и взрывах')}${tg('flash','Вспышки экрана','При уроне и победе над боссом')}${tg('perf','Счётчик FPS и сети','FPS, фризы, нагрузка, пинг и потери пакетов (F3)')}</div></div>
+          <div class="tgrid">${tg('glow','Свечение','Свет от Искры, кнопок, выхода')}${tg('ambient','Фон мастерской','Шестерни и пыль на заднем плане')}${(navigator.hid?tg('adaptive','Адаптивные триггеры','DualSense (PS5) на ПК: сопротивление на спуске, если на него назначен огонь'):'')}${tg('trails','Следы','Хвосты за пулями и пыль из-под ног')}${tg('vignette','Виньетка','Затемнение по краям экрана')}${tg('shake','Тряска экрана','При ударах и взрывах')}${tg('flash','Вспышки экрана','При уроне и победе над боссом')}${tg('perf','Счётчик FPS и сети','FPS, фризы, нагрузка, пинг и потери пакетов (F3)')}</div></div>
       <div class="btns"><button class="primary" id="bCatBack" type="button">Назад · Esc</button></div>`;
     } else if(setCat==='lang'){
       body=`<div class="mgrid lgrid">${LANGS.map(([k,n])=>`<button type="button" class="${LANG===k?'primary':'secondary'}" data-lang="${k}">${n}</button>`).join('')}</div>
@@ -3121,7 +3142,7 @@ function setState(s){
     overlay.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{ sfx('nav'); setCat=b.dataset.cat; reSet(); });
     if($('bCatBack')) $('bCatBack').onclick=()=>{ setCat=null; reSet(); };
     for(const id of ['master','music','sfx','particles']){ const el=$(id); if(!el) continue; el.oninput=()=>{ settings[id]=el.value/100; $(id+'O').textContent=el.value+'%'; if(id==='particles') settings.quality='custom'; saveSettings(); applyVolumes(); if(id==='sfx'||id==='master') sfx('gear'); }; }
-    for(const id of ['mute','glow','ambient','trails','vignette','shake','flash','perf','hints']){ const el=$(id); if(!el) continue; el.onchange=()=>{ settings[id]=el.checked; if(!['mute','shake','flash','perf','hints'].includes(id)) settings.quality='custom'; saveSettings(); applyVolumes(); perfShow(); reSet(); }; }
+    for(const id of ['mute','glow','ambient','trails','vignette','shake','flash','perf','hints','adaptive']){ const el=$(id); if(!el) continue; el.onchange=()=>{ settings[id]=el.checked; if(!['mute','shake','flash','perf','hints','adaptive'].includes(id)) settings.quality='custom'; saveSettings(); applyVolumes(); perfShow(); reSet(); }; }
     overlay.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{ settings.quality=b.dataset.q; Object.assign(settings,PRESETS[b.dataset.q]); saveSettings(); fit(); reSet(); });
     if($('selRes')) $('selRes').onchange=e=>{ settings.res=e.target.value; saveSettings(); applyScreen(); fit(); sfx('nav'); };
     if($('selWin')) $('selWin').onchange=e=>{ settings.win=e.target.value; saveSettings(); applyScreen(); setTimeout(fit,400); sfx('nav'); };
@@ -3155,13 +3176,14 @@ function setState(s){
       <div class="crow mapctl" style="max-width:640px;margin:10px auto 0"><span>🗺 Карта уровня (держать)</span><button type="button" class="opt ${capture&&capture.kind==='map'&&capture.type==='kb'?'on':''}" data-cap="kb" data-kind="map" data-act="map">${capture&&capture.kind==='map'&&capture.type==='kb'?'Нажмите клавишу…':kbd(settings.mapKey||'Tab')}</button><button type="button" class="opt padopt ${capture&&capture.kind==='map'&&capture.type==='pad'?'on':''}" data-cap="pad" data-kind="map" data-act="map">${capture&&capture.kind==='map'&&capture.type==='pad'?'Выберите…':padGlyph(glyphType(0),settings.mapPad??8)}</button></div>
       ${capture&&capture.kind==='map'&&capture.type==='pad'?`<div class="palette"><span class="padst">Нажмите кнопку на геймпаде или выберите здесь:</span><div class="pgrid">${[3,2,1,0,4,5,6,7,8,9,10,11].map(i=>`<button type="button" class="opt pick1 ${(settings.mapPad??8)===i?'on':''}" data-padpick="${i}">${padGlyph(glyphType(0),i)}</button>`).join('')}</div></div>`:''}
       <p style="font-size:13px" id="ctlNote">${capture&&capture.msg?capture.msg:'Нажмите на клавишу или кнопку геймпада в таблице, затем новую. Если она уже занята, они поменяются местами. Esc отменяет.'}</p>
-      <div class="btns"><button class="secondary" id="bSwap" type="button">Поменять геймпады местами</button><button class="secondary" id="bReset" type="button">Сбросить</button><button class="primary" id="bBack" type="button">Готово</button></div></div>`;
+      <div class="btns"><button class="secondary" id="bSwap" type="button">Поменять геймпады местами</button>${navigator.hid?`<button class="secondary" id="bAdp" type="button">${DS.dev?'🎮 Триггеры подключены':'🎮 Подключить триггеры DualSense'}</button>`:''}<button class="secondary" id="bReset" type="button">Сбросить</button><button class="primary" id="bBack" type="button">Готово</button></div></div>`;
     overlay.querySelectorAll('[data-cap]').forEach(b=>b.onclick=()=>{
       capture={kind:b.dataset.kind,action:b.dataset.act,type:b.dataset.cap,t0:performance.now()}; prevCapBtns=null; setState('controls');
       if(capture&&capture.type==='pad'){ const f=overlay.querySelector('.pick1.on')||overlay.querySelector('.pick1'); if(f) setTimeout(()=>f.focus(),0); }
     });
     overlay.querySelectorAll('[data-padpick]').forEach(b=>b.onclick=()=>{ if(!capture) return; assignPad(capture.kind,capture.action,+b.dataset.padpick); capture=null; sfx('pick'); setState('controls'); });
     overlay.querySelectorAll('[data-pstyle]').forEach(b=>b.onclick=()=>{ settings.padStyle=b.dataset.pstyle; saveSettings(); legendSig=''; renderLegend(); setState('controls'); });
+    if($('bAdp')) $('bAdp').onclick=async()=>{ await DS.connect(true); setState('controls'); };
     $('bSwap').onclick=()=>{ swapPads=!swapPads; store.set('iskra-bolt-swappads',swapPads); renderLegend(); setState('controls'); };
     $('bReset').onclick=()=>{ delete settings.mapKey; delete settings.mapPad; saveSettings(); binds=clone(DEFAULT_BINDS); swapPads=false; store.set('iskra-bolt-swappads',false); saveBinds(); capture=null; renderLegend(); setState('controls'); };
     $('bBack').onclick=()=>{ capture=null; ctlDone(); };
