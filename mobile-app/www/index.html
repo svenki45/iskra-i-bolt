@@ -751,18 +751,21 @@ function resWH(){ const m=(typeof settings!=='undefined'&&settings.res||'auto').
 function resBox(){ const r=resWH(); if(!r) return null; const w=Math.min(r.w,Math.round(r.h*16/9)); return {w,h:Math.round(w*9/16)}; }
 const SCREEN_MODES=[['full','Полный экран'],['window','В окне'],['borderless','Окно без рамки']];
 function applyScreen(){ if(!window.desk) return; const r=resWH()||{w:1600,h:900}; window.desk.setScreen({mode:settings.win||'full',w:r.w,h:r.h}); }
+let titleWide=0;
 function fit(){
   const r=$('stage').getBoundingClientRect(); const tch=document.body.classList.contains('touch')&&document.body.classList.contains('playing'), TL=(typeof touchLayout!=='undefined')?touchLayout:{};
   const pm=document.body.classList.contains('padmode'), side=tch&&!TL.over&&!pm?touchSide()*2:0;
   const s=Math.max(0.1,Math.min((r.width-side)/VW, r.height/VH))*(tch&&!pm?(TL.cam?Math.min(1,TL.field||1):(TL.field||1)):1);
-  const w=Math.floor(VW*s), h=Math.floor(VH*s);
+  let w=Math.floor(VW*s), h=Math.floor(VH*s);
+  titleWide=0;
+  if(document.body.classList.contains('touch')&&document.body.classList.contains('titling')&&r.width>0&&r.height>0){ const s2=r.height/VH; if(r.width/s2>VW+4){ titleWide=(r.width/s2-VW)/2; w=Math.floor(r.width); h=Math.floor(r.height); } }
   $('screen').style.width=w+'px'; $('screen').style.height=h+'px';
   { const OX=tch&&!pm?(TL.ox||0):0, OY=tch&&!pm?(TL.oy||0):0; $('screen').style.transform=(OX||OY)?`translate(${OX}px,${OY}px)`:''; }
   const R=(typeof resBox==='function')?resBox():null;
   if(R){ cv.width=R.w; cv.height=R.h; }
   else { const dpr=(typeof settings!=='undefined'&&settings.quality==='low')?1:Math.min(window.MOBILE_BUILD?1.5:2,window.devicePixelRatio||1);
     cv.width=Math.max(1,Math.round(w*dpr)); cv.height=Math.max(1,Math.round(h*dpr)); }
-  scale=cv.width/VW;
+  scale=titleWide?cv.height/VH:cv.width/VW;
 }
 addEventListener('resize',fit);
 // iOS (особенно с экрана Домой) отдаёт верный размер окна не сразу после запуска и поворота — пересчитываем несколько раз
@@ -4479,7 +4482,7 @@ function draw(){
   if(LIVE&&state!=='title'&&settings.ambient) for(let v=0;v*VH<WH;v++) for(let s=0;s*VW<WW;s++){ ctx.save(); ctx.translate(s*VW,v*VH); drawLive(); ctx.restore(); }
   if(state!=='title') ctx.drawImage(wallLayer,0,0,WW,WH); }
   g3=r3ok&&!!R3D.ext;   // true — вода, лава, двери, плиты, выход, флажки и предметы рисуются настоящими 3D-объектами, 2D-версии пропускаем
-  if(state==='title'){ drawTitleScene(); return; }
+  if(state==='title'){ if(titleWide){ ctx.save(); ctx.translate(titleWide,0); drawTitleScene(); ctx.restore(); } else drawTitleScene(); return; }
   if(state==='ending'){ drawEnding(); return; }
   if(state==='prologue'){ drawPrologue(); return; }
   if(!r3ok){ drawDecor(false); if(settings.ambient) drawAmbient(); }   // в 3D эти «обои» рисуются на отдельной плоскости позади блоков (R3D.fxUpdate)
@@ -4629,7 +4632,7 @@ function drawBullet(b){
 }
 let titleLast=0;
 let titleFocus=null, titleMix=[0,0], titleMouse=null, titleClick=null;
-function titleXY(e){ const r=cv.getBoundingClientRect(); if(!r.width) return null; return {x:(e.clientX-r.left)/r.width*VW,y:(e.clientY-r.top)/r.height*VH}; }
+function titleXY(e){ const r=cv.getBoundingClientRect(); if(!r.width) return null; return {x:(e.clientX-r.left)/r.width*(VW+titleWide*2)-titleWide,y:(e.clientY-r.top)/r.height*VH}; }
 addEventListener('pointermove',e=>{ if(state==='title') titleMouse=titleXY(e); });
 addEventListener('pointerdown',e=>{ if(state==='prologue'&&proT>1) proT=Math.max(proT,PRO_LEN); if(state==='ending'&&endT>1.5) endT=Math.max(endT,END_LEN); });
 addEventListener('pointerdown',e=>{ if(state==='title'&&!(e.target.closest&&e.target.closest('button'))) titleClick=titleXY(e); });
@@ -4924,7 +4927,7 @@ function drawTitleScene(){
   titleMix=titleMix.map((v,i)=>v+(tgt[i]-v)*0.06);
   const [m1,m2]=titleMix;
   const bg=ctx.createLinearGradient(0,0,0,VH); bg.addColorStop(0,`rgb(${10+28*m1|0},${12+4*m2|0},${30-8*m1+6*m2|0})`); bg.addColorStop(1,`rgb(${6+14*m1|0},${8+10*m2|0},${18|0})`);
-  ctx.fillStyle=bg; ctx.fillRect(0,0,VW,VH);
+  ctx.fillStyle=bg; ctx.fillRect(-titleWide,0,VW+titleWide*2,VH);
   // light rays from the logo
   ctx.save(); ctx.translate(VW/2,VH*0.3); ctx.globalCompositeOperation='lighter';
   for(let i=0;i<12;i++){ const a=i/12*Math.PI*2+clock*.05; ctx.rotate(Math.PI*2/12); ctx.fillStyle=`rgba(${m2>m1?160:255},${180+40*m2|0},${m2>m1?220:120},${.025+.02*Math.max(m1,m2)})`; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(900,-60); ctx.lineTo(900,60); ctx.closePath(); ctx.fill(); }
@@ -4934,12 +4937,12 @@ function drawTitleScene(){
   glow(VW*0.22+Math.sin(clock*.4)*40,VH*0.55,420,`rgba(255,120,40,${.10+.22*m1+.12*m2})`);
   glow(VW*0.78+Math.cos(clock*.35)*40,VH*0.5,420,`rgba(70,200,190,${.10+.06*m1+.22*m2})`);
   // perspective floor grid
-  ctx.save(); const hz=(VH*TFY); ctx.beginPath(); ctx.rect(0,hz,VW,VH-hz); ctx.clip();
+  ctx.save(); const hz=(VH*TFY); ctx.beginPath(); ctx.rect(-titleWide,hz,VW+titleWide*2,VH-hz); ctx.clip();
   const gc=m2>m1?'120,220,210':'255,170,90';
   ctx.strokeStyle=`rgba(${gc},${.10+.12*Math.max(m1,m2)})`; ctx.lineWidth=1.2;
   for(let i=-16;i<=16;i++){ ctx.beginPath(); ctx.moveTo(VW/2+i*14,hz); ctx.lineTo(VW/2+i*160,VH); ctx.stroke(); }
   const off=(clock*0.35)%1;
-  for(let k=0;k<10;k++){ const t=(k+off)/10, y=hz+(VH-hz)*t*t; ctx.globalAlpha=t; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(VW,y); ctx.stroke(); }
+  for(let k=0;k<10;k++){ const t=(k+off)/10, y=hz+(VH-hz)*t*t; ctx.globalAlpha=t; ctx.beginPath(); ctx.moveTo(-titleWide,y); ctx.lineTo(VW+titleWide,y); ctx.stroke(); }
   ctx.restore();
   // embers (1 player) / twin sparks (2 players)
   for(let i=0;i<26;i++){ const ph=(clock*.12+i*.137)%1, x=(i*97.3%VW)+Math.sin(clock+i)*12, y=VH*(1-ph);
@@ -5269,7 +5272,7 @@ setInterval(()=>{
   pauseBtn.hidden=!(state==='play'&&!touchUI.on&&!intro);
   if(!touchUI.el) buildTouch(true);
   const playing=state==='play'||state==='dying'||(state==='arena'&&typeof ARENA!=='undefined'&&ARENA.fighting);
-  document.body.classList.toggle('playing',playing||state==='touchedit'); document.body.classList.toggle('tedit',state==='touchedit'); document.body.classList.toggle('titling',state==='title'); { const pl2=playing||state==='touchedit'; if(touchUI.lastPlay!==pl2){ touchUI.lastPlay=pl2; try{ fit(); }catch(e){} } }
+  document.body.classList.toggle('playing',playing||state==='touchedit'); document.body.classList.toggle('tedit',state==='touchedit'); { const tt=state==='title'; if(document.body.classList.contains('titling')!==tt){ document.body.classList.toggle('titling',tt); try{ fit(); }catch(e){} } } { const pl2=playing||state==='touchedit'; if(touchUI.lastPlay!==pl2){ touchUI.lastPlay=pl2; try{ fit(); }catch(e){} } }
   document.body.classList.toggle('portrait',innerHeight>innerWidth);
   document.body.classList.toggle('inarena',state==='arena'||(state==='touchedit'&&editBack==='arena')||(state==='controls'&&ctlBack==='arena')||((state==='settings'||state==='report')&&setBack==='arena'));
   if(touchUI.on){ buildTouch(false); }
