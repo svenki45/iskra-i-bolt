@@ -315,12 +315,12 @@ body.touch.playing .stage{justify-content:center}
 #touch .tb.sel{border-color:#ffd166!important;box-shadow:0 0 0 3px rgba(255,209,102,.5)}
 body.tedit #touch .tb{animation:wob 1.2s ease-in-out infinite}
 @keyframes wob{50%{transform:rotate(2deg)}}
-#tedbar{position:fixed;top:max(6px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:60;background:rgba(8,18,38,.94);border:1px solid rgba(255,209,102,.5);border-radius:14px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;align-items:center;font:500 12px var(--body);color:#eaf2ff;max-width:92vw}
+#tedbar{position:fixed;top:max(6px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:60;background:rgba(8,18,38,.8);border:1px solid rgba(255,209,102,.5);border-radius:14px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;align-items:center;font:500 12px var(--body);color:#eaf2ff;max-width:92vw}
 #tedbar[hidden]{display:none}
 #tedbar div{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;align-items:center}
 #tedbar button{font:600 12px var(--body);padding:6px 10px;border-radius:9px;border:1px solid rgba(190,215,255,.4);background:rgba(20,36,66,.9);color:#eaf2ff}
 #tedbar button.on,#tedbar button.ok{background:#e7b54a;color:#0b1830;border-color:#e7b54a}
-#tedbar .v{min-width:3em;text-align:center;font-weight:700}
+#tedbar .v{min-width:3em;text-align:center;font-weight:700} #tedbar .tsl{flex-wrap:nowrap;gap:8px} #tedbar .tsl input{width:min(46vw,260px);accent-color:#e7b54a} #tedbar .tsl span:first-child{min-width:5.5em;text-align:right}
 .card.story h2{margin:0}.stxt{max-width:44ch;font-size:17px;line-height:1.5}
 .sheroes{display:flex;gap:10px;justify-content:center}.sheroes canvas{width:110px;height:110px}
 table.rep{width:100%;border-collapse:collapse;font-size:13px}table.rep th,table.rep td{padding:5px 8px;border-bottom:1px solid rgba(156,195,255,.15);text-align:left}
@@ -2902,15 +2902,16 @@ function setState(s){
     overlay.hidden=true; let tb=document.getElementById('tedbar'); if(!tb){ tb=document.createElement('div'); tb.id='tedbar'; document.body.appendChild(tb); }
     const pct=Math.round((touchLayout.field||1)*100);
     tb.innerHTML=`<b>Настройка</b><span>Тяните кнопки пальцем. Выбранная — жёлтая.</span>
-      <div><button data-t="s-">Кнопка −</button><button data-t="s+">Кнопка +</button></div>
-      <div><button data-t="f-">Поле −</button><span class="v">${pct}%</span><button data-t="f+">Поле +</button><button data-t="ov" class="${touchLayout.over?'on':''}">Кнопки поверх поля</button><button data-t="cam" class="${touchLayout.cam?'on':''}">Камера за героем</button></div>
+      <div class="tsl"><span>Кнопка</span><input type="range" id="tbs" min="50" max="220" step="2" value="${Math.round(((touchLayout.b&&editSel&&touchLayout.b[editSel]&&touchLayout.b[editSel].s)||1)*100)}"><span class="v" id="tbv">${Math.round(((touchLayout.b&&editSel&&touchLayout.b[editSel]&&touchLayout.b[editSel].s)||1)*100)}%</span></div>
+      <div class="tsl"><span>Экран игры</span><input type="range" id="tfs" min="60" max="160" step="1" value="${pct}"><span class="v" id="tfv">${pct}%</span></div>
+      <div><button data-t="ov" class="${touchLayout.over?'on':''}">Кнопки поверх поля</button><button data-t="cam" class="${touchLayout.cam?'on':''}">Камера за героем</button></div>
       <div><button data-t="rs">Сбросить</button><button data-t="ok" class="ok">Готово</button></div>`;
-    tb.hidden=false;
+    tb.hidden=false; document.body.classList.add('playing','tedit');
+    { const tfs=$('tfs'), tbs=$('tbs');
+      tfs.oninput=()=>{ touchLayout.field=tfs.value/100; $('tfv').textContent=tfs.value+'%'; saveTouchLayout(); };
+      tbs.oninput=()=>{ if(!editSel){ tbs.value=100; $('tbv').textContent='100%'; toastQ.push({small:'Кнопки',title:'Сначала нажмите на кнопку',icon:'first'}); showToast(); return; } editSizeTo(tbs.value/100); $('tbv').textContent=tbs.value+'%'; } }
     tb.querySelectorAll('[data-t]').forEach(x=>x.onclick=()=>{ const t=x.dataset.t;
-      if(t==='s-') editSize(-.15); else if(t==='s+') editSize(.15);
-      else if(t==='f-'){ touchLayout.field=Math.max(.6,(touchLayout.field||1)-.05); saveTouchLayout(); setState('touchedit'); }
-      else if(t==='f+'){ touchLayout.field=Math.min(1.6,(touchLayout.field||1)+.05); saveTouchLayout(); setState('touchedit'); }
-      else if(t==='cam'){ touchLayout.cam=!touchLayout.cam; saveTouchLayout(); setState('touchedit'); }
+      if(t==='cam'){ touchLayout.cam=!touchLayout.cam; saveTouchLayout(); setState('touchedit'); }
       else if(t==='ov'){ touchLayout.over=!touchLayout.over; saveTouchLayout(); setState('touchedit'); }
       else if(t==='rs'){ touchLayout={b:{},field:1,over:false}; editSel=null; saveTouchLayout(); setState('touchedit'); }
       else if(t==='ok'){ tb.hidden=true; editSel=null; buildTouch(true); if(editRet){ const r=editRet; editRet=null; editBack='pause'; setState(r); } else setState(editBack); } });
@@ -5170,7 +5171,7 @@ let editSel=null, editBack='pause';
 function wireEdit(el){
   el.querySelectorAll('[data-id]').forEach(b=>{
     if(b.dataset.id===editSel) b.classList.add('sel');
-    b.addEventListener('pointerdown',e=>{ e.preventDefault(); editSel=b.dataset.id; el.querySelectorAll('.sel').forEach(x=>x.classList.remove('sel')); b.classList.add('sel');
+    b.addEventListener('pointerdown',e=>{ e.preventDefault(); editSel=b.dataset.id; el.querySelectorAll('.sel').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); { const s=Math.round((((touchLayout.b||{})[editSel]||{}).s||1)*100), r=document.getElementById('tbs'); if(r){ r.value=s; document.getElementById('tbv').textContent=s+'%'; } }
       const r=b.getBoundingClientRect(), ox=e.clientX-r.left, oy=e.clientY-r.top; try{ b.setPointerCapture(e.pointerId); }catch(_){}
       const mv=ev=>{ b.style.left=(ev.clientX-ox)+'px'; b.style.top=(ev.clientY-oy)+'px'; };
       const up=()=>{ b.removeEventListener('pointermove',mv); b.removeEventListener('pointerup',up); const q=b.getBoundingClientRect(), o=touchLayout.b[b.dataset.id]||{s:1};
@@ -5181,6 +5182,8 @@ function wireEdit(el){
 function editSize(d){ if(!editSel){ toastQ.push({small:'Кнопки',title:'Сначала нажмите на кнопку',icon:'first'}); showToast(); return; }
   const b=touchUI.el.querySelector(`[data-id="${editSel}"]`); if(!b) return; const q=b.getBoundingClientRect(), o=touchLayout.b[editSel]||{s:1};
   o.x=(q.left+q.width/2)/innerWidth; o.y=(q.top+q.height/2)/innerHeight; o.s=Math.max(.5,Math.min(2.2,(o.s||1)+d)); touchLayout.b[editSel]=o; saveTouchLayout(); }
+function editSizeTo(v){ const b=touchUI.el.querySelector(`[data-id="${editSel}"]`); if(!b) return; const q=b.getBoundingClientRect(), o=touchLayout.b[editSel]||{s:1};
+  o.x=(q.left+q.width/2)/innerWidth; o.y=(q.top+q.height/2)/innerHeight; o.s=Math.max(.5,Math.min(2.2,v)); touchLayout.b[editSel]=o; saveTouchLayout(); }
 const tHeld=new Map();
 function tRelease(pid){ const h=tHeld.get(pid); if(!h) return; tHeld.delete(pid); if(![...tHeld.values()].some(o=>o.c===h.c)) down.delete(h.c); h.b.classList.remove('on'); }
 function tReleaseAll(){ for(const pid of [...tHeld.keys()]) tRelease(pid); }
@@ -5240,7 +5243,7 @@ setInterval(()=>{
   pauseBtn.hidden=!(state==='play'&&!touchUI.on&&!intro);
   if(!touchUI.el) buildTouch(true);
   const playing=state==='play'||state==='dying'||(state==='arena'&&typeof ARENA!=='undefined'&&ARENA.fighting);
-  document.body.classList.toggle('playing',playing||state==='touchedit'); document.body.classList.toggle('tedit',state==='touchedit'); document.body.classList.toggle('titling',state==='title'); if(touchUI.lastPlay!==playing){ touchUI.lastPlay=playing; try{ fit(); }catch(e){} }
+  document.body.classList.toggle('playing',playing||state==='touchedit'); document.body.classList.toggle('tedit',state==='touchedit'); document.body.classList.toggle('titling',state==='title'); { const pl2=playing||state==='touchedit'; if(touchUI.lastPlay!==pl2){ touchUI.lastPlay=pl2; try{ fit(); }catch(e){} } }
   document.body.classList.toggle('portrait',innerHeight>innerWidth);
   document.body.classList.toggle('inarena',state==='arena'||(state==='touchedit'&&editBack==='arena')||(state==='controls'&&ctlBack==='arena')||((state==='settings'||state==='report')&&setBack==='arena'));
   if(touchUI.on){ buildTouch(false); }
