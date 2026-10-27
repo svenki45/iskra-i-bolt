@@ -3527,8 +3527,8 @@ function toggleLever(){ const nx=!leverOn, ch=nx?']':'[';
 function drawPz(){
   const TM=tilesOf(), r3a=R3D.active(), t=clock, each=(ch,f)=>{ const a=TM[ch]; if(a) for(let i=0;i<a.length;i+=2){ const x=a[i], y=a[i+1]; if(grid[y][x]===ch) f(x*T,y*T,x,y); } };
   const PC={a:'#ff6b6b',b:'#7fe08a',c:'#6aa8ff'};
-  for(const z of pzList) if(z.type==='order'){ for(const ch of 'abc'){ const [x,y]=z.cells[ch][0], X=x*T, Y=y*T, on=z.lit[ch]||z.done; ctx.fillStyle=PC[ch]; ctx.globalAlpha=on?1:.75; ctx.fillRect(X+4,Y+T-(on?5:9),T-8,on?5:9); ctx.globalAlpha=1; if(on&&GLOW){ ctx.globalAlpha=.25; ctx.beginPath(); ctx.arc(X+T/2,Y+T-4,18,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1; } }
-    if(!z.done){ const [gx,gy]=z.cells.gate[0], X=gx*T-44, Y=gy*T-80; ctx.fillStyle='rgba(10,16,30,.92)'; ctx.strokeStyle='#cfd8e6'; ctx.lineWidth=2; ctx.beginPath(); ctx.roundRect?ctx.roundRect(X,Y,88,30,6):ctx.rect(X,Y,88,30); ctx.fill(); ctx.stroke();
+  for(const z of pzList) if(z.type==='order'){ if(!r3a) for(const ch of 'abc'){ const [x,y]=z.cells[ch][0], X=x*T, Y=y*T, on=z.lit[ch]||z.done; ctx.fillStyle=PC[ch]; ctx.globalAlpha=on?1:.75; ctx.fillRect(X+4,Y+T-(on?5:9),T-8,on?5:9); ctx.globalAlpha=1; if(on&&GLOW){ ctx.globalAlpha=.25; ctx.beginPath(); ctx.arc(X+T/2,Y+T-4,18,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1; } }
+    if(!z.done&&settings.hints===false){ const [gx,gy]=z.cells.gate[0], X=gx*T-44, Y=gy*T-80; ctx.fillStyle='rgba(10,16,30,.92)'; ctx.strokeStyle='#cfd8e6'; ctx.lineWidth=2; ctx.beginPath(); ctx.roundRect?ctx.roundRect(X,Y,88,30,6):ctx.rect(X,Y,88,30); ctx.fill(); ctx.stroke();
       [...z.order].forEach((ch,i)=>{ ctx.fillStyle=PC[ch]; ctx.beginPath(); ctx.arc(X+18+i*26,Y+15,8,0,Math.PI*2); ctx.fill(); if(i<2){ ctx.fillStyle='#cfd8e6'; ctx.fillRect(X+28+i*26,Y+14,6,2); } }); } }
   if(!r3a){ each('G',(X,Y)=>{ ctx.fillStyle='#2a3445'; ctx.fillRect(X,Y,T,T); ctx.strokeStyle='#8fa3b8'; ctx.lineWidth=3; for(let i=1;i<4;i++){ ctx.beginPath(); ctx.moveTo(X+i*T/4,Y); ctx.lineTo(X+i*T/4,Y+T); ctx.stroke(); } });
     each('X',(X,Y)=>{ ctx.fillStyle='#8a6420'; ctx.fillRect(X+1,Y+1,T-2,T-2); ctx.strokeStyle='#ffd166'; ctx.lineWidth=2; ctx.strokeRect(X+2,Y+2,T-4,T-4); ctx.fillStyle='#2a1a04'; ctx.beginPath(); ctx.arc(X+T/2,Y+T/2-3,4,0,Math.PI*2); ctx.fill(); ctx.fillRect(X+T/2-2,Y+T/2,4,8); }); }
@@ -3590,6 +3590,26 @@ var HINT_ACH={crate:['crate','plate'],key:['key','lock'],slam:['crumble'],boost:
 var hintsLearned=store.get('iskra-bolt-hints',{});
 function learnHint(k){ if(!k||hintsLearned[k]) return; hintsLearned[k]=1; store.set('iskra-bolt-hints',hintsLearned);
   if(typeof tutShow!=='undefined'&&tutShow&&tutShow.k===k){ tutShow=null; const el=document.getElementById('tutTip'); if(el) el.hidden=true; } }
+const ORD_C={a:'#ff6b6b',b:'#7fe08a',c:'#6aa8ff'};
+// подсказка «порядок кнопок» над героем, который ближе к кнопкам; нажатые отмечаются, после открытия двери пропадает
+function drawOrderHint(){
+  if(settings.hints===false) return;
+  for(const z of pzList){ if(z.type!=='order'||z.done) continue;
+    const cells=[...'abc'].map(c=>z.cells[c][0]); cells.push(z.cells.gate[0]);
+    let best=null, bd=1e9;
+    for(const p of players){ if(p.absent||p.dead) continue; for(const [cx,cy] of cells){ const d=Math.hypot(p.x+p.w/2-(cx*T+T/2),p.y+p.h/2-(cy*T+T/2)); if(d<bd){ bd=d; best=p; } } }
+    z.hA=(z.hA||0)+((best&&bd<11*T?1:0)-(z.hA||0))*.15;
+    if(z.hA<.03||!best) continue;
+    const w=94, h=28, cx=best.x+best.w/2, top=best.y-34-h;
+    ctx.save(); ctx.globalAlpha=z.hA*.95; ctx.translate(cx,top+h/2+(1-z.hA)*6);
+    ctx.fillStyle='rgba(10,16,30,.88)'; ctx.strokeStyle='rgba(207,216,230,.7)'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.roundRect?ctx.roundRect(-w/2,-h/2,w,h,14):ctx.rect(-w/2,-h/2,w,h); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-6,h/2-.5); ctx.lineTo(0,h/2+7); ctx.lineTo(6,h/2-.5); ctx.fillStyle='rgba(10,16,30,.88)'; ctx.fill();
+    [...z.order].forEach((ch,i)=>{ const x=(i-1)*28, done=i<z.prog, next=i===z.prog, r=next?9+Math.sin(clock*6)*1.2:8;
+      ctx.globalAlpha=z.hA*(done?.4:1); ctx.fillStyle=ORD_C[ch]; ctx.beginPath(); ctx.arc(x,0,r,0,Math.PI*2); ctx.fill();
+      if(next){ ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(x,0,r+3,0,Math.PI*2); ctx.stroke(); }
+      if(done){ ctx.globalAlpha=z.hA; ctx.strokeStyle='#fff'; ctx.lineWidth=2.4; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(x-4,0); ctx.lineTo(x-1,3.5); ctx.lineTo(x+5,-3.5); ctx.stroke(); } });
+    ctx.restore(); }
+}
 let tutMarks=[], tutSeen={}, tutQ=[], tutShow=null, tutT=0, tutCd=0, tutK0=0;
 function tutorInit(i){
   tutMarks=[]; tutSeen={}; tutQ=[]; tutShow=null; tutCd=0; tutK0=(stats&&stats.kills)||0;
@@ -4480,6 +4500,7 @@ function draw(){
   for(const q of particles){ ctx.globalAlpha=Math.max(0,q.life/q.max); ctx.fillStyle=q.c; if(q.sh) drawShape(q.sh,q.x,q.y,q.s,q.c); else ctx.fillRect(q.x-q.s/2,q.y-q.s/2,q.s,q.s); }
   ctx.globalAlpha=1;
   ctx.textAlign='center'; ctx.textBaseline='middle';
+  drawOrderHint();
   for(const t of texts){
     if(t.pop){ const age=1.4-t.life, s=age<.12?0.3+age/.12*1.1:1.4-Math.min(.4,(age-.12)*2.2); ctx.save(); ctx.translate(t.x,t.y-age*18); ctx.scale(s,s); ctx.globalAlpha=Math.min(1,t.life*2);
       ctx.font="400 24px 'Russo One', Unbounded, sans-serif"; ctx.lineJoin='round'; ctx.lineWidth=6; ctx.strokeStyle='#0a0612'; ctx.strokeText(t.t,0,0); ctx.fillStyle=t.c; ctx.fillText(t.t,0,0); ctx.restore(); ctx.globalAlpha=1; continue; }
@@ -5673,6 +5694,11 @@ const R3D=(()=>{
       const mesh=box(T-8,1,DEPTH*0.55,m,p.x*T+T/2,0,FRONT-DEPTH*0.45); mesh.castShadow=true; tileGroup.add(mesh);
       const slot=box(T-4,2,DEPTH*0.6,lamb(0x16202e),p.x*T+T/2,-(p.y*T+T)+1,FRONT-DEPTH*0.45); tileGroup.add(slot);
       X3.plates.push({p,mesh,m,col,h:9}); }
+    for(const z of pzList){ if(z.type!=='order') continue;
+      for(const ch of 'abc'){ const [bx,by]=z.cells[ch][0], col=new THREE.Color(ORD_C[ch]); const m=lamb(col,{emissive:col.clone().multiplyScalar(.25)});
+        const mesh=box(T-8,1,DEPTH*0.55,m,bx*T+T/2,0,FRONT-DEPTH*0.45); mesh.castShadow=true; tileGroup.add(mesh);
+        const slot=box(T-4,2,DEPTH*0.6,lamb(0x16202e),bx*T+T/2,-(by*T+T)+1,FRONT-DEPTH*0.45); tileGroup.add(slot);
+        X3.plates.push({p:{x:bx,y:by,get on(){ return !!(z.lit[ch]||z.done); }},mesh,m,col,h:9}); } }
   }
   function buildExit(){
     X3.exit=null; const r=exitRect; if(!r||!isFinite(r.x)||!isFinite(r.w)||r.w<=0) return;
