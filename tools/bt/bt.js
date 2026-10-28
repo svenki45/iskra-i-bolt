@@ -967,9 +967,34 @@ const TLBL={
   rot:(a,k)=>({jump:TG('▲','прыжок')})[a],
   iso:(a,k)=>({jump:TG('▲','вглубь'),ability:TG('▼','к нам'),fire:TG('✊','удар',1.4),use:TG('⤒','прыжок',1.4)})[a]
 };
+// сенсор: в испытаниях с «вверх/вниз» стрелка ▲ должна стоять ВЫШЕ ▼ (раньше «вниз» стояла над «вверх» — путаница). Размер у обеих одинаковый.
+const TVERT={cart:1,rope:1,rocket:1,wire:1,iso:1};
+function touchVert(el,on){
+  const R=b=>({l:parseFloat(b.style.left),t:parseFloat(b.style.top),w:parseFloat(b.style.width)});
+  const put=(b,l,t,w)=>{ b.style.left=Math.round(l)+'px'; b.style.top=Math.round(t)+'px'; b.style.width=Math.round(w)+'px'; b.style.height=Math.round(w)+'px'; };
+  for(const k of ['spark','bolt']){
+    const q=a=>el.querySelector('.tb[data-a="'+a+'"][data-k="'+k+'"]'), J=q('jump'), A=q('ability'), F=q('fire'); if(!J||!A) continue;
+    const bs=[J,A,F].filter(Boolean);
+    if(!on){ for(const b of bs) if(b.dataset.vo){ const o=JSON.parse(b.dataset.vo); put(b,o.l,o.t,o.w); delete b.dataset.vo; } continue; }
+    if(J.dataset.vo) continue;                                   // уже переставлено
+    for(const b of bs) b.dataset.vo=JSON.stringify(R(b));
+    const j=R(J), a=R(A), f=F?R(F):null;
+    if(isNaN(j.l)||isNaN(a.l)||isNaN(j.w)){ for(const b of bs) delete b.dataset.vo; continue; }
+    if(a.t<j.t-8){                                               // один игрок: «способность» стоит над «прыжком»
+      const sz=Math.min(j.w,76), Rg=j.l+j.w, B=j.t+j.w;
+      put(A,Rg-sz,B-sz,sz); put(J,Rg-sz,B-2*sz-6,sz);          // ▼ внизу, ▲ над ним
+      if(F&&f.l+f.w>Rg-sz-4) put(F,f.l,f.t,Math.max(44,Rg-sz-4-f.l));
+    } else {                                                     // вдвоём: кнопки рядом — ▼ на место «прыжка», ▲ выше, «огонь» на место «способности»
+      const sz=Math.min(j.w,a.w);
+      put(A,j.l,j.t,sz); put(J,j.l,j.t-sz-6,sz);
+      if(F) put(F,a.l,a.t,Math.min(f.w,a.w));
+    }
+  }
+}
 // сенсор: подписи кнопок под тип испытания (ненужные кнопки гаснут)
 setInterval(()=>{ try{
   const el=document.getElementById('touch'); if(!el) return; const f=S.on&&state==='play'?TLBL[S.kind]:null;
+  touchVert(el,!!(f&&TVERT[S.kind]));
   el.querySelectorAll('.tb[data-a]').forEach(b=>{ const a=b.dataset.a; let w=f?f(a,b.dataset.k):null; const dim=w==='dim'; if(dim) w=null; if(b.dataset.dim!==(dim?'1':'')){ b.dataset.dim=dim?'1':''; b.style.opacity=dim?'.28':''; }
     if(w){ if(b.dataset.iso!=='1'){ b.dataset.orig=b.innerHTML; b.dataset.iso='1'; } if(b.dataset.cur!==w){ b.innerHTML=w; b.dataset.cur=w; } }
     else if(b.dataset.iso==='1'){ b.innerHTML=b.dataset.orig||b.innerHTML; b.dataset.iso='0'; b.dataset.cur=''; } });
