@@ -3678,7 +3678,7 @@ function drawOrderHint(){
 }
 let tutMarks=[], tutSeen={}, tutQ=[], tutShow=null, tutT=0, tutCd=0, tutK0=0;
 /* ---------- подсказка «двойной прыжок»: появляется, только если игрок застрял у высокого уступа ---------- */
-let djSpots=[], djT=0, djA=0, djP=null, djBlink=false;
+let djSpots=[], djT=0, djA=0, djP=null, djBlink=false, djDone=false;   // djDone — в этой попытке уровня уже залезли (при перезапуске уровня подсказка снова с начала)
 // места, куда залезть можно только прыжком и ещё прыжком в воздухе: стена 4–5 клеток над ровным полом
 function findDjumpSpots(){
   const out=[], rows=grid.length;
@@ -3696,18 +3696,18 @@ function findDjumpSpots(){
 }
 function djTick(dt){
   if(!players||state!=='play') { if(djBlink) djSetBlink(false); djA=0; return; }
-  // «освоил»: забрался вверх минимум на 3,3 клетки, использовав прыжок в воздухе
-  if(!hintsLearned.djump) for(const p of players){ if(p.absent||p.dead||!p.onGround) continue;
-    if(p.ajUsed){ if((p.ajBase||0)-(p.y+p.h)>=3.3*T) learnHint('djump'); p.ajUsed=false; }
+  // «залез»: забрался вверх минимум на 3,3 клетки, использовав прыжок в воздухе — до перезапуска уровня подсказка уходит
+  if(!djDone) for(const p of players){ if(p.absent||p.dead||!p.onGround) continue;
+    if(p.ajUsed){ if((p.ajBase||0)-(p.y+p.h)>=3.3*T) djDone=true; p.ajUsed=false; }
     p.ajBase=p.y+p.h; }
-  const on=djSpots.length&&!hintsLearned.djump&&settings.hints!==false&&!intro&&!outro;
+  const on=djSpots.length&&!djDone&&settings.hints!==false&&!intro&&!outro;
   let near=null;
   if(on) for(const m of djSpots){ for(const p of players){
     if(p.absent||p.dead||p.down||!p.onGround||maxAir(p)<1) continue;
     const cx=p.x+p.w/2, fy=p.y+p.h;
     if(Math.abs(fy-m.y)<4&&Math.abs(cx-m.x)<4.5*T&&(cx-m.x)*m.d<=T*.5){ near=p; break; } } if(near) break; }
-  if(near){ djT=Math.min(12,djT+dt); djP=near; } else djT=Math.max(0,djT-dt*1.5);
-  const want=!!near&&djT>=6;
+  if(near) djP=near;
+  const want=!!near;   // сразу, как только герой встал у высокой стены
   djA+=((want?1:0)-djA)*Math.min(1,dt*6);
   const ph=clock%1.8, lit=djA>.5&&(ph<.3||(ph>.55&&ph<.85));
   if(lit!==djBlink) djSetBlink(lit);
@@ -3731,7 +3731,7 @@ function drawDjumpHint(){
 }
 function tutorInit(i){
   tutMarks=[]; tutSeen={}; tutQ=[]; tutShow=null; tutCd=0; tutK0=(stats&&stats.kills)||0;
-  djSpots=[]; djT=0; djA=0; djP=null; for(const p of players||[]) p.ajUsed=false;
+  djSpots=[]; djT=0; djA=0; djP=null; djDone=false; for(const p of players||[]) p.ajUsed=false;
   let el=document.getElementById('tutTip');
   if(!el){ el=document.createElement('div'); el.id='tutTip'; el.setAttribute('role','status'); el.hidden=true; document.getElementById('screen').appendChild(el); }
   el.hidden=true;
@@ -7822,7 +7822,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.57';
+const GAME_VER='1.58';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
