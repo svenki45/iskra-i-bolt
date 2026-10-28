@@ -13,7 +13,7 @@ except Exception:
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 src = (ROOT / 'mobile-app/www/index.html').read_text(encoding='utf-8')
-bt = (ROOT / 'tools/bt/bt.js').read_text(encoding='utf-8') + '\n' + (ROOT / 'tools/bt/bg.js').read_text(encoding='utf-8')
+bt = (ROOT / 'tools/bt/bt.js').read_text(encoding='utf-8') + '\n' + (ROOT / 'tools/bt/bg.js').read_text(encoding='utf-8') + '\n' + (ROOT / 'tools/bt/intro.js').read_text(encoding='utf-8')
 n = int(re.search(r'/\*BT_N=(\d+)\*/', bt).group(1))
 
 def sub(old, new):
@@ -53,6 +53,9 @@ sub("staticLayer.width=WW*2; staticLayer.height=WH*2;\n  let g=staticLayer.getCo
     "const SS=WW>8200?1:2; staticLayer.width=WW*SS; staticLayer.height=WH*SS;\n  let g=staticLayer.getContext('2d'); g.setTransform(SS,0,0,SS,0,0);")
 sub("wallLayer.width=WW*2; wallLayer.height=WH*2; g=wallLayer.getContext('2d'); g.setTransform(2,0,0,2,0,0);",
     "wallLayer.width=WW*SS; wallLayer.height=WH*SS; g=wallLayer.getContext('2d'); g.setTransform(SS,0,0,SS,0,0);")
+# кнопка «Смотреть вступление» в настройках
+sub('<button class="secondary" id="bReport" type="button">Отчёт для тестов</button>','<button class="secondary" id="bIntro" type="button">${(window.__introUI||{}).replay||\'🎬 Смотреть вступление\'}</button><button class="secondary" id="bReport" type="button">Отчёт для тестов</button>')
+sub("if($('bReport')) $('bReport').onclick=()=>setState('report');","if($('bReport')) $('bReport').onclick=()=>setState('report'); if($('bIntro')) $('bIntro').onclick=()=>window.playIntro&&window.playIntro(true);")
 sub("\nconst GAME_VER=",'\n' + bt + '\nconst GAME_VER=')
 
 out = ROOT / 'desktop-bt/index.html'
