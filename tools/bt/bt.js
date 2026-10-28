@@ -1164,7 +1164,7 @@ loadLevel=function(i,keepHp){
   if(S.kind==='cart'){ setupCart(L); cartExtraSetup(L); } else if(S.kind==='rope') setupRope(L); else if(S.kind==='chase') setupChase(L); else if(S.kind==='snake') setupSnake(L); else if(S.kind==='brawl') setupBrawl(L); else if(S.kind==='rocket') setupRocket(L); else if(S.kind==='lift') setupLift(L); else if(S.kind==='boss') setupBoss(L); else if(S.kind==='mag') setupMag(L); else if(S.kind==='relay') setupRelay(L); else if(S.kind==='wire') setupWire(L); else if(S.kind==='maze') setupMaze(L); else if(S.kind==='ice') setupIce(L); else if(S.kind==='rot') setupRot(L); else if(S.kind==='iso') setupIso(L);
 };
 const _tutorInit=tutorInit;
-tutorInit=function(i){ const e=CAMP[i]; _tutorInit(e&&e.k!=='t'?e.m:99); if(getLevel(i)&&getLevel(i).bt) tutMarks=[]; };
+tutorInit=function(i){ const e=CAMP[i]; _tutorInit(e&&e.k!=='t'?e.m:99); if(getLevel(i)&&getLevel(i).bt){ tutMarks=[]; djSpots=[]; } };
 
 function placeCart(x){ for(const p of players){ if(p.absent) continue; setDuck(p,false,true);
   const off=solo?0:(p.kind==='bolt'?2:0); p.x=(x+off)*T+(T-p.w)/2; p.y=FL*T-p.h; p.vx=0; p.vy=0; p.dash=0; p.slam=false; p.onGround=true; p.wasGround=true; } }

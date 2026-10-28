@@ -3,7 +3,7 @@ from playwright.async_api import async_playwright
 R=lambda **k: k
 SC={
  ('spark','1'):[R(dir=1,until='tx(s)>=9.2'),R(dir=1,jp=1,jump=1,frames=25),R(dir=1,until='tx(s)>=15.3'),R(dir=1,jp=1,jump=1,frames=34),
-   R(dir=1,until='tx(s)>=26.3',frames=300),R(fire=1,frames=40),R(dir=1,until='tx(s)>=35.3',frames=400),R(dir=1,jp=1,jump=1,frames=16),R(dir=1,jp=1,jump=1,frames=34),R(dir=1,until='tx(s)>=58.6',frames=600)],
+   R(dir=1,until='tx(s)>=26.3',frames=300),R(fire=1,frames=40),R(dir=1,until='tx(s)>=31.3',frames=400),R(dir=1,jp=1,jump=1,frames=16),R(dir=1,jp=1,jump=1,frames=34),R(dir=1,until='tx(s)>=35.3',frames=200),R(dir=1,jp=1,jump=1,frames=20),R(dir=1,until='tx(s)>=58.6',frames=600)],
  ('spark','2'):[R(dir=1,until='tx(s)>=9.4'),R(dir=1,jp=1,jump=1,frames=18),R(dir=1,jp=1,jump=1,frames=40),R(dir=1,until='tx(s)>=27.2',frames=400),R(dir=1,jp=1,jump=1,frames=26),R(dir=1,until='tx(s)>=31.4'),
    R(dir=1,jp=1,jump=1,frames=18),R(dir=1,jp=1,jump=1,frames=14),R(dir=1,ap=1,frames=12),R(dir=1,frames=30),R(dir=1,until='tx(s)>=55',frames=400),R(fire=1,frames=40),R(dir=1,until='tx(s)>=68.6',frames=600)],
  ('spark','3'):[R(dir=1,until='tx(s)>=11.6'),R(dir=1,jp=1,jump=1,frames=16),R(dir=1,jp=1,jump=1,frames=14),R(dir=0,frames=20),
