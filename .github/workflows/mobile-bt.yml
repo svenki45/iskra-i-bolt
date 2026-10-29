@@ -1,4 +1,4 @@
-name: Mobile BT (IPA «Испытания»)
+name: Mobile (Искра и Болт, IPA)
 on:
   workflow_dispatch:
   push:
@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
-      - name: Подставить сборку «Испытания»
+      - name: Подставить сборку игры
         working-directory: .
         run: |
           cp bt/index.html mobile-app/www/index.html
@@ -23,7 +23,7 @@ jobs:
           p='mobile-app/www/index.html'; t=open(p,encoding='utf-8').read()
           t=t.replace('</head>','<style>#a2hs{display:none!important}</style></head>',1); open(p,'w',encoding='utf-8').write(t)
           c='mobile-app/capacitor.config.json'; t=open(c,encoding='utf-8').read()
-          t=t.replace('com.iskraibolt.game','com.iskraibolt.trials').replace('"appName": "Искра и Болт"','"appName": "Испытания"'); open(c,'w',encoding='utf-8').write(t)
+          t=t.replace('com.iskraibolt.game','com.iskraibolt.trials').replace('"appName": "Искра и Болт"','"appName": "Искра и Болт"'); open(c,'w',encoding='utf-8').write(t)
           PY
           grep -c 'a2hs{display:none' mobile-app/www/index.html
       - run: npm install
@@ -49,9 +49,9 @@ jobs:
             -destination 'generic/platform=iOS' -archivePath build/App.xcarchive \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" archive
           mkdir -p Payload && cp -R build/App.xcarchive/Products/Applications/App.app Payload/
-          zip -qry iskra-i-bolt-bt.ipa Payload
+          zip -qry iskra-i-bolt.ipa Payload
       - uses: actions/upload-artifact@v4
-        with: { name: ipa, path: mobile-app/iskra-i-bolt-bt.ipa }
+        with: { name: ipa, path: mobile-app/iskra-i-bolt.ipa }
   release:
     needs: [ios]
     runs-on: ubuntu-latest
@@ -61,4 +61,4 @@ jobs:
       - env: { GH_TOKEN: '${{ github.token }}' }
         run: |
           gh release delete mobile-bt --repo ${{ github.repository }} --yes --cleanup-tag || true
-          gh release create mobile-bt --repo ${{ github.repository }} --title "Испытания (IPA для iPhone)" --notes "IPA для установки через Sideloadly" ipa/iskra-i-bolt-bt.ipa
+          gh release create mobile-bt --repo ${{ github.repository }} --title "Искра и Болт — IPA для iPhone" --notes "IPA для установки через Sideloadly" ipa/iskra-i-bolt.ipa

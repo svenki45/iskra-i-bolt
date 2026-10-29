@@ -1814,7 +1814,7 @@ function btIntroHtml(t,idx){
   const D=DEFS[t], I=INTRO[t]; if(!I) return '';
   const kk=h=>binds[h].kb, kj=h=>kbd(kk(h).jump), ka=h=>kbd(kk(h).ability);
   const ctl=solo?`${kj(soloHero)} прыжок · ${ka(soloHero)} способность`:`<b style="color:#ff8a3d">Искра</b>: ${kj('spark')} прыжок · ${ka('spark')} способность &nbsp;·&nbsp; <b style="color:#62c7c1">Болт</b>: ${kj('bolt')} прыжок · ${ka('bolt')} способность`;
-  return `<div class="card"><span class="eyebrow">Новое испытание · ${D.name}</span><h2>${I[0]}</h2>
+  return `<div class="card"><span class="eyebrow">Новый уровень · ${D.name}</span><h2>${I[0]}</h2>
     <ul style="text-align:left;max-width:56ch;margin:6px auto 12px;line-height:1.5;padding-left:20px">${I[1].map(x=>`<li>${x}</li>`).join('')}</ul>
     <p class="padst" style="margin:0 0 12px">${ctl}</p>
     <div class="btns"><button class="primary" id="btGo" type="button">Играть · Enter</button></div></div>`;
@@ -1894,9 +1894,9 @@ setState=function(s){
     const two=document.getElementById('bTwo'); if(two){ const sm=two.querySelector('small'); if(sm) sm.textContent='за одной клавиатурой'; }
     const beta=overlay.querySelector('.logo .beta'); if(beta) beta.textContent='ИСПЫТАНИЯ'; }
   if(s==='gameover'&&S.cp&&!document.getElementById('btFromStart')){ const g=document.getElementById('bGoMenu'); if(g){ g.insertAdjacentHTML('beforebegin','<button class="secondary" id="btFromStart" type="button">С самого начала</button>'); document.getElementById('btFromStart').onclick=()=>{ window.BT_RESET(); go=null; loadingTo(levelIdx,true); }; } }
-  if(s==='done'){ const bx=overlay.querySelector('.btns'); if(bx&&!document.getElementById('btToMenu')){ bx.insertAdjacentHTML('beforeend','<button class="secondary" id="btToMenu" type="button">К испытаниям</button>'); $('btToMenu').onclick=()=>setState('menu'); }
-    const eb=overlay.querySelector('.eyebrow'); if(eb) eb.textContent='Испытание '+(levelIdx+1)+' из '+TOTAL+' пройдено'; const nb=$('bNext'); if(nb) nb.firstChild.textContent='Следующее испытание · Enter'; }
-  if(s==='loading'&&loadJob){ const ebs=overlay.querySelectorAll('.eyebrow'); if(ebs[0]) ebs[0].textContent='Испытание '+(loadJob.i+1)+' из '+TOTAL; if(ebs[1]) ebs[1].textContent=DIFFS[diffId()].n+' · '+modeName();
+  if(s==='done'){ const bx=overlay.querySelector('.btns'); if(bx&&!document.getElementById('btToMenu')){ bx.insertAdjacentHTML('beforeend','<button class="secondary" id="btToMenu" type="button">В меню</button>'); $('btToMenu').onclick=()=>setState('menu'); }
+    const eb=overlay.querySelector('.eyebrow'); if(eb) eb.textContent='Уровень '+(levelIdx+1)+' из '+TOTAL+' пройден'; const nb=$('bNext'); if(nb) nb.firstChild.textContent='Следующий уровень · Enter'; }
+  if(s==='loading'&&loadJob){ const ebs=overlay.querySelectorAll('.eyebrow'); if(ebs[0]) ebs[0].textContent='Уровень '+(loadJob.i+1)+' из '+TOTAL; if(ebs[1]) ebs[1].textContent=DIFFS[diffId()].n+' · '+modeName();
     const L=getLevel(loadJob.i); overlay.querySelectorAll('p').forEach(p=>{ if(p.textContent&&p.textContent.length>40) p.textContent=L.hint; }); }
 };
 const _handleMeta=handleMeta;
