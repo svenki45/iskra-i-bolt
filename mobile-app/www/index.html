@@ -4479,6 +4479,7 @@ function drawBag(p,x0,dir){
 }
 const RELIC_SHORT=['−20% здоровья','+25% урона','−15% скорости'];
 function drawRelicHud(){
+  return; // плашка бонусов против босса убрана: этой механики в игре больше нет
   if(intro) return; const n=levelIdx+1, d=n%10;
   if(!(boss||d>=7)) return;
   const N=boss?n:Math.ceil(n/10)*10, bt=boss?boss.type:bossTypeAt(N), got=(run.relics||{})[N]||[];
@@ -5770,7 +5771,7 @@ const R3D=(()=>{
   }
   // ======== 3D: вода, лава, мёд, двери, плиты, выход, флажки, предметы ========
   // Раньше всё это рисовалось плоской 2D-картинкой поверх сцены (и «налезало» на блоки). Теперь это настоящие объёмные модели на нужной глубине.
-  let X3={surf:[],doors:[],plates:[],flags:[],exit:null,pk:[]};
+  let X3={surf:[],life:[],doors:[],plates:[],flags:[],exit:null,pk:[]};
   const SOLIDCH='#SxZYGDXIK';
   const lamb=(c,o)=>new THREE.MeshLambertMaterial(Object.assign({color:c},o||{}));
   const phong=(c,o)=>new THREE.MeshPhongMaterial(Object.assign({color:c},o||{}));
@@ -5798,6 +5799,35 @@ const R3D=(()=>{
     if(foam){ const pts=new Float32Array((nx+1)*3); const lg=new THREE.BufferGeometry(); lg.setAttribute('position',new THREE.BufferAttribute(pts,3));
       const ln=new THREE.Line(lg,new THREE.LineBasicMaterial({color:0xdff3ff,transparent:true,opacity:.85})); ln.frustumCulled=false; ln.userData={px:x0*T,w,nx,yTop,line:true,amp,freq}; group.add(ln); X3.surf.push(ln); }
   }
+  // жизнь в воде: водоросли качаются, пузырьки поднимаются, рыбки плавают
+  function waterLife(r,top,h){
+    const L=X3.life, x0=r.x*T, wpx=r.w*T, yTop=r.y*T+top, yBot=r.y*T+top+h, zB=FRONT-DEPTH*0.72, zF=FRONT-DEPTH*0.55;
+    const rnd=(()=>{ let a=(r.x*73856093^r.y*19349663^r.w*83492791)>>>0||1; return ()=>((a=Math.imul(a^a>>>15,2246822519)+1013904223>>>0)/4294967296); })();
+    const sol=(x,y)=>!!(grid[y]&&grid[y][x]&&'#SxZYGDX'.includes(grid[y][x]));
+    // водоросли: на дне там, где под водой твёрдый пол
+    const wg=new THREE.PlaneGeometry(1,1); wg.translate(0,.5,0);
+    const wmats=[0x2f9e6a,0x49c28a,0x3aa86f].map(c=>new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:.8,depthWrite:false,side:THREE.DoubleSide}));
+    for(let i=0;i<r.w;i++){ if(!sol(r.x+i,r.y+r.h)||rnd()<.45) continue;
+      const n=2+(rnd()*2|0);
+      for(let k=0;k<n;k++){ const bl=new THREE.Mesh(wg,wmats[(rnd()*3)|0]); const hh=Math.min(h*.5,18+rnd()*30), ww=4+rnd()*3;
+        bl.scale.set(ww,hh,1); bl.position.set(x0+i*T+6+rnd()*(T-12),-yBot+1,zB+rnd()*4); bl.renderOrder=1; tileGroup.add(bl);
+        const ph=rnd()*6.28, sp=1.1+rnd()*.8; L.push(t=>{ bl.rotation.z=Math.sin(t*sp+ph)*.2; }); } }
+    // пузырьки
+    const bg=new THREE.CircleGeometry(1,10), bm=new THREE.MeshBasicMaterial({color:0xdff3ff,transparent:true,opacity:.5,depthWrite:false});
+    const nb=Math.min(16,Math.max(3,Math.round(r.w*r.h/5)));
+    for(let k=0;k<nb;k++){ const m=new THREE.Mesh(bg,bm), sz=1.4+rnd()*2.4, bx=x0+8+rnd()*(wpx-16), sp=14+rnd()*18, ph=rnd(), wob=rnd()*6.28;
+      m.scale.set(sz,sz,1); m.renderOrder=3; tileGroup.add(m);
+      L.push(t=>{ const u=((t*sp/Math.max(40,yBot-yTop)+ph)%1); m.position.set(bx+Math.sin(t*2+wob)*3,-(yBot-4-u*(yBot-yTop-8)),zF); }); }
+    // рыбки
+    const nf=r.w*r.h>=10?Math.min(3,1+((r.w*r.h/24)|0)):0, fc=[0xffa94d,0xffd24d,0x5fd6c8];
+    const eg=new THREE.CircleGeometry(1,14), tg=new THREE.CircleGeometry(1,3);
+    for(let k=0;k<nf;k++){ const col=fc[(rnd()*3)|0], mt=new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.92,depthWrite:false});
+      const g=new THREE.Group(), body=new THREE.Mesh(eg,mt); body.scale.set(7,3.6,1); const tail=new THREE.Mesh(tg,mt); tail.scale.set(3.6,3.6,1); tail.position.set(-8,0,0); tail.rotation.z=Math.PI;
+      const eye=new THREE.Mesh(eg,new THREE.MeshBasicMaterial({color:0x10243f})); eye.scale.set(.9,.9,1); eye.position.set(4,.8,.5);
+      g.add(body,tail,eye); g.renderOrder=3; g.position.z=zF-2; tileGroup.add(g);
+      const span=Math.max(10,wpx-30), sp=10+rnd()*10, ph=rnd()*6.28, yy=yTop+14+rnd()*Math.max(1,yBot-yTop-40), by=3+rnd()*4;
+      L.push(t=>{ const q=(t*sp/span+ph)%2, dir=q<1?1:-1, u=q<1?q:2-q; g.position.x=x0+15+u*span; g.position.y=-(yy+Math.sin(t*1.7+ph)*by); g.scale.x=dir; tail.rotation.y=Math.sin(t*9+ph)*.5; }); }
+  }
   function buildLiquids(){
     // вода: полупрозрачный объём на всю глубину шахты + волнистая поверхность
     const wm=phong(0x2878d2,{transparent:true,opacity:.36,shininess:90,specular:0xaad8ff,depthWrite:false,emissive:0x07284e});
@@ -5807,7 +5837,8 @@ const R3D=(()=>{
       // края воды заходят на 5 px внутрь соседних стен и пола: стык прячется в стене, и вода не выглядит отдельной коробкой с видимой границей
       const sol=(x,y)=>!!(grid[y]&&grid[y][x]&&'#SxZYGDX'.includes(grid[y][x]));
       let eL=5,eR=5,eB=5; for(let j=0;j<r.h;j++){ if(!sol(r.x-1,r.y+j)) eL=0; if(!sol(r.x+r.w,r.y+j)) eR=0; } for(let i=0;i<r.w;i++) if(!sol(r.x+i,r.y+r.h)) eB=0;
-      const b=new THREE.Mesh(new THREE.BoxGeometry(r.w*T+eL+eR,h+eB,DEPTH*0.96),wm); b.position.set(r.x*T+r.w*T/2+(eR-eL)/2,-(r.y*T+top+h/2)-eB/2,FRONT-DEPTH/2); b.renderOrder=2; tileGroup.add(b);
+      const b=new THREE.Mesh(new THREE.PlaneGeometry(r.w*T+eL+eR,h+eB),wm); b.position.set(r.x*T+r.w*T/2+(eR-eL)/2,-(r.y*T+top+h/2)-eB/2,FRONT-DEPTH*0.02); b.renderOrder=2; tileGroup.add(b);
+      waterLife(r,top,h);
       for(const [a,c] of runs) addSurface(tileGroup,r.x+a,c-a,r.y*T+top,sm,1.6,3,true);
     }
     // лава: светящийся объём, гребни «кипят»
@@ -5875,7 +5906,7 @@ const R3D=(()=>{
       const fg=new THREE.PlaneGeometry(34,24,8,1); const fm=lamb(0xff6b6b,{side:THREE.DoubleSide,emissive:0x300808}); const fl=new THREE.Mesh(fg,fm); fl.position.set(17,66,0); fl.userData.base=fg.attributes.position.array.slice(); fl.castShadow=true; g.add(fl);
       tileGroup.add(g); X3.flags.push({c,g,fl,fm}); }
   }
-  function buildExtras(){ X3={surf:[],doors:[],plates:[],flags:[],exit:null,pk:X3.pk,pkp:X3.pkp};
+  function buildExtras(){ X3={surf:[],life:[],doors:[],plates:[],flags:[],exit:null,pk:X3.pk,pkp:X3.pkp};
     try{ buildLiquids(); buildDoors(); buildPlates(); buildExit(); buildFlags(); R.ext=true; }catch(e){ console.error('3D extras',e); R.ext=false; }
   }
   // ---- предметы (шестерёнки, сердца, щиты…) ----
@@ -5899,6 +5930,7 @@ const R3D=(()=>{
     if(doSurf) for(const m of X3.surf){ const u=m.userData, arr=m.geometry.attributes.position.array;
       if(u.line){ for(let i=0;i<=u.nx;i++){ const lx=u.w*i/u.nx; arr[i*3]=u.px+lx; arr[i*3+1]=-u.yTop+Math.sin(t*u.freq+(u.px+lx)*.2)*u.amp+1.2; arr[i*3+2]=FRONT+0.6; } m.geometry.attributes.position.needsUpdate=true; }
       else { const b=u.base; for(let i=0;i<arr.length;i+=3){ arr[i+1]=b[i+1]+Math.sin(t*u.freq+(u.px+b[i])*.2+b[i+2]*.05)*u.amp; } m.geometry.attributes.position.needsUpdate=true; } }
+    if(doSurf) for(const f of X3.life) f(t);
     for(const D of X3.doors){ const d=D.d;
       if(D.bridge){ for(const it of D.items){ const v=Math.max(0,Math.min(1,d.vis)); it.slab.visible=v>.04; it.slab.scale.set(1,Math.max(.05,v),1); it.slab.position.y=-3*Math.max(.05,v)+0; it.gh.visible=v<.95; } }
       else for(const it of D.items){ const v=Math.max(0,Math.min(1,d.vis)); it.body.visible=v>.02; it.foot.visible=v>.02; it.body.scale.y=Math.max(.001,v); it.foot.position.y=-it.H*v+2.5; it.gh.visible=v<.98; } }
@@ -7832,7 +7864,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.61';
+const GAME_VER='1.62';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
