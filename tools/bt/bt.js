@@ -1442,19 +1442,19 @@ function drawScooterRider(f,p){
   const lx=22, ly=-30, bx=cx+Math.cos(pitch)*lx-Math.sin(pitch)*ly, by=deck+Math.sin(pitch)*lx+Math.cos(pitch)*ly;
   p._lean=(p._lean||0)+(((air&&!p.duck)?1.15:.2)-(p._lean||0))*.22;
   drawScooterHull(p,pitch);
-  const feetY=deck-14, hh=p.duck?HD[p.kind]*1.08:p.h, col=bolt?'#7f93a3':'#b8431f';
+  const LIFT=26, bb=deck+14-LIFT, hh=p.duck?HD[p.kind]*1.08:p.h, col=bolt?'#7f93a3':'#b8431f';   // bb — низ тела: герой приподнят над палубой, чтобы были видны ноги
   ctx.save(); ctx.translate(bx,by); ctx.rotate(p._lean); ctx.translate(-bx,-by);
   // ноги: колени согнуты, ступни на палубе (рисуем за телом)
   ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle=col; ctx.lineWidth=bolt?5:3.6;
-  for(const o of [-5,6]){ ctx.beginPath(); ctx.moveTo(cx+o*.6,feetY-4); ctx.lineTo(cx+o+4,feetY+4); ctx.lineTo(cx+o-(air?10:2),deck-5); ctx.stroke(); }
+  ctx.lineWidth=bolt?6:4.6; for(const o of [-5,6]){ ctx.beginPath(); ctx.moveTo(cx+o*.6,bb-5); ctx.lineTo(cx+o+7,bb+3); ctx.lineTo(cx+o+2-(air?8:0),deck-3); ctx.stroke(); ctx.fillStyle=bolt?'#2a3a47':'#6b2a12'; ctx.beginPath(); ctx.ellipse(cx+o+4-(air?8:0),deck-2,5,2.6,0,0,7); ctx.fill(); }
   // тело: смотрит вперёд (вправо), без собственных рук — руки рисуем ниже, одну на руль
   const lim=looks[p.kind].limbs, fc=p.face, h0=p.h, y0=p.y, sx0=p.sx, sy0=p.sy;
   looks[p.kind].limbs='off'; p.face=1;
   if(p.duck){ p.y=y0+h0-H0[p.kind]; p.h=H0[p.kind]; p.sx=1.22; p.sy=HD[p.kind]/H0[p.kind]*1.08; }
-  ctx.save(); ctx.translate(0,-14); f(p); ctx.restore();
+  ctx.save(); ctx.translate(0,-LIFT); f(p); ctx.restore();
   p.h=h0; p.y=y0; p.sx=sx0; p.sy=sy0; p.face=fc; looks[p.kind].limbs=lim;
   // одна рука: от плеча к рулю, кисть сжимает рукоять
-  const shx=cx+p.w*.24, shy=feetY-hh*(bolt?.5:.46), ex=(shx+bx)/2-3, ey=(shy+by)/2+7;
+  const shx=cx+p.w*.24, shy=bb-hh*(bolt?.42:.4), ex=(shx+bx)/2-3, ey=(shy+by)/2+7;
   ctx.strokeStyle='rgba(0,0,0,.3)'; ctx.lineWidth=(bolt?6.5:5.2); ctx.beginPath(); ctx.moveTo(shx,shy+1); ctx.quadraticCurveTo(ex,ey+1,bx,by+1); ctx.stroke();
   ctx.strokeStyle=col; ctx.lineWidth=(bolt?5:3.8); ctx.beginPath(); ctx.moveTo(shx,shy); ctx.quadraticCurveTo(ex,ey,bx,by); ctx.stroke();
   ctx.fillStyle=bolt?'#c7d3dd':col; ctx.beginPath(); ctx.arc(bx,by,bolt?4.2:3.2,0,Math.PI*2); ctx.fill();

@@ -2053,7 +2053,7 @@ function openSecret(tx,ty){
   const st=[[tx,ty]], cells=[];
   while(st.length){ const [x,y]=st.pop(); if(x<0||y<0||x>=COLS||y>=grid.length||grid[y][x]!=='S') continue; grid[y][x]='.'; gridVer++; cells.push([x,y]); st.push([x+1,y],[x-1,y],[x,y+1],[x,y-1],[x+1,y+1],[x-1,y+1],[x+1,y-1],[x-1,y-1]); }
   for(const [x,y] of cells) for(let i=0;i<8;i++) addP({x:x*T+Math.random()*T,y:y*T+Math.random()*T,vx:(Math.random()-.5)*380,vy:-Math.random()*420,life:.9,max:.9,c:Math.random()<.5?'#bcd4ff':'#08162c',s:3+Math.random()*4,g:1});
-  staticDirty=true; let got=false;
+  if(!(typeof R3D!=='undefined'&&R3D.active&&R3D.active())) staticDirty=true; let got=false;
   for(const pk of pickups) if(pk.hidden&&cells.some(([x,y])=>Math.abs(pk.x/T-x)<=1&&Math.abs(pk.y/T-y)<=1)){ pk.hidden=false; got=true;
     rings.push({x:pk.x+T/2,y:pk.y+T/2,r:6,max:130,life:.6,c:'#ffd166',w:5}); burst(pk.x+T/2,pk.y+T/2,26,['#ffd166','#ffffff'],300,.8); }
   shake=Math.max(shake,6); sfx('crack');
@@ -2595,7 +2595,7 @@ function useBag(p){
 function collectFx(p,type){
   const c=PICK_INFO[type].c, cx=p.x+p.w/2, cy=p.y+p.h/2;
   sfx('pk_'+type);
-  flash(c,.16); hitstop=Math.max(hitstop,0.07); shake=Math.max(shake,3);
+  flash(c,.16); hitstop=Math.max(hitstop,0.03); shake=Math.max(shake,3);
   rings.push({x:cx,y:cy,r:8,max:110,life:.45,c,w:5}); rings.push({x:cx,y:cy,r:4,max:60,life:.3,c:'#ffffff',w:3});
   for(let i=0;i<18;i++){ const a=i/18*Math.PI*2; addP({x:cx+Math.cos(a)*70,y:cy+Math.sin(a)*70,vx:-Math.cos(a)*260,vy:-Math.sin(a)*260,life:.26,max:.26,c,s:3.5,g:0}); }
   burst(cx,cy,16,[c,'#ffffff'],260,.6);
@@ -2650,8 +2650,11 @@ function drawWaterTint(){ if(!g3) return; ctx.save(); ctx.fillStyle='rgba(40,120
 function drawWaterFire(){
   if(g3) return;
   const t=clock;
+  { ctx.save(); ctx.fillStyle='rgba(40,120,210,.38)'; ctx.beginPath(); let any=false;
+    for(let y=0;y<grid.length;y++){ for(let x=0;x<COLS;x++){ if(grid[y][x]!=='~') continue; let x2=x; while(x2+1<COLS&&grid[y][x2+1]==='~') x2++; ctx.rect(x*T-.5,y*T-.5,(x2-x+1)*T+1,T+1); any=true; x=x2; } }
+    if(any) ctx.fill(); ctx.restore(); }   // вода одной заливкой (раньше по клеткам: между ними были видны швы)
   for(let y=0;y<grid.length;y++) for(let x=0;x<COLS;x++){ const c=grid[y][x];
-    if(c==='~'){ const X=x*T, Y=y*T; ctx.fillStyle='rgba(40,120,210,.38)'; ctx.fillRect(X,Y,T,T);
+    if(c==='~'){ const X=x*T, Y=y*T;
       if(!grid[y-1]||grid[y-1][x]!=='~'){ ctx.strokeStyle='rgba(180,230,255,.7)'; ctx.lineWidth=2; ctx.beginPath(); for(let i=0;i<=T;i+=4){ ctx.lineTo(X+i,Y+3+Math.sin(t*3+(X+i)*.2)*1.5); } ctx.stroke(); } }
   }
 }
@@ -5729,19 +5732,23 @@ const R3D=(()=>{
   // ---------- tiles ----------
   function themeCols(){ try{ const TH=arena?null:levelTheme(); if(TH){ const m=TH.wall.match(/\d+/g).map(Number); const base=new THREE.Color(m[0]/255,m[1]/255,m[2]/255); const lift=base.clone().lerp(new THREE.Color(0x9cc3ff),.22); return {wall:lift, edge:new THREE.Color(TH.edge.replace(/rgba\(([^)]+),[^,]+\)/,'rgb($1)'))}; } }catch(e){} return {wall:new THREE.Color(0x3a3150),edge:new THREE.Color(0x9cc3ff)}; }
   function buildTiles(){
-    if(tileGroup){ scene.remove(tileGroup); tileGroup.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); }
+    if(tileGroup){ scene.remove(tileGroup); tileGroup.traverse(o=>{ if(o.geometry&&!o.geometry.userData.keep) o.geometry.dispose(); }); }
     tileGroup=new THREE.Group(); scene.add(tileGroup);
     const C=themeCols();
+    // кэш: блок, материалы и рамка создаются один раз, а не при каждой разбитой стене (иначе рывок)
+    const TC=buildTiles.TC||(buildTiles.TC={mats:{}}); if(!TC.box){ TC.box=new THREE.BoxGeometry(T,T,DEPTH); TC.box.userData.keep=true; TC.edge=Array.from(new THREE.EdgesGeometry(new THREE.BoxGeometry(T,T,2)).attributes.position.array); }
     const kinds={'#':{c:C.wall,r:.8,m:.1},S:{c:C.wall,r:.8,m:.1},x:{c:C.wall.clone().lerp(new THREE.Color(0x8a6a40),.35),r:.9,m:0},Z:{c:C.wall,r:.8,m:.1},Y:{c:C.wall,r:.8,m:.1},G:{c:new THREE.Color(0x5a6b80)},D:{c:new THREE.Color(0x3a3020)},X:{c:new THREE.Color(0xb88a2e)},I:{c:new THREE.Color(0x9fe4f5),r:.15,m:.1,t:.85},K:{c:new THREE.Color(0x9a6634),r:.95,m:0}};
-    const box=new THREE.BoxGeometry(T,T,DEPTH);
+    const box=TC.box;
     for(const ch in kinds){ const list=[]; for(let y=0;y<grid.length;y++) for(let x=0;x<COLS;x++) if(grid[y][x]===ch) list.push([x,y]); if(!list.length) continue;
-      const K=kinds[ch], mat=new THREE.MeshLambertMaterial({color:K.c,roughness:K.r,transparent:!!K.t,opacity:K.t||1});
+      const K=kinds[ch], mk=ch+':'+K.c.getHex(), mat=TC.mats[mk]||(TC.mats[mk]=new THREE.MeshLambertMaterial({color:K.c,roughness:K.r,transparent:!!K.t,opacity:K.t||1}));
       const im=new THREE.InstancedMesh(box,mat,list.length); const M=new THREE.Matrix4();
       list.forEach(([x,y],i)=>{ M.makeTranslation(x*T+T/2,-(y*T+T/2),FRONT-DEPTH/2); im.setMatrixAt(i,M); });
       im.castShadow=ch!=='I'; im.receiveShadow=true; tileGroup.add(im);
       // bright front edge outline like the 2D blueprint
-      if(ch==='#'||ch==='S'||ch==='x'){ const eg=new THREE.EdgesGeometry(new THREE.BoxGeometry(T,T,2)); const lm=new THREE.LineBasicMaterial({color:C.edge,transparent:true,opacity:.18});
-        for(const [x,y] of list){ const n=(dx,dy)=>{ const g=grid[y+dy]&&grid[y+dy][x+dx]; return g==='#'||g==='S'||g==='x'; }; if(n(0,-1)&&n(0,1)&&n(-1,0)&&n(1,0)) continue; const l=new THREE.LineSegments(eg,lm); l.position.set(x*T+T/2,-(y*T+T/2),FRONT); tileGroup.add(l); } } }
+      if(ch==='#'||ch==='S'||ch==='x'){ const ek='edge:'+new THREE.Color(C.edge).getHex(), lm=TC.mats[ek]||(TC.mats[ek]=new THREE.LineBasicMaterial({color:C.edge,transparent:true,opacity:.18}));
+        const pos=[], ea=TC.edge;
+        for(const [x,y] of list){ const n=(dx,dy)=>{ const g=grid[y+dy]&&grid[y+dy][x+dx]; return g==='#'||g==='S'||g==='x'; }; if(n(0,-1)&&n(0,1)&&n(-1,0)&&n(1,0)) continue; const ox=x*T+T/2, oy=-(y*T+T/2); for(let i=0;i<ea.length;i+=3) pos.push(ea[i]+ox,ea[i+1]+oy,ea[i+2]+FRONT); }
+        if(pos.length){ const lg=new THREE.BufferGeometry(); lg.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); const l=new THREE.LineSegments(lg,lm); tileGroup.add(l); } } }
     // spikes
     const sp=[]; for(let y=0;y<grid.length;y++) for(let x=0;x<COLS;x++) if(grid[y][x]==='^') sp.push([x,y]);
     if(sp.length){ const cone=new THREE.ConeGeometry(T/7,T*0.58,6); const mat=new THREE.MeshLambertMaterial({color:0xff6b6b,emissive:0x400808});
@@ -5797,7 +5804,10 @@ const R3D=(()=>{
     const sm=phong(0x8fd2ff,{transparent:true,opacity:.5,shininess:140,specular:0xffffff,depthWrite:false,emissive:0x0d3a6a});
     for(const r of rectsOf('~')){
       const runs=surfaceRuns(r,'~'), top=runs.length?3:0, h=r.h*T-top;
-      const b=new THREE.Mesh(new THREE.BoxGeometry(r.w*T,h,DEPTH*0.96),wm); b.position.set(r.x*T+r.w*T/2,-(r.y*T+top+h/2),FRONT-DEPTH/2); b.renderOrder=2; tileGroup.add(b);
+      // края воды заходят на 5 px внутрь соседних стен и пола: стык прячется в стене, и вода не выглядит отдельной коробкой с видимой границей
+      const sol=(x,y)=>!!(grid[y]&&grid[y][x]&&'#SxZYGDX'.includes(grid[y][x]));
+      let eL=5,eR=5,eB=5; for(let j=0;j<r.h;j++){ if(!sol(r.x-1,r.y+j)) eL=0; if(!sol(r.x+r.w,r.y+j)) eR=0; } for(let i=0;i<r.w;i++) if(!sol(r.x+i,r.y+r.h)) eB=0;
+      const b=new THREE.Mesh(new THREE.BoxGeometry(r.w*T+eL+eR,h+eB,DEPTH*0.96),wm); b.position.set(r.x*T+r.w*T/2+(eR-eL)/2,-(r.y*T+top+h/2)-eB/2,FRONT-DEPTH/2); b.renderOrder=2; tileGroup.add(b);
       for(const [a,c] of runs) addSurface(tileGroup,r.x+a,c-a,r.y*T+top,sm,1.6,3,true);
     }
     // лава: светящийся объём, гребни «кипят»
@@ -5865,7 +5875,7 @@ const R3D=(()=>{
       const fg=new THREE.PlaneGeometry(34,24,8,1); const fm=lamb(0xff6b6b,{side:THREE.DoubleSide,emissive:0x300808}); const fl=new THREE.Mesh(fg,fm); fl.position.set(17,66,0); fl.userData.base=fg.attributes.position.array.slice(); fl.castShadow=true; g.add(fl);
       tileGroup.add(g); X3.flags.push({c,g,fl,fm}); }
   }
-  function buildExtras(){ X3={surf:[],doors:[],plates:[],flags:[],exit:null,pk:X3.pk};
+  function buildExtras(){ X3={surf:[],doors:[],plates:[],flags:[],exit:null,pk:X3.pk,pkp:X3.pkp};
     try{ buildLiquids(); buildDoors(); buildPlates(); buildExit(); buildFlags(); R.ext=true; }catch(e){ console.error('3D extras',e); R.ext=false; }
   }
   // ---- предметы (шестерёнки, сердца, щиты…) ----
@@ -5898,9 +5908,9 @@ const R3D=(()=>{
       E.fm.color.set(lock?0xffb0b0:0xbfd8ff); E.fm.emissive.set(lock?0x8a2020:0x5a7fb8); E.gm.color.set(lock?0xff6b6b:0x9cc3ff); E.gm.opacity=lock?.1:.08+.07*pulse; E.bars.visible=!!lock;
       E.dots.forEach((D,i)=>{ const p=players[i]; D.s.visible=!(p&&p.absent); const on=p&&p.inExit; D.m.emissive.copy(on?D.c:new THREE.Color(0)); D.m.color.copy(on?D.c:new THREE.Color(0x0a1a30)); }); }
     // предметы
-    const list=pickups.filter(p=>!p.hidden); while(X3.pk.length<list.length) X3.pk.push(null);
-    X3.pk.forEach((g,i)=>{ const pk=list[i]; if(!pk){ if(g) g.visible=false; return; }
-      if(!g||g.userData.type!==pk.type){ if(g){ scene.remove(g); } g=X3.pk[i]=makePick(pk.type); }
+    const list=pickups.filter(p=>!p.hidden), PKP=X3.pkp||(X3.pkp={}), usedN={};
+    for(const t in PKP) for(const g of PKP[t]) g.visible=false;
+    list.forEach(pk=>{ const arr=PKP[pk.type]||(PKP[pk.type]=[]), n=usedN[pk.type]=(usedN[pk.type]||0)+1; let g=arr[n-1]; if(!g){ g=arr[n-1]=makePick(pk.type); }
       g.visible=true; const bob=2+2*Math.sin(pk.t*4.2), cy=pk.y+T/2+1-bob;   // подпрыгивает только вверх от центра клетки: не залезает в пол и потолок
       g.position.set(pk.x+T/2,-cy,CZ-HERO_D); if(pk.type==='gear'){ g.rotation.z=-pk.t*2; g.rotation.y=Math.sin(pk.t*1.3)*.3; } else g.rotation.y=Math.sin(pk.t*1.6)*.3;
       if(state==='play'&&Math.random()<.07){ const c=pk.type==='gear'?'#ffd36a':PICK_INFO[pk.type].c, a=Math.random()*Math.PI*2; addP({x:pk.x+T/2+Math.cos(a)*12,y:cy+Math.sin(a)*12,vx:Math.cos(a)*14,vy:-22-Math.random()*14,life:.7,max:.7,c,s:2,g:-.1}); } });
@@ -7822,7 +7832,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.60';
+const GAME_VER='1.61';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
