@@ -1828,6 +1828,7 @@ setState=function(s){
       _setState('btintro'); overlay.innerHTML=btIntroHtml(e.t,levelIdx);
       $('btGo').onclick=()=>{ const q=seenIntro(); q[e.t]=1; store.set(SEEN_KEY,q); sfx('pick'); setState('play'); };
       setTimeout(()=>{ try{ $('btGo').focus(); }catch(er){} },0); return; } }
+  if(CAMPAIGN&&s==='ending'&&window.playEnding&&!window.__endGo){ window.playEnding(()=>{ window.__endGo=1; try{ setState('ending'); }finally{ window.__endGo=0; } }); return; }
   if(CAMPAIGN){ _setState(s);
     return; }
   if(s==='ending'){ _setState('btend');

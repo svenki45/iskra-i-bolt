@@ -54,13 +54,21 @@ sub("wallLayer.width=WW*2; wallLayer.height=WH*2; g=wallLayer.getContext('2d'); 
     "wallLayer.width=WW*SS; wallLayer.height=WH*SS; g=wallLayer.getContext('2d'); g.setTransform(SS,0,0,SS,0,0);")
 sub("\nconst GAME_VER=",'\n' + bt + '\nconst GAME_VER=')
 
+src_web = src  # телефонная страница — без вступительного ролика
+# вступительный ролик и кнопка «Смотреть вступление» — только в ПК-версии
+intro = (ROOT / 'tools/bt/intro.js').read_text(encoding='utf-8')
+sub('<button class="secondary" id="bReport" type="button">Отчёт для тестов</button>','<button class="secondary" id="bIntro" type="button">${(window.__introUI||{}).replay||\'🎬 Смотреть вступление\'}</button><button class="secondary" id="bReport" type="button">Отчёт для тестов</button>')
+sub("if($('bReport')) $('bReport').onclick=()=>setState('report');","if($('bReport')) $('bReport').onclick=()=>setState('report'); if($('bIntro')) $('bIntro').onclick=()=>window.playIntro&&window.playIntro(true);")
+sub("\nconst GAME_VER=",'\n' + intro + '\nconst GAME_VER=')
+import shutil
+shutil.copy(ROOT / 'tools/intro.mp4', ROOT / 'desktop-bt/intro.mp4')
 out = ROOT / 'desktop-bt/index.html'
 out.write_text(src, encoding='utf-8')
 print(f'desktop-bt/index.html готов: {len(src)//1024} КБ, испытаний: {n}')
 
 # ---- веб-версия для телефона (iPhone/Android): страница bt/ на GitHub Pages, тот же код, что на ПК, + сенсорное управление ----
-web = src.replace('window.MOBILE_BUILD=false;window.BT_BUILD=true;', 'window.MOBILE_BUILD=true;window.BT_BUILD=true;')
-assert web != src
+web = src_web.replace('window.MOBILE_BUILD=false;window.BT_BUILD=true;', 'window.MOBILE_BUILD=true;window.BT_BUILD=true;')
+assert web != src_web
 HEADX = '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Искра и Болт"><meta name="theme-color" content="#0b1830"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png"><link rel="icon" href="icon-192.png">'
 assert web.count('<meta charset="utf-8">') == 1
 web = web.replace('<meta charset="utf-8">', '<meta charset="utf-8">' + HEADX, 1)

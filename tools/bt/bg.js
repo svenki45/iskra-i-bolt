@@ -243,6 +243,14 @@ const _mkl=makeLive;
 makeLive=function(TH,name){ const L=_mkl(TH,name), d=cur(); if(d){ L.m='bgx'; L.bgx=d; } return L; };
 const _dl=drawLive;
 drawLive=function(){ const L=LIVE; if(!L||!L.bgx) return _dl(); _dl(); const c=ctx, t=clock; c.save(); try{ L.bgx.lv(c,t,L); }catch(e){} c.restore(); c.globalAlpha=1; };
+/* три красные лампы-тревога (как в вступительном ролике): перед боссом (уровни 7–9 каждого акта) мигают в углу экрана — «впереди босс». Рисуются поверх 3D, только в ПК-версии */
+const _dh=drawHud;
+drawHud=function(){ _dh(); try{
+  if(window.MOBILE_BUILD||arena||intro||boss||!(state==='play'||state==='loading')) return; const n=levelIdx+1, d=n%10;
+  if(!(d>=7&&d<=9)) return; const t=clock, c=ctx, k=.55+.45*Math.sin(t*5), x0=W-92, y0=84;
+  c.save(); for(const [dx,dy] of [[0,0],[-15,24],[15,24]]){ const x=x0+dx, y=y0+dy;
+    c.globalAlpha=k*.8; glow(c,x,y,30,'rgba(255,60,50,.9)'); c.globalAlpha=.55+.45*k; c.fillStyle='#ff4d44'; circ(c,x,y,5.5); c.fill(); c.fillStyle='rgba(255,225,215,.85)'; circ(c,x-1.6,y-1.6,1.7); c.fill(); }
+  c.restore(); }catch(e){} };
 const _lt=levelTheme;
 levelTheme=function(){ const TH=_lt(), d=cur(); if(d&&d.h!=null){ const s=d.s||50; TH.h=d.h; TH.paper=`rgb(${hslRgb(d.h,s,11.5)})`; TH.wall=`rgb(${hslRgb(d.h,s+5,6.5)})`; TH.grid=hslRgb(d.h,70,80); TH.hatch=`rgba(${hslRgb(d.h,70,80)},.16)`; TH.edge=`rgba(${hslRgb(d.h,80,88)},.9)`; } return TH; };
 return {BG};
