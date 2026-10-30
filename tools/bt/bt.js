@@ -1905,6 +1905,45 @@ setState=function(s){
 const _handleMeta=handleMeta;
 handleMeta=function(){ if((state==='bthelp'||state==='btend')&&pressed.has('Escape')){ setState('menu'); return; } return _handleMeta(); };
 
-return {S,LEVELS,DEFS,CAMP,setDuck,crash};
+/* ---------------- плашка с описанием уровня (экран «Выбрать уровень») ---------------- */
+function lvInfo(i){
+  const e=CAMP[i]; if(!e) return null;
+  let name='', desc='', tag='', par=0;
+  if(e.k==='t'){ const D=DEFS[e.t]; name=D.name||''; desc=D.desc||''; tag=D.kind==='boss'?'БОСС':'ИСПЫТАНИЕ'; par=D.par||0; }
+  else { let L=null; try{ L=getLevel(i); }catch(_){ }
+    name=(L&&L.name)||''; desc=(L&&L.hint)||''; tag=e.k==='b'?'БОСС':'ЛОГИКА'; try{ par=L?starPar(L):0; }catch(_){ } }
+  desc=desc.charAt(0).toUpperCase()+desc.slice(1);
+  return {name,desc,tag,par};
+}
+(()=>{
+  if(window.matchMedia&&matchMedia('(hover: none)').matches) return;   // на телефоне нажатие сразу запускает уровень — плашка не нужна
+  const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  let tip=null, cur=null;
+  const hide=()=>{ cur=null; if(tip) tip.classList.remove('on'); };
+  const show=btn=>{
+    const i=+btn.dataset.lv, I=lvInfo(i); if(!I||!I.name) return;
+    let st=null; try{ st=starsAll()[i]; }catch(_){ }
+    if(!tip){ tip=document.createElement('div'); tip.id='lvTip'; tip.setAttribute('role','tooltip'); document.body.appendChild(tip); }
+    const boss=CAMP[i].k==='b'||(CAMP[i].k==='t'&&CAMP[i].t===10);
+    const foot=st?(starHtml(st.s||0)+(st.bt?'<span>Рекорд '+st.bt.toFixed(1)+' с</span>':'')):'<span>Ещё не пройден</span>';
+    tip.innerHTML='<div class="lvt-e">Уровень '+(boss?'Б':'')+(i+1)+' · '+I.tag+'</div><div class="lvt-n">'+esc(I.name)+'</div>'
+      +(I.desc?'<div class="lvt-d">'+esc(I.desc)+'</div>':'')
+      +'<div class="lvt-f">'+foot+(I.par?'<span class="lvt-par">Норма: '+I.par+' с</span>':'')+'</div>';
+    cur=btn; tip.classList.remove('below'); tip.style.left='0px'; tip.style.top='0px'; tip.classList.add('on');
+    const r=btn.getBoundingClientRect(), w=tip.offsetWidth, h=tip.offsetHeight, vw=window.innerWidth;
+    let x=r.left+r.width/2-w/2; x=Math.max(8,Math.min(vw-w-8,x));
+    let y=r.top-h-14, below=false; if(y<8){ y=r.bottom+14; below=true; }
+    tip.style.left=x+'px'; tip.style.top=y+'px'; tip.style.setProperty('--ax',(r.left+r.width/2-x)+'px'); tip.classList.toggle('below',below);
+  };
+  const lvb=t=>t&&t.closest?t.closest('.lvb'):null;
+  document.addEventListener('mouseover',e=>{ const b=lvb(e.target); if(b&&b!==cur) show(b); });
+  document.addEventListener('mouseout',e=>{ const b=lvb(e.target); if(b&&b===cur&&!b.contains(e.relatedTarget)) hide(); });
+  document.addEventListener('focusin',e=>{ const b=lvb(e.target); if(b) show(b); });
+  document.addEventListener('focusout',e=>{ if(lvb(e.target)) hide(); });
+  document.addEventListener('mousedown',hide,true);
+  setInterval(()=>{ if(cur&&!document.body.contains(cur)) hide(); },250);   // экран сменился, а кнопки уже нет
+})();
+
+return {S,LEVELS,DEFS,CAMP,setDuck,crash,lvInfo};
 })();
 /* ===== /ИСПЫТАНИЯ ===== */
