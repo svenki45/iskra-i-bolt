@@ -2889,7 +2889,6 @@ function setState(s){
         <button class="secondary" id="bNew" type="button">Новая игра<small>выбрать слот</small></button>
         <button class="secondary" id="bLoad" type="button">Загрузить<small>${slots.filter(Boolean).length} из ${SLOT_N} слотов</small></button>`:`<button class="primary mbig" id="bNew" type="button">Играть<small>новая игра</small></button>`}
         ${(best>0||cheat)?`<button class="secondary" id="bLv" type="button">Выбрать уровень<small>★ ${starCount()} из ${TOTAL*3}</small></button>`:''}
-        <button class="secondary" id="bMode" type="button">Режим игры<small>${NET.role?'онлайн · '+NET.code:solo?'1 игрок · '+(soloHero==='spark'?'Искра':'Болт'):'2 игрока'}</small></button>
         <button class="secondary" id="bShopM" type="button">Лавка<small>${run.wallet.toLocaleString('ru-RU')} очков</small></button>
         <button class="secondary" id="bShop" type="button">Внешний вид<small>цвет, шапка, след</small></button>
         <button class="secondary" id="bAch" type="button">Достижения<small>${got} из ${ACH.length}</small></button>
@@ -2898,7 +2897,7 @@ function setState(s){
         ${cheatMenu?`<button class="secondary" id="bCheats" type="button">Читы<small>${anyCheat()?'включены':'выключены'}</small></button>`:''}
       </div>
     </div>`;
-    $('bShop').onclick=()=>{ custBack='menu'; setState('custom'); }; $('bMode').onclick=()=>{ modesBack='menu'; setState('modes'); }; $('bShopM').onclick=()=>{ shopFrom='menu'; setState('shop'); }; $('bSet').onclick=()=>{ setBack='menu'; setCat=null; setState('settings'); }; $('bAch').onclick=()=>setState('ach');
+    $('bShop').onclick=()=>{ custBack='menu'; setState('custom'); }; $('bShopM').onclick=()=>{ shopFrom='menu'; setState('shop'); }; $('bSet').onclick=()=>{ setBack='menu'; setCat=null; setState('settings'); }; $('bAch').onclick=()=>setState('ach');
     $('bHelp').onclick=()=>{ helpBack='menu'; setState('help'); };
     // «Онлайн» и «Арена» теперь в «Режим игры»
     if(cheatMenu) $('bCheats').onclick=()=>setState('cheats');
@@ -2914,7 +2913,6 @@ function setState(s){
         <button class="${NET.role?'primary':'secondary'}" id="bNet" type="button">Онлайн<small>${NET.role?'идёт игра · '+NET.code:'2 игрока по сети'}</small></button>
         <button class="secondary" id="bArena" type="button">Арена<small>бои с ботами и онлайн</small></button>
         ${window.MOBILE_BUILD?'':'<button class="secondary" id="bEditor" type="button">Конструктор<small>свои уровни</small></button><button class="secondary" id="bMyGame" type="button">Моя игра<small>из моих уровней</small></button>'}
-        <button class="secondary" id="bToTitle" type="button">Главный экран<small>заставка игры</small></button>
         <button class="secondary" id="bModesBack" type="button">Назад · Esc</button>
       </div></div>`;
     $('bMOne').onclick=()=>{ heroBack='modes'; setState('hero'); };
@@ -2922,7 +2920,6 @@ function setState(s){
     $('bNet').onclick=()=>{ audioInit(); sfx('nav'); netBack='modes'; if(NET.role==='host'&&NET.conn&&NET.conn.open){ startGame(Math.min(TOTAL-1,best)); return; } if(!NET.conn){ NET.role=null; } NET.status=''; try{ setState('net'); }catch(err){ console.error(err); toastQ.push({small:'Онлайн',title:'Ошибка: '+(err&&err.message||err)}); showToast(); } };
     $('bArena').onclick=()=>{ audioInit(); sfx('nav'); ARENA.open('modes'); };
     if($('bEditor')) $('bEditor').onclick=()=>ED.open(); if($('bMyGame')) $('bMyGame').onclick=()=>{ ED.open(); ED.game(); };
-    $('bToTitle').onclick=()=>{ sfx('nav'); setState('title'); };
     $('bModesBack').onclick=()=>setState(modesBack);
   } else if(s==='hero'){
     overlay.innerHTML=`<div class="card wide"><span class="eyebrow">Один игрок</span><h2>Выберите героя</h2>
@@ -3231,8 +3228,8 @@ function setState(s){
       <div class="rest b" ${solo&&soloHero!=='bolt'?'hidden':''}><canvas id="pvB" width="160" height="160"></canvas><span>z</span><span>z</span><span>Z</span></div></div>`;
     overlay.innerHTML=deco+`<div class="card"><span class="eyebrow">${own==null?'Пауза':'Пауза · поставил'+(own===1?'':'а')+' '+PNAME[own]}</span><h2>Перерыв</h2>
       ${own==null?'':`<p class="padst" id="pauseNote" style="color:${own?'#62c7c1':'#ff8a3d'}">Снять паузу может только ${PNAME[own]}: ${PKEY[own]} или Start на своём геймпаде.</p>`}
-      <div class="mgrid pgrid2">${own==null?'<button class="primary wide2" id="bRes" type="button">Продолжить · Esc</button>':''}${cheat&&!NET.role&&!edTest?`<button class="secondary" id="bChPrev" type="button" ${levelIdx>0?'':'disabled'}>◀ Уровень ${levelIdx}<small>чит</small></button><button class="secondary" id="bChNext" type="button" ${levelIdx<TOTAL-1?'':'disabled'}>Уровень ${levelIdx+2} ▶<small>чит</small></button>`:''}<button class="secondary" id="bRe" type="button">Уровень заново</button><button class="secondary" id="bShopP" type="button">Лавка</button><button class="secondary" id="bHelpP" type="button">Помощь</button><button class="secondary" id="bSet2" type="button">Настройки</button><button class="secondary wide2" id="bMenu" type="button">В меню</button></div></div>`;
-    if($('bRes')) $('bRes').onclick=()=>{ pauseOwner=null; setState('play'); }; if($('bChPrev')) $('bChPrev').onclick=()=>{ if(levelIdx>0){ runClean=false; pauseOwner=null; loadLevel(levelIdx-1); setState('play'); } }; if($('bChNext')) $('bChNext').onclick=()=>{ if(levelIdx<TOTAL-1){ runClean=false; pauseOwner=null; loadLevel(levelIdx+1); setState('play'); } }; $('bSet2').onclick=()=>{ setBack='pause'; setCat=null; setState('settings'); }; $('bShopP').onclick=()=>{ shopFrom='pause'; setState('shop'); }; $('bHelpP').onclick=()=>{ helpBack='pause'; setState('help'); }; $('bRe').onclick=()=>{ try{ window.BT_RESET&&window.BT_RESET(); }catch(e){} loadingTo(levelIdx,true); }; $('bMenu').onclick=()=>{loadLevel(levelIdx);setState('menu');}; if(window.ibSys&&ibSys.quit){ const g=overlay.querySelector('.pgrid2'); if(g){ g.insertAdjacentHTML('beforeend','<button class="secondary wide2" id="bQuitP" type="button">Выйти из игры</button>'); $('bQuitP').onclick=()=>ibSys.quit(); } }
+      <div class="mgrid pgrid2">${own==null?'<button class="primary wide2" id="bRes" type="button">Продолжить · Esc</button>':''}${cheat&&!NET.role&&!edTest?`<button class="secondary" id="bChPrev" type="button" ${levelIdx>0?'':'disabled'}>◀ Уровень ${levelIdx}<small>чит</small></button><button class="secondary" id="bChNext" type="button" ${levelIdx<TOTAL-1?'':'disabled'}>Уровень ${levelIdx+2} ▶<small>чит</small></button>`:''}<button class="secondary" id="bRe" type="button">Уровень заново</button><button class="secondary" id="bShopP" type="button">Лавка</button><button class="secondary" id="bHelpP" type="button">Помощь</button><button class="secondary" id="bSet2" type="button">Настройки</button><button class="secondary wide2" id="bMenu" type="button">В меню</button><button class="secondary wide2" id="bTitleP" type="button">На титульный экран</button></div></div>`;
+    if($('bRes')) $('bRes').onclick=()=>{ pauseOwner=null; setState('play'); }; if($('bChPrev')) $('bChPrev').onclick=()=>{ if(levelIdx>0){ runClean=false; pauseOwner=null; loadLevel(levelIdx-1); setState('play'); } }; if($('bChNext')) $('bChNext').onclick=()=>{ if(levelIdx<TOTAL-1){ runClean=false; pauseOwner=null; loadLevel(levelIdx+1); setState('play'); } }; $('bSet2').onclick=()=>{ setBack='pause'; setCat=null; setState('settings'); }; $('bShopP').onclick=()=>{ shopFrom='pause'; setState('shop'); }; $('bHelpP').onclick=()=>{ helpBack='pause'; setState('help'); }; $('bRe').onclick=()=>{ try{ window.BT_RESET&&window.BT_RESET(); }catch(e){} loadingTo(levelIdx,true); }; $('bMenu').onclick=()=>{loadLevel(levelIdx);setState('menu');}; $('bTitleP').onclick=()=>{ sfx('nav'); pauseOwner=null; loadLevel(levelIdx); setState('title'); }; if(window.ibSys&&ibSys.quit){ const g=overlay.querySelector('.pgrid2'); if(g){ g.insertAdjacentHTML('beforeend','<button class="secondary wide2" id="bQuitP" type="button">Выйти из игры</button>'); $('bQuitP').onclick=()=>ibSys.quit(); } }
   } else if(s==='done'){
     const L=getLevel(levelIdx), nextBoss=(levelIdx+2)%10===0;
     overlay.innerHTML=`<div class="card"><span class="eyebrow">Уровень ${levelIdx+1} из ${TOTAL} готов</span><h2>${L.boss?'Босс повержен':L.name}</h2>
@@ -7873,7 +7870,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.01b';
+const GAME_VER='1.66.02a';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
