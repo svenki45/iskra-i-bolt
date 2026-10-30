@@ -412,6 +412,10 @@ body.b3d .overlay button.primary,body.b3d .overlay button.secondary,body.b3d #bO
 body.b3d .overlay button.primary::after,body.b3d .overlay button.secondary::after,body.b3d #bOne::after,body.b3d #bTwo::after,body.b3d #bOnline::after{content:'';position:absolute;left:-3px;right:-3px;top:-2px;bottom:-10px;background:transparent}
 body.b3d .overlay button.primary:active,body.b3d .overlay button.secondary:active,body.b3d .overlay .opt:active,body.b3d #bOne:active,body.b3d #bTwo:active,body.b3d #bOnline:active{transform:perspective(700px) translateY(5px);box-shadow:0 1px 0 rgba(5,10,24,.9),0 3px 8px rgba(0,0,0,.4)}
 body.b3d .overlay .opt.on{box-shadow:0 3px 0 #9a6c16,0 6px 12px rgba(0,0,0,.4);transform:perspective(700px) translateY(3px)}
+/* карточки выбора героя: тот же объём, что у кнопок (приподнимаются и «продавливаются»), без наклона */
+body.b3d .overlay button.pickhero{transform:perspective(700px) translateY(0);box-shadow:0 7px 0 rgba(5,10,24,.9),0 13px 22px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.18)}
+body.b3d .overlay button.pickhero:hover,body.b3d .overlay button.pickhero:focus-visible,body.b3d.kbnav .overlay button.pickhero:focus{transform:perspective(700px) translateY(-5px) scale(1.02);box-shadow:0 12px 0 rgba(5,10,24,.9),0 20px 28px rgba(0,0,0,.45),0 0 0 2px var(--brass),inset 0 1px 0 rgba(255,255,255,.22);filter:brightness(1.08)}
+body.b3d .overlay button.pickhero:active{transform:perspective(700px) translateY(5px);box-shadow:0 1px 0 rgba(5,10,24,.9),0 3px 8px rgba(0,0,0,.4),0 0 0 2px var(--brass)}
 /* 3D sliders & checkboxes */
 body.b3d .overlay input[type=range]{-webkit-appearance:none;appearance:none;height:12px;border-radius:7px;background:linear-gradient(90deg,#e7b54a 0,#ffd166 var(--p,50%),transparent var(--p,50%)),linear-gradient(#0a1426,#1b2b48);box-shadow:inset 0 3px 5px rgba(0,0,0,.7),0 1px 0 rgba(255,255,255,.12);outline:none}
 body.b3d .overlay input[type=range]::-webkit-slider-runnable-track{height:12px;border-radius:7px;background:transparent}
@@ -821,7 +825,7 @@ document.addEventListener('fullscreenchange',fsLabel);
 document.addEventListener('fullscreenchange',()=>setTimeout(fit,50));
 
 // ПК: описание уровня над игрой скрыто — остаётся только название, поле игры больше
-document.head.insertAdjacentHTML('beforeend','<style>body:not(.touch) #hint{display:none!important} .titlescr{padding-block:5% 2.5%!important} .tbtns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px} .tbtns button{display:flex;flex-direction:column;align-items:center;padding:8px 18px;min-width:200px} .tbtns small{margin:2px 0 0!important} body:not(.touch) .app{max-width:none!important;gap:4px!important;padding:4px 10px!important} body:not(.touch) .top{gap:2px 14px} body:not(.touch) .legend{font-size:12px;gap:2px 18px;line-height:1.2} body:not(.touch) .legend .tools button{padding:2px 10px;font-size:12px} .overlay button{transition:transform .14s ease,filter .14s ease,box-shadow .14s ease}  .overlay button:not(:disabled):hover,body.kbnav .overlay button:focus,.overlay button:focus-visible{outline:none!important;outline-offset:0!important;transform:perspective(700px) rotateX(8deg) translateY(-3px)!important;filter:brightness(1.14)!important;box-shadow:inset 0 0 0 2px #ffd166,inset 0 0 18px rgba(255,209,102,.28),0 3px 0 rgba(0,0,0,.35)!important}  .overlay button.primary:not(:disabled):hover,body.kbnav .overlay button.primary:focus,.overlay button.primary:focus-visible{box-shadow:inset 0 0 0 2px #fff6d6,inset 0 0 22px rgba(255,255,255,.35),0 3px 0 rgba(0,0,0,.35)!important}  body.kbnav .overlay input:focus{outline:2px solid #ffd166!important;outline-offset:1px!important;box-shadow:none!important} .logo .lt.s{animation:weld .55s cubic-bezier(.2,1.4,.4,1) both,float 3.2s ease-in-out infinite;animation-delay:inherit} .logo .lt.b{animation:screw .6s cubic-bezier(.25,1.3,.4,1) both,float 3.2s ease-in-out infinite;animation-delay:inherit} @keyframes weld{0%{opacity:0;transform:scale(1.8);filter:brightness(4) blur(6px);color:#fff}60%{opacity:1;filter:brightness(2.2) blur(0);color:#fff6d0}100%{opacity:1;transform:scale(1);filter:none}} @keyframes screw{0%{opacity:0;transform:rotate(-540deg) scale(.1)}70%{opacity:1;transform:rotate(12deg) scale(1.08)}100%{opacity:1;transform:rotate(0) scale(1)}} .logo.slam{animation:logoSlam .45s ease-out} @keyframes logoSlam{0%{transform:scale(1.12);filter:brightness(2.2)}100%{transform:scale(1);filter:none}} .logo{position:relative;transform:perspective(900px) rotateX(var(--rx,6deg)) rotateY(var(--ry,0deg));transform-style:preserve-3d;transition:transform .25s ease-out} .b3dbadge{position:absolute;right:-.35em;bottom:-.95em;font:900 .62em var(--display);perspective:500px;animation:b3dIn .7s cubic-bezier(.2,1.6,.4,1) both;z-index:2} .b3dbadge i{display:inline-block;font-style:normal;padding:.05em .28em;border-radius:.18em;background:linear-gradient(160deg,#e9f1ff 0%,#9fb4d6 45%,#5d6f8e 55%,#c9d6e8 100%);color:#16233a;text-shadow:0 1px 0 #fff;box-shadow:0 1px 0 #7b8aa6,0 2px 0 #6f7e99,0 3px 0 #63718b,0 4px 0 #57647e,0 5px 0 #4b5770,0 6px 0 #3f4a62,0 10px 18px rgba(0,0,0,.6),0 0 30px rgba(127,232,224,.45);transform:rotate(-12deg);animation:b3dSpin 6s ease-in-out 3.5s infinite} @keyframes b3dIn{0%{opacity:0;transform:scale(3) rotate(-40deg);filter:brightness(3)}100%{opacity:1;transform:none;filter:none}} @keyframes b3dSpin{0%,70%{transform:rotate(-12deg) rotateY(0)}85%{transform:rotate(-12deg) rotateY(360deg)}100%{transform:rotate(-12deg) rotateY(360deg)}} html,body,body *{-webkit-user-select:none;user-select:none;-webkit-user-drag:none} input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text} ::selection{background:transparent}</style>');
+document.head.insertAdjacentHTML('beforeend','<style>body:not(.touch) #hint{display:none!important} .titlescr{padding-block:5% 2.5%!important} .tbtns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px} .tbtns button{display:flex;flex-direction:column;align-items:center;padding:8px 18px;min-width:200px} .tbtns small{margin:2px 0 0!important} body:not(.touch) .app{max-width:none!important;gap:4px!important;padding:4px 10px!important} body:not(.touch) .top{gap:2px 14px} body:not(.touch) .legend{font-size:12px;gap:2px 18px;line-height:1.2} body:not(.touch) .legend .tools button{padding:2px 10px;font-size:12px} .overlay button{transition:transform .14s ease,filter .14s ease,box-shadow .14s ease} .overlay button.pickhero:not(:disabled):hover,body.kbnav .overlay button.pickhero:focus,.overlay button.pickhero:focus-visible{transform:perspective(700px) translateY(-5px) scale(1.02)!important;box-shadow:0 12px 0 rgba(5,10,24,.9),0 20px 28px rgba(0,0,0,.45),0 0 0 2px #ffd166!important}  .overlay button:not(:disabled):hover,body.kbnav .overlay button:focus,.overlay button:focus-visible{outline:none!important;outline-offset:0!important;transform:perspective(700px) rotateX(8deg) translateY(-3px)!important;filter:brightness(1.14)!important;box-shadow:inset 0 0 0 2px #ffd166,inset 0 0 18px rgba(255,209,102,.28),0 3px 0 rgba(0,0,0,.35)!important}  .overlay button.primary:not(:disabled):hover,body.kbnav .overlay button.primary:focus,.overlay button.primary:focus-visible{box-shadow:inset 0 0 0 2px #fff6d6,inset 0 0 22px rgba(255,255,255,.35),0 3px 0 rgba(0,0,0,.35)!important}  body.kbnav .overlay input:focus{outline:2px solid #ffd166!important;outline-offset:1px!important;box-shadow:none!important} .logo .lt.s{animation:weld .55s cubic-bezier(.2,1.4,.4,1) both,float 3.2s ease-in-out infinite;animation-delay:inherit} .logo .lt.b{animation:screw .6s cubic-bezier(.25,1.3,.4,1) both,float 3.2s ease-in-out infinite;animation-delay:inherit} @keyframes weld{0%{opacity:0;transform:scale(1.8);filter:brightness(4) blur(6px);color:#fff}60%{opacity:1;filter:brightness(2.2) blur(0);color:#fff6d0}100%{opacity:1;transform:scale(1);filter:none}} @keyframes screw{0%{opacity:0;transform:rotate(-540deg) scale(.1)}70%{opacity:1;transform:rotate(12deg) scale(1.08)}100%{opacity:1;transform:rotate(0) scale(1)}} .logo.slam{animation:logoSlam .45s ease-out} @keyframes logoSlam{0%{transform:scale(1.12);filter:brightness(2.2)}100%{transform:scale(1);filter:none}} .logo{position:relative;transform:perspective(900px) rotateX(var(--rx,6deg)) rotateY(var(--ry,0deg));transform-style:preserve-3d;transition:transform .25s ease-out} .b3dbadge{position:absolute;right:-.35em;bottom:-.95em;font:900 .62em var(--display);perspective:500px;animation:b3dIn .7s cubic-bezier(.2,1.6,.4,1) both;z-index:2} .b3dbadge i{display:inline-block;font-style:normal;padding:.05em .28em;border-radius:.18em;background:linear-gradient(160deg,#e9f1ff 0%,#9fb4d6 45%,#5d6f8e 55%,#c9d6e8 100%);color:#16233a;text-shadow:0 1px 0 #fff;box-shadow:0 1px 0 #7b8aa6,0 2px 0 #6f7e99,0 3px 0 #63718b,0 4px 0 #57647e,0 5px 0 #4b5770,0 6px 0 #3f4a62,0 10px 18px rgba(0,0,0,.6),0 0 30px rgba(127,232,224,.45);transform:rotate(-12deg);animation:b3dSpin 6s ease-in-out 3.5s infinite} @keyframes b3dIn{0%{opacity:0;transform:scale(3) rotate(-40deg);filter:brightness(3)}100%{opacity:1;transform:none;filter:none}} @keyframes b3dSpin{0%,70%{transform:rotate(-12deg) rotateY(0)}85%{transform:rotate(-12deg) rotateY(360deg)}100%{transform:rotate(-12deg) rotateY(360deg)}} html,body,body *{-webkit-user-select:none;user-select:none;-webkit-user-drag:none} input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text} ::selection{background:transparent}</style>');
 
 // не браузер: без контекстного меню, перетаскивания картинок и выделения всего по Ctrl+A
 addEventListener('contextmenu',e=>{ if(!(e.target&&e.target.closest&&e.target.closest('input,textarea,#editor canvas'))) e.preventDefault(); });
@@ -2872,12 +2876,12 @@ function setState(s){
     const fast=titleIntro.seen, word=(w,cls,d0,st)=>[...w].map((ch,i)=>`<span class="lt ${cls}" style="animation-delay:${(fast?d0*.25+i*.04:d0+i*st).toFixed(2)}s">${ch}</span>`).join('');
     overlay.innerHTML=`<div class="titlescr">
       <div class="logo" aria-label="Искра и Болт">${word('ИСКРА','s',0.3,0.2)}<span class="lt amp" style="animation-delay:${fast?.4:1.45}s">и</span>${word('БОЛТ','b',1.6,0.2)}<span class="beta">БЕТА</span><span class="b3dbadge" style="animation-delay:${titleIntro.seen?.5:2.75}s,${titleIntro.seen?.5:2.75}s"><i>3D</i></span></div>
-      <div class="startwrap"><div class="modes"><button class="${solo?'primary':'secondary'} start mode" id="bOne" type="button">1 ИГРОК<small>выбрать героя</small></button><button class="${solo?'secondary':'primary'} start mode" id="bTwo" type="button">2 ИГРОКА<small>${window.MOBILE_BUILD?"на одном телефоне":"за одной клавиатурой"}</small></button></div><div class="tbtns"><button class="secondary" id="bOnline" type="button">🌐 ОНЛАЙН<small>${window.MOBILE_BUILD?"подключиться к другу на ПК":"с другом по интернету"}</small></button><button class="secondary" id="tArena" type="button">⚔ АРЕНА<small>бои с ботами и онлайн</small></button><button class="secondary" id="tLook" type="button">🎨 ВНЕШНИЙ ВИД<small>цвет, шапка, след</small></button><button class="secondary" id="tSet" type="button">⚙ НАСТРОЙКИ<small>звук, графика, управление</small></button>${window.MOBILE_BUILD?'':'<button class="secondary" id="tEditor" type="button">🛠 КОНСТРУКТОР<small>свои уровни</small></button><button class="secondary" id="tMyGame" type="button">📚 МОЯ ИГРА<small>из моих уровней</small></button>'}</div>
+      <div class="startwrap"><div class="modes"><button class="${solo?'primary':'secondary'} start mode" id="bOne" type="button">1 ИГРОК<small>выбрать героя</small></button><button class="${solo?'secondary':'primary'} start mode" id="bTwo" type="button">2 ИГРОКА<small>${window.MOBILE_BUILD?"на одном телефоне":"за одной клавиатурой"}</small></button></div><div class="tbtns"><button class="secondary" id="bOnline" type="button">🌐 ОНЛАЙН<small>${window.MOBILE_BUILD?"подключиться к другу на ПК":"с другом по интернету"}</small></button><button class="secondary" id="tArena" type="button">⚔ АРЕНА<small>бои с ботами и онлайн</small></button><button class="secondary" id="tLook" type="button">🎨 ВНЕШНИЙ ВИД<small>цвет, шапка, след</small></button><button class="secondary" id="tSet" type="button">⚙ НАСТРОЙКИ<small>звук, графика, управление</small></button><button class="secondary" id="tEditor" type="button">🛠 КОНСТРУКТОР<small>свои уровни и «Моя игра»</small></button></div>
       </div>
     </div>`;
     for(const [id,k] of [['bOne','one'],['bTwo','two']]){ const el=$(id); el.addEventListener('mouseenter',()=>titleFocus=k); el.addEventListener('focus',()=>titleFocus=k); }
     $('bOne').onclick=()=>{ audioInit(); sfx('nav'); heroBack='title'; setState('hero'); };
-    if($('tArena')) $('tArena').onclick=()=>{ audioInit(); sfx('nav'); ARENA.open('title'); }; $('bOnline').onclick=()=>{ audioInit(); sfx('nav'); NET.status=''; netBack='title'; setState('net'); }; $('tLook').onclick=()=>{ audioInit(); sfx('nav'); custBack='title'; setState('custom'); }; $('tSet').onclick=()=>{ audioInit(); sfx('nav'); setBack='title'; setCat=null; setState('settings'); }; if($('tEditor')){ $('tEditor').onclick=()=>{ audioInit(); sfx('nav'); ED.open(); }; $('tMyGame').onclick=()=>{ audioInit(); sfx('nav'); ED.open(); ED.game(); }; } $('bTwo').onclick=()=>{ setMode(false); goMenuFromTitle(); };
+    if($('tArena')) $('tArena').onclick=()=>{ audioInit(); sfx('nav'); ARENA.open('title'); }; $('bOnline').onclick=()=>{ audioInit(); sfx('nav'); NET.status=''; netBack='title'; setState('net'); }; $('tLook').onclick=()=>{ audioInit(); sfx('nav'); custBack='title'; setState('custom'); }; $('tSet').onclick=()=>{ audioInit(); sfx('nav'); setBack='title'; setCat=null; setState('settings'); }; $('tEditor').onclick=()=>{ audioInit(); sfx('nav'); ED.open(); }; $('bTwo').onclick=()=>{ setMode(false); goMenuFromTitle(); };
     if(window.ibSys&&ibSys.quit){ const tb=overlay.querySelector('.tbtns'); if(tb){ tb.insertAdjacentHTML('beforeend','<button class="secondary" id="tQuit" type="button">⏻ ВЫХОД<small>закрыть игру</small></button>'); $('tQuit').onclick=()=>ibSys.quit(); } }
     setTimeout(()=>{ try{ $(solo?'bOne':'bTwo').focus({preventScroll:true}); }catch(e){} },0);
   } else if(s==='menu'){
@@ -2895,12 +2899,14 @@ function setState(s){
         <button class="secondary" id="bHelp" type="button">Помощь<small>как играть</small></button>
         <button class="secondary" id="bSet" type="button">Настройки<small>звук, графика, управление</small></button>
         ${cheatMenu?`<button class="secondary" id="bCheats" type="button">Читы<small>${anyCheat()?'включены':'выключены'}</small></button>`:''}
+        <button class="secondary" id="bTitleM" type="button">На титульный экран<small>главный экран · Esc</small></button>
       </div>
     </div>`;
     $('bShop').onclick=()=>{ custBack='menu'; setState('custom'); }; $('bShopM').onclick=()=>{ shopFrom='menu'; setState('shop'); }; $('bSet').onclick=()=>{ setBack='menu'; setCat=null; setState('settings'); }; $('bAch').onclick=()=>setState('ach');
     $('bHelp').onclick=()=>{ helpBack='menu'; setState('help'); };
     // «Онлайн» и «Арена» теперь в «Режим игры»
     if(cheatMenu) $('bCheats').onclick=()=>setState('cheats');
+    $('bTitleM').onclick=()=>{ sfx('nav'); setState('title'); };
     $('bNew').onclick=()=>{ if(!slots.some(Boolean)){ newSlotTarget=0; setState('diffpick'); return; } slotMode='new'; slotDel=-1; setState('slots'); };
     if($('bLoad')) $('bLoad').onclick=()=>{ slotMode='load'; slotDel=-1; setState('slots'); };
     if(LS>=0) $('bCont').onclick=()=>{ applySlot(LS); startGame(Math.min(TOTAL-1,best)); };
@@ -2912,7 +2918,7 @@ function setState(s){
         <button class="${!solo&&!NET.role?'primary':'secondary'}" id="bMTwo" type="button">2 игрока<small>${window.MOBILE_BUILD?'на одном телефоне':'за одной клавиатурой'}</small></button>
         <button class="${NET.role?'primary':'secondary'}" id="bNet" type="button">Онлайн<small>${NET.role?'идёт игра · '+NET.code:'2 игрока по сети'}</small></button>
         <button class="secondary" id="bArena" type="button">Арена<small>бои с ботами и онлайн</small></button>
-        ${window.MOBILE_BUILD?'':'<button class="secondary" id="bEditor" type="button">Конструктор<small>свои уровни</small></button><button class="secondary" id="bMyGame" type="button">Моя игра<small>из моих уровней</small></button>'}
+        <button class="secondary" id="bEditor" type="button">Конструктор<small>свои уровни</small></button><button class="secondary" id="bMyGame" type="button">Моя игра<small>из моих уровней</small></button>
         <button class="secondary" id="bModesBack" type="button">Назад · Esc</button>
       </div></div>`;
     $('bMOne').onclick=()=>{ heroBack='modes'; setState('hero'); };
@@ -6270,6 +6276,27 @@ let edTest=false, edLevel=null, edSaved=null;
 #editor .rchk{display:inline-flex;gap:4px;align-items:center;margin:2px 10px 2px 0;font-size:12.5px}
 #editor .rbtn{display:flex;gap:8px;margin-top:4px}
 #editor .edhelp{color:#8fa3c0;font-size:12px}
+#editor .edtouch{display:none}
+body.touch #editor .edtouch{display:flex;gap:6px;padding:6px 8px;background:#0f1a30;border-bottom:1px solid #22324f;overflow-x:auto;-webkit-overflow-scrolling:touch;flex:none;padding-top:max(6px,env(safe-area-inset-top,0px))}
+#editor .edtouch button{flex:none;min-height:40px;padding:0 12px;font:600 14px Rubik,system-ui,sans-serif;color:#e8effa;background:#1d2a45;border:1px solid #3a4a6a;border-radius:9px;touch-action:manipulation}
+#editor .edtouch button.on{background:#e7b54a;color:#0b1220;border-color:#ffd166}
+body.touch #editor canvas#edCv{touch-action:none;cursor:default}
+body.touch #editor .edwrap{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+body.touch #editor .edtop{display:none}
+body.touch #editor.top .edtop{display:flex;position:absolute;left:0;right:0;top:56px;z-index:30;max-height:60vh;overflow:auto;box-shadow:0 10px 30px rgba(0,0,0,.6);padding-left:max(12px,env(safe-area-inset-left,0px))}
+body.touch #editor .edside{display:none;position:absolute;left:0;top:56px;bottom:56px;z-index:25;width:min(300px,78vw);box-shadow:8px 0 30px rgba(0,0,0,.6)}
+body.touch #editor.pal .edside{display:flex}
+body.touch #editor .edmain{position:relative}
+body.touch #editor .edt{padding:8px 8px;min-height:40px;font-size:14px}
+body.touch #editor .edgh{min-height:36px}
+body.touch #editor .edinfo{display:none!important}
+body.touch #editor .edbot{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:max(8px,env(safe-area-inset-bottom,0px))}
+body.touch #editor .edbot>*{flex:none}
+body.touch #editor .edbot .edhelp,body.touch #editor #edExit{display:none}
+body.touch #editor button.primary,body.touch #editor button.secondary,body.touch #editor .edimp{min-height:40px;font-size:14px}
+body.touch #editor input#edHint{width:min(70vw,320px)}
+body.touch #editor select,body.touch #editor input:not([type]){min-height:36px;font-size:15px}
+body.touch #editor #edRnd{right:8px;left:8px;width:auto;bottom:64px;max-height:60vh}
 body.editing #pauseBtn,body.editing #verTag{display:none}`; document.head.appendChild(st); }
 const ED=(()=>{
   const E={on:false};
@@ -6377,7 +6404,7 @@ const ED=(()=>{
     }
     g.restore(); }
   let lampOpt={mode:'touch',r:200}, hovDecor=null;
-  let L=null, tool='#', cell=32, el=null, cv2=null, g2=null, moverA=null, dirty=false, painting=0;
+  let L=null, tool='#', cell=32, zoom=0, touchErase=false, handMode=false, ptrs=new Map(), gest=null, pendT=0, el=null, cv2=null, g2=null, moverA=null, dirty=false, painting=0;
   const blankLevel=(w=32)=>{ const map=[...Array(ROWS)].map((_,y)=>[...Array(w)].map((_,x)=>(y===0||y===ROWS-1||x===0||x===w-1)?'#':'.'));
     map[16][2]='1'; map[16][3]='2'; for(const [x,y] of [[w-3,15],[w-2,15],[w-3,16],[w-2,16]]) map[y][x]='E';
     return {name:'Мой уровень',motif:NAMES[0],hue:null,dark:false,darkA:.94,hint:'',order:'abc',timed:{P:false,Q:false,R:false},map,enemies:[],pickups:[],movers:[],winds:[],flags:[],trapX:null,decor:[],lamps:[]}; };
@@ -6414,7 +6441,8 @@ const ED=(()=>{
   function build(){
     if(!el){ el=document.createElement('div'); el.id='editor'; document.body.appendChild(el); }
     const mine=list();
-    el.innerHTML=`<div class="edtop">
+    el.innerHTML=`<div class="edtouch"><button type="button" id="etP" class="on">☰ Объекты</button><button type="button" id="etS">⚙ Параметры</button><button type="button" id="etE">🧽 Стирать</button><button type="button" id="etH">✋ Двигать</button><button type="button" id="etZ1">🔍＋</button><button type="button" id="etZ0">🔍－</button><button type="button" id="etR1">⟲</button><button type="button" id="etR2">⟳</button><button type="button" id="etFl">⇋</button><button type="button" id="etFr">🔝 План</button><button type="button" id="etS1">⤢＋</button><button type="button" id="etS0">⤢－</button><button type="button" id="etX">✕ Выход</button></div>
+    <div class="edtop">
       <b class="edlogo">Конструктор уровней</b>
       <label>Название <input id="edName" value="${(L.name||'').replace(/"/g,'&quot;')}"></label>
       <label>Длина <select id="edW">${[[32,'1 экран'],[62,'2 экрана'],[92,'3 экрана'],[122,'4 экрана']].map(([w,n])=>`<option value="${w}" ${L.map[0].length===w?'selected':''}>${n}</option>`).join('')}</select></label>
@@ -6472,14 +6500,46 @@ const ED=(()=>{
     cv2.addEventListener('wheel',e=>{ if(e.shiftKey&&hovDecor){ e.preventDefault(); e.stopPropagation(); hovDecor.sc=Math.max(.5,Math.min(3,(hovDecor.sc||1)+(e.deltaY<0?.25:-.25))); dirty=true; paint(); } },{passive:false});
     const wrap=q('.edwrap'); wrap.addEventListener('wheel',e=>{ if(e.shiftKey&&hovDecor) return; if(Math.abs(e.deltaY)>Math.abs(e.deltaX)){ if(L.map.length>ROWS&&!e.shiftKey) wrap.scrollTop+=e.deltaY; else wrap.scrollLeft+=e.deltaY; e.preventDefault(); } },{passive:false});
     cv2.oncontextmenu=e=>e.preventDefault();
-    cv2.onpointerdown=e=>{ painting=e.button===2?2:1; apply(e); }; cv2.onpointermove=e=>{ if(painting&&!tool.startsWith('@')&&tool[0]!=='%'&&tool!=='E'&&tool!=='1'&&tool!=='2') apply(e);
+    const pickDecor=e=>{ const r=cv2.getBoundingClientRect(), px=e.clientX-r.left, py=e.clientY-r.top; hovDecor=[...L.decor].reverse().find(d=>{ const b=decorBox(d,cell); return b&&px>=b.x&&px<=b.x+b.w&&py>=b.y&&py<=b.y+b.h; })||null; };
+    const mouseMove=e=>{ if(painting&&!tool.startsWith('@')&&tool[0]!=='%'&&tool!=='E'&&tool!=='1'&&tool!=='2') apply(e);
       { const r=cv2.getBoundingClientRect(), px=e.clientX-r.left, py=e.clientY-r.top; hovDecor=[...L.decor].reverse().find(d=>{ const b=decorBox(d,cell); return b&&px>=b.x&&px<=b.x+b.w&&py>=b.y&&py<=b.y+b.h; })||null; } hover=cellAt(e); paint(); const [hx,hy]=hover; if(e) place(e); const id=hovDecor?'%'+hovDecor.t:L.lamps.find(o=>o.tx===hx&&o.ty===hy)?'@lamp':L.enemies.find(o=>o.tx===hx&&o.ty===hy)?'@'+L.enemies.find(o=>o.tx===hx&&o.ty===hy).t:L.pickups.find(o=>o.tx===hx&&o.ty===hy)?'@'+L.pickups.find(o=>o.tx===hx&&o.ty===hy).t:(L.map[hy]&&L.map[hy][hx]); if(id&&id!=='.'){ if(id!==lastHov){ lastHov=id; showInfo(id); } info.style.display='block'; } else { lastHov=null; hideInfo(); } };
+    const wrap2=q('.edwrap');
+    const gdist=()=>{ const a=[...ptrs.values()]; return Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)||1; }, gmid=()=>{ const a=[...ptrs.values()]; return {x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2}; };
+    const startGest=()=>{ clearTimeout(pendT); painting=0; const m=gmid(); gest={d:gdist(),c:cell,mx:m.x,my:m.y,sl:wrap2.scrollLeft,st:wrap2.scrollTop}; };
+    const setZoom=(nc,ax,ay)=>{ nc=Math.max(10,Math.min(72,Math.round(nc))); if(nc===cell) return; const r=wrap2.getBoundingClientRect(), k=nc/cell; const cx=wrap2.scrollLeft+(ax-r.left), cy=wrap2.scrollTop+(ay-r.top); zoom=nc; fitCell(); wrap2.scrollLeft=cx*k-(ax-r.left); wrap2.scrollTop=cy*k-(ay-r.top); paint(); };
+    E.zoomBy=(f)=>{ const r=wrap2.getBoundingClientRect(); setZoom(cell*f,r.left+r.width/2,r.top+r.height/2); };
+    cv2.onpointerdown=e=>{
+      if(e.pointerType==='touch'){ ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY}); try{ cv2.setPointerCapture(e.pointerId); }catch(_){}
+        if(ptrs.size>=2){ startGest(); return; }
+        pickDecor(e); if(handMode){ gest={pan:1,mx:e.clientX,my:e.clientY,sl:wrap2.scrollLeft,st:wrap2.scrollTop}; paint(); return; }
+        const pt={clientX:e.clientX,clientY:e.clientY}; clearTimeout(pendT);
+        pendT=setTimeout(()=>{ if(ptrs.size!==1) return; painting=touchErase?2:1; apply(pt); if(tool[0]==='%'&&!touchErase&&L.decor.length) hovDecor=L.decor[L.decor.length-1]; paint(); },70); return; }
+      painting=e.button===2?2:1; apply(e); };
+    cv2.onpointermove=e=>{
+      if(e.pointerType==='touch'){ if(ptrs.has(e.pointerId)) ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+        if(gest&&ptrs.size>=2&&gest.d){ const m=gmid(), d=gdist(); wrap2.scrollLeft=gest.sl-(m.x-gest.mx); wrap2.scrollTop=gest.st-(m.y-gest.my); setZoom(gest.c*d/gest.d,m.x,m.y); return; }
+        if(gest&&gest.pan){ wrap2.scrollLeft=gest.sl-(e.clientX-gest.mx); wrap2.scrollTop=gest.st-(e.clientY-gest.my); return; }
+        if(painting&&ptrs.size===1&&!tool.startsWith('@')&&tool[0]!=='%'&&tool!=='E'&&tool!=='1'&&tool!=='2') apply(e); return; }
+      mouseMove(e); };
+    const ptrEnd=e=>{ if(e.pointerType==='touch'){ ptrs.delete(e.pointerId); if(ptrs.size<2&&gest&&gest.d) gest=null; if(!ptrs.size) gest=null; } painting=0; };
+    cv2.addEventListener('pointerup',ptrEnd); cv2.addEventListener('pointercancel',ptrEnd);
+    // кнопки для сенсорного экрана
+    const T$=id=>q('#'+id), withDecor=fn=>{ if(!hovDecor){ toastQ.push({small:'Конструктор',title:'Сначала коснитесь декора'}); showToast(); return; } fn(hovDecor); dirty=true; paint(); };
+    const tog=(id,cls)=>{ el.classList.toggle(cls); T$(id).classList.toggle('on',el.classList.contains(cls)); };
+    T$('etP').onclick=()=>tog('etP','pal'); T$('etS').onclick=()=>{ el.classList.toggle('top'); T$('etS').classList.toggle('on',el.classList.contains('top')); };
+    T$('etE').onclick=()=>{ touchErase=!touchErase; T$('etE').classList.toggle('on',touchErase); };
+    T$('etH').onclick=()=>{ handMode=!handMode; T$('etH').classList.toggle('on',handMode); };
+    T$('etZ1').onclick=()=>E.zoomBy(1.25); T$('etZ0').onclick=()=>E.zoomBy(.8); T$('etX').onclick=close;
+    T$('etR1').onclick=()=>withDecor(d=>d.rot=(((d.rot||0)-15)%360+360)%360); T$('etR2').onclick=()=>withDecor(d=>d.rot=(((d.rot||0)+15)%360+360)%360);
+    T$('etFl').onclick=()=>withDecor(d=>d.fl=d.fl?0:1); T$('etFr').onclick=()=>withDecor(d=>d.fr=d.fr?0:1);
+    T$('etS1').onclick=()=>withDecor(d=>d.sc=Math.min(3,(d.sc||1)+.25)); T$('etS0').onclick=()=>withDecor(d=>d.sc=Math.max(.5,(d.sc||1)-.25));
+    el.querySelectorAll('[data-tool]').forEach(b=>b.addEventListener('click',()=>{ if(document.body.classList.contains('touch')){ el.classList.remove('pal'); T$('etP').classList.remove('on'); } }));
     cv2.onpointerleave=()=>{ lastHov=null; hideInfo(); };
     addEventListener('pointerup',()=>painting=0);
     requestAnimationFrame(()=>{ fitCell(); paint(); });
   }
   let hover=null, lastHov=null;
-  function fitCell(){ const wrap=el.querySelector('.edwrap'); cell=Math.max(14,Math.floor((wrap.clientHeight-14)/ROWS)); cv2.width=L.map[0].length*cell; cv2.height=L.map.length*cell; }
+  function fitCell(){ const wrap=el.querySelector('.edwrap'); cell=zoom||Math.max(14,Math.floor((wrap.clientHeight-14)/ROWS)); cv2.width=L.map[0].length*cell; cv2.height=L.map.length*cell; }
   const cellAt=e=>{ const r=cv2.getBoundingClientRect(); return [Math.floor((e.clientX-r.left)/cell),Math.floor((e.clientY-r.top)/cell)]; };
   function apply(e){ const [x,y]=cellAt(e), W=L.map[0].length; if(x<0||y<0||x>=W||y>=L.map.length) return; const erase=painting===2;
     const inner=true, at=(o)=>o.tx===x&&o.ty===y;
@@ -7876,7 +7936,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.02c';
+const GAME_VER='1.66.03a';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
