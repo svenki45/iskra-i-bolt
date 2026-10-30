@@ -2649,12 +2649,14 @@ function updatePickups(dt){
 
 /* ---------- вода (кислород) и огонь ---------- */
 const OXY_MAX=10;
+// клетка-«дыра» (ключ, пустая) внутри воды слева+справа или сверху+снизу тоже считается водой: там нельзя дышать
+function isWat(tx,ty){ const r=grid[ty]; if(!r) return false; const c=r[tx]; if(c==='~') return true; if(c!=='.'&&c!=='k') return false; const q=(x,y)=>grid[y]&&grid[y][x]==='~'; return (q(tx-1,ty)&&q(tx+1,ty))||(q(tx,ty-1)&&q(tx,ty+1)); }
 function envAt(p,ch){ const tx0=Math.floor(p.x/T), tx1=Math.floor((p.x+p.w-0.01)/T), ty0=Math.floor(p.y/T), ty1=Math.floor((p.y+p.h-0.01)/T);
-  for(let ty=ty0;ty<=ty1;ty++) for(let tx=tx0;tx<=tx1;tx++) if(grid[ty]&&grid[ty][tx]===ch) return true; return false; }
+  for(let ty=ty0;ty<=ty1;ty++) for(let tx=tx0;tx<=tx1;tx++) if(ch==='~'?isWat(tx,ty):(grid[ty]&&grid[ty][tx]===ch)) return true; return false; }
 // огонь обжигает языками пламени, а не всей клеткой: без краёв по бокам и верхней трети (как у шипов)
 function fireAt(p){ const tx0=Math.floor(p.x/T), tx1=Math.floor((p.x+p.w-0.01)/T), ty0=Math.floor(p.y/T), ty1=Math.floor((p.y+p.h-0.01)/T);
   for(let ty=ty0;ty<=ty1;ty++) for(let tx=tx0;tx<=tx1;tx++) if(grid[ty]&&grid[ty][tx]==='*'&&overlap(p,{x:tx*T+7,y:ty*T+T*0.3,w:T-14,h:T*0.7})) return true; return false; }
-function headInWater(p){ const tx=Math.floor((p.x+p.w/2)/T), ty=Math.floor((p.y+6)/T); return !!(grid[ty]&&grid[ty][tx]==='~'); }
+function headInWater(p){ const tx=Math.floor((p.x+p.w/2)/T), ty=Math.floor((p.y+6)/T); return isWat(tx,ty); }
 function envTick(p,dt){
   if(p.down||p.absent||p.dead){ p.inWater=false; return; }
   p.inWater=envAt(p,'~');
@@ -5819,7 +5821,7 @@ const R3D=(()=>{
   const lamb=(c,o)=>new THREE.MeshLambertMaterial(Object.assign({color:c},o||{}));
   const phong=(c,o)=>new THREE.MeshPhongMaterial(Object.assign({color:c},o||{}));
   // клетка без воды (ключ, старт и т.п.), окружённая водой слева и справа или сверху и снизу, тоже рисуется водой
-  function wch(x,y){ const c=grid[y]&&grid[y][x]; if(c!==undefined&&c!=='~'&&!SOLIDCH.includes(c)&&'.PkKEeCcTtrabdfgihmnoqsuvwz'.includes(c)){ const q=(xx,yy)=>grid[yy]&&grid[yy][xx]==='~'; if((q(x-1,y)&&q(x+1,y))||(q(x,y-1)&&q(x,y+1))) return '~'; } return c; }
+  function wch(x,y){ const c=grid[y]&&grid[y][x]; if(c!==undefined&&c!=='~'&&!SOLIDCH.includes(c)&&'.k'.includes(c)){ const q=(xx,yy)=>grid[yy]&&grid[yy][xx]==='~'; if((q(x-1,y)&&q(x+1,y))||(q(x,y-1)&&q(x,y+1))) return '~'; } return c; }
   function gsrc(ch){ return ch==='~'?grid.map((row,y)=>Array.from({length:COLS},(_,x)=>wch(x,y))):grid; }
   function rectsOf(ch){
     const grid=gsrc(ch);
@@ -7967,7 +7969,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.05c';
+const GAME_VER='1.66.05d';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
