@@ -944,7 +944,7 @@ const isoZ=z=>ISO.Z0+z*(ISO.Z1-ISO.Z0), isoK=z=>0.78+0.34*z;
 function setupIso(L){
   BTX.z=0; exitLocked=false; const I=S.iso={cam:0,lock:null,enc:0,act:null,foes:[],shots:[],drops:[],fx:[],t:0,go:0,done:false,seed:7};
   I.props=[]; { let s=11; const r=()=>((s=(s*16807)%2147483647)/2147483647);
-    for(let x=300;x<ISO.LEN;x+=260+r()*220){ I.props.push({x,z:r()<.5?-.12:1.12,k:['crate','barrel','pipe','lamp'][Math.floor(r()*4)],r:r()}); } }
+    for(let x=300;x<ISO.LEN;x+=260+r()*220){ I.props.push({x,z:r()<.5?-.1:1.04,k:['crate','barrel','pipe','lamp'][Math.floor(r()*4)],r:r()}); } }
   let n=0; for(const p of players){ if(p.absent) continue; p.ix=120+n*60; p.iz=.35+n*.3; p.ih=0; p.ivh=0; p.iat=0; p.icd=0; p.ikick=false; p.ihit=0; p.ifc=1; p.imv=0; n++; p.hp=Math.max(p.hp,1); }
   S.hintT=8; banner('ЗАВОДСКОЙ ДВОР','#ffd166',1.4);
 }
@@ -1076,21 +1076,65 @@ function isoStep(dt){
   else if(I.enc>=ISO_ENC.length&&!I.act) I.lock=null;
 }
 // ----- рисование -----
+/* ---- 40-й уровень: горящий цех на фоне и платформа-конвейер, как на титульном экране ---- */
+const ISOBG={L:null};
+function isoBgBuild(){   // силуэты цеха рисуются один раз в холсты шириной TW (повторяются без шва), огонь рисуется поверх каждый кадр
+  const TW=1800, out=[]; let s=23; const r=()=>((s=(s*16807)%2147483647)/2147483647);
+  for(const cfg of [{par:.10,H:250,col:'#3a1420',lit:'#ff8a30',minH:110,maxH:200,wmin:140,wmax:260,ch:.5,fs:.8},{par:.26,H:330,col:'#1a0a12',lit:'#ffb24a',minH:160,maxH:290,wmin:190,wmax:330,ch:.7,fs:1.1}]){
+    const c=document.createElement('canvas'); c.width=TW; c.height=cfg.H; const g=c.getContext('2d'), fires=[];
+    const ws=[]; let sum=0; while(sum<TW){ let w=cfg.wmin+r()*(cfg.wmax-cfg.wmin); if(TW-sum-w<cfg.wmin) w=TW-sum; ws.push(w); sum+=w; }
+    let x=0;
+    for(const w of ws){ const h=cfg.minH+r()*(cfg.maxH-cfg.minH), top=cfg.H-h, roof=Math.floor(r()*3);
+      g.fillStyle=cfg.col; g.fillRect(x,top,w,h);
+      if(roof===1){ const n=Math.max(2,Math.round(w/60)); for(let k=0;k<n;k++){ const sx=x+k*w/n; g.beginPath(); g.moveTo(sx,top); g.lineTo(sx+w/n,top); g.lineTo(sx,top-26); g.closePath(); g.fill(); } }
+      else if(roof===2){ g.beginPath(); g.moveTo(x-4,top); g.lineTo(x+w/2,top-34); g.lineTo(x+w+4,top); g.closePath(); g.fill(); }
+      if(r()<cfg.ch){ const cw=18+r()*10, cx=x+10+r()*(w-cw-20), chh=50+r()*70; g.fillRect(cx,top-chh,cw,chh+2); g.fillRect(cx-4,top-chh-8,cw+8,10); fires.push({x:cx+cw/2,y:top-chh-8,s:.8+r()*.5,ph:r()*6}); }
+      const cols=Math.max(2,Math.floor((w-24)/34)), rows=Math.max(1,Math.floor((h-30)/44));
+      for(let a=0;a<rows;a++) for(let b=0;b<cols;b++){ const wx=x+14+b*((w-28)/cols), wy=top+16+a*44, lit=r()<.45;
+        g.fillStyle=lit?cfg.lit:'#0c0509'; g.globalAlpha=lit?(.55+r()*.4):.8; g.fillRect(wx,wy,16,22); g.globalAlpha=1;
+        if(lit&&r()<.22) fires.push({x:wx+8,y:wy+22,s:.45+r()*.35,ph:r()*6}); }
+      if(r()<.6) fires.push({x:x+w*(.2+r()*.6),y:top+(roof===2?-10:0),s:.9+r()*.6,ph:r()*6});
+      x+=w; }
+    out.push({c,par:cfg.par,H:cfg.H,TW,fires,fs:cfg.fs});
+  }
+  return out;
+}
+function isoFlame(x,y,s,ph){   // языки пламени: три слоя (красный, оранжевый, жёлтое ядро) и тёплый отсвет
+  const t=clock*7+ph;
+  if(GLOW){ const gl=ctx.createRadialGradient(x,y-34*s,4,x,y-34*s,150*s); gl.addColorStop(0,'rgba(255,150,50,.38)'); gl.addColorStop(1,'rgba(255,90,20,0)'); ctx.globalCompositeOperation='lighter'; ctx.fillStyle=gl; ctx.fillRect(x-150*s,y-184*s,300*s,300*s); ctx.globalCompositeOperation='source-over'; }
+  for(const [k,c] of [[1,'#d62a0b'],[.72,'#ff7a1a'],[.42,'#ffd45a']]){
+    const h=(70+18*Math.sin(t*1.3)+10*Math.sin(t*2.9+1))*s*k, w=(26+5*Math.sin(t*1.7))*s*k, sw=Math.sin(t+k)*7*s;
+    ctx.fillStyle=c; ctx.beginPath(); ctx.moveTo(x-w,y); ctx.quadraticCurveTo(x-w,y-h*.55,x+sw,y-h); ctx.quadraticCurveTo(x+w,y-h*.55,x+w,y); ctx.closePath(); ctx.fill(); }
+}
+function isoPlatform(cam,LEN){   // платформа-конвейер: то же, что на титуле (рифлёный верх, полосы, заклёпки, вращающиеся ролики)
+  const yb=352, yf=684, D=VH-yf, BO=(clock*.96)%1, k0=.84, bx=x=>VW/2+(x-VW/2)*k0;
+  ctx.save();
+  const tg=ctx.createLinearGradient(0,yb,0,yf); tg.addColorStop(0,'#5a6a88'); tg.addColorStop(1,'#a9b9d6'); ctx.fillStyle=tg; ctx.fillRect(0,yb,VW,yf-yb);
+  const fire=ctx.createLinearGradient(0,yb,0,yb+170); fire.addColorStop(0,'rgba(255,110,30,.32)'); fire.addColorStop(1,'rgba(255,110,30,0)'); ctx.fillStyle=fire; ctx.fillRect(0,yb,VW,170);
+  ctx.strokeStyle='rgba(20,28,44,.35)'; ctx.lineWidth=1; const off=(((cam+BO*48)%48)+48)%48; ctx.beginPath();
+  for(let x=-off;x<VW+48;x+=48){ ctx.moveTo(bx(x),yb); ctx.lineTo(x,yf); } ctx.stroke();
+  const fg=ctx.createLinearGradient(0,yf,0,yf+D); fg.addColorStop(0,'#3a4660'); fg.addColorStop(1,'#151b29'); ctx.fillStyle=fg; ctx.fillRect(0,yf,VW,D);
+  ctx.save(); ctx.beginPath(); ctx.rect(0,yf+D-12,VW,8); ctx.clip(); ctx.fillStyle='#e7b54a'; const so=(((cam+BO*22)%22)+22)%22;
+  for(let x=-22-so;x<VW;x+=22){ ctx.beginPath(); ctx.moveTo(x,yf+D-4); ctx.lineTo(x+11,yf+D-4); ctx.lineTo(x+19,yf+D-12); ctx.lineTo(x+8,yf+D-12); ctx.fill(); } ctx.restore();
+  ctx.fillStyle='#8a9bb8'; const ro=(((cam+BO*20)%40)+40)%40; for(let x=16-ro;x<VW;x+=40){ if(x<0) continue; ctx.beginPath(); ctx.arc(x,yf+10,2.6,0,Math.PI*2); ctx.fill(); }
+  for(const ex of [-cam,LEN-cam]){ if(ex<-40||ex>VW+40) continue; ctx.save(); ctx.translate(ex,yf+D/2); ctx.fillStyle='#2a3348'; ctx.beginPath(); ctx.arc(0,0,D/2,0,Math.PI*2); ctx.fill(); ctx.rotate(-clock*.96*6); ctx.strokeStyle='#8a9bb8'; ctx.lineWidth=2; for(let k=0;k<4;k++){ ctx.rotate(Math.PI/2); ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(D/2-3,0); ctx.stroke(); } ctx.restore(); }
+  ctx.globalCompositeOperation='lighter'; ctx.strokeStyle='rgba(255,209,102,.9)'; ctx.lineWidth=3; ctx.shadowColor='rgba(255,209,102,1)'; ctx.shadowBlur=18*GLOW; ctx.beginPath(); ctx.moveTo(0,yf); ctx.lineTo(VW,yf); ctx.stroke();
+  ctx.shadowBlur=0; ctx.strokeStyle='rgba(255,255,255,.35)'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(0,yb); ctx.lineTo(VW,yb); ctx.stroke();
+  ctx.restore();
+}
 function isoBack(I){
-  const cam=I.cam, g=ctx.createLinearGradient(0,0,0,ISO.HY+30); g.addColorStop(0,'#2a1740'); g.addColorStop(.55,'#8a3b58'); g.addColorStop(1,'#f0a060'); ctx.fillStyle=g; ctx.fillRect(0,0,VW,ISO.HY+30);
-  ctx.fillStyle='rgba(255,226,160,.9)'; ctx.beginPath(); ctx.arc(980-cam*.02,170,46,0,7); ctx.fill(); ctx.fillStyle='rgba(255,226,160,.18)'; ctx.beginPath(); ctx.arc(980-cam*.02,170,90,0,7); ctx.fill();
-  const ridge=(par,base,amp,col,seed)=>{ ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(0,ISO.HY+30); for(let x=0;x<=VW+40;x+=40){ const wx=x+cam*par; ctx.lineTo(x,base-amp*(0.55+0.45*Math.sin(wx*.0042+seed)*Math.sin(wx*.0017+seed*2.3))-amp*.35*Math.abs(Math.sin(wx*.011+seed))); } ctx.lineTo(VW+40,ISO.HY+30); ctx.closePath(); ctx.fill(); };
-  ridge(.08,ISO.HY-40,150,'#4a2a55',1); ridge(.18,ISO.HY-14,110,'#341d46',4); ridge(.32,ISO.HY+4,70,'#241435',9);
-  // заводские трубы и дым вдали
-  for(let i=0;i<7;i++){ const wx=i*620+180-cam*.45; const x=((wx%4000)+4000)%4000-300; if(x<-60||x>VW+60) continue; ctx.fillStyle='#1b1030'; ctx.fillRect(x,ISO.HY-70-(i%3)*18,26,100); ctx.fillStyle='rgba(60,40,70,.5)'; for(let k=0;k<3;k++){ ctx.beginPath(); ctx.arc(x+12+k*14+Math.sin(clock+i)*6,ISO.HY-80-(i%3)*18-k*22,14+k*5,0,7); ctx.fill(); } }
-  // пол двора
-  const f=ctx.createLinearGradient(0,ISO.HY+30,0,VH); f.addColorStop(0,'#5a3a4a'); f.addColorStop(1,'#2d2030'); ctx.fillStyle=f; ctx.fillRect(0,ISO.HY+30,VW,VH-ISO.HY-30);
-  ctx.fillStyle='#1a1224'; ctx.fillRect(0,ISO.HY+26,VW,6);
-  // плитка: линии глубины с лёгкой перспективой и вертикальные швы
-  ctx.strokeStyle='rgba(255,210,160,.10)'; ctx.lineWidth=2; for(let i=0;i<=8;i++){ const y=ISO.Z0-30+(ISO.Z1-ISO.Z0+60)*Math.pow(i/8,1.2); ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(VW,y); ctx.stroke(); }
-  for(let wx=Math.floor(cam/120)*120;wx<cam+VW+120;wx+=120){ const x=wx-cam; ctx.beginPath(); ctx.moveTo(x+ (x-VW/2)*.0, ISO.HY+32); ctx.lineTo(x+(x-VW/2)*.38,VH); ctx.stroke(); }
-  // жёлтая разметка у дальней кромки
-  ctx.fillStyle='rgba(255,209,102,.5)'; for(let wx=Math.floor(cam/90)*90;wx<cam+VW+90;wx+=90) ctx.fillRect(wx-cam,ISO.Z0-26,48,5);
+  const cam=I.cam, yb=352; if(!ISOBG.L) ISOBG.L=isoBgBuild();
+  let g=ctx.createLinearGradient(0,0,0,yb); g.addColorStop(0,'#12060e'); g.addColorStop(.4,'#3d0f16'); g.addColorStop(.75,'#b3340f'); g.addColorStop(1,'#ff9a3c'); ctx.fillStyle=g; ctx.fillRect(0,0,VW,yb+4);
+  for(const lay of ISOBG.L){
+    const off=(cam*lay.par)%lay.TW, x0=-off, y0=yb-lay.H;
+    ctx.drawImage(lay.c,x0,y0); if(x0+lay.TW<VW) ctx.drawImage(lay.c,x0+lay.TW,y0);
+    for(const f of lay.fires) for(const bx0 of [x0,x0+lay.TW]){ const x=f.x+bx0; if(x<-120||x>VW+120) continue; const y=y0+f.y, sc=f.s*lay.fs;
+      for(let k=0;k<4;k++){ const lf=((clock*.22+f.ph*.17+k/4)%1), a=(1-lf)*.5; ctx.fillStyle='rgba(18,8,12,'+a.toFixed(3)+')'; ctx.beginPath(); ctx.arc(x+Math.sin(clock*.8+f.ph+k)*10*lf+lf*18,y-30*sc-lf*170,(10+lf*30)*sc,0,7); ctx.fill(); }
+      isoFlame(x,y,sc,f.ph); }
+  }
+  for(let i=0;i<36;i++){ const sp=26+((i*37)%30), life=(clock*sp+i*53.7)%300, x=(((i*131.7-cam*.3+Math.sin(clock*1.3+i)*20)%(VW+60))+VW+60)%(VW+60)-30, a=1-life/300, z=2+(i%3);
+    ctx.fillStyle='rgba(255,'+(150+((i*17)%90))+',60,'+(a*.9).toFixed(3)+')'; ctx.fillRect(x,yb-10-life,z,z); }
+  isoPlatform(cam,ISO.LEN);
 }
 function isoShadow(x,z,w){ const y=isoZ(z), k=isoK(z); ctx.fillStyle='rgba(0,0,0,.32)'; ctx.beginPath(); ctx.ellipse(x,y+2,w*k,w*.3*k,0,0,7); ctx.fill(); }
 function isoProp(pr,I){ const x=pr.x-I.cam; if(x<-80||x>VW+80) return; const y=isoZ(pr.z), k=isoK(Math.max(0,Math.min(1,pr.z)));
