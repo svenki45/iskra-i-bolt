@@ -152,7 +152,10 @@ body.kbnav .overlay .primary:focus{transform:scale(1.04)}
 .owned-list{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
 @media (max-width:700px){.ushop{grid-template-columns:1fr}}
 .shopfull .ushop{grid-template-columns:repeat(auto-fill,minmax(190px,1fr));max-height:50vh;overflow:auto;padding:4px}
-.shopfull .ucard p{min-height:0}
+.shopfull .ushop{align-items:stretch}
+.shopfull .ucard p{min-height:5.6em;flex:1;display:flex;align-items:center;justify-content:center}
+.shopfull .ucard .pips{margin-top:auto}
+.shopfull .ucard .buy,.shopfull .ucard .owned{width:100%;margin-top:4px}
 .overlay.clear{background:transparent;backdrop-filter:none}
 .titlescr{height:100%;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding-block:6% 5%;box-sizing:border-box;text-align:center}
 .logo{font-family:var(--display);font-weight:900;font-size:clamp(40px,8.5vw,108px);line-height:1;letter-spacing:.02em;display:flex;flex-wrap:wrap;justify-content:center;gap:0 .06em}
@@ -3301,8 +3304,8 @@ function buyUpgrade(id){
   const price=upPrice(d); if(run.wallet<price){ sfx('off'); return; }
   run.wallet-=price; run.up[id]=U(id)+1; saveRun(); unlock('shopper'); if(Object.keys(run.up).length>=5) unlock('upgraded5');
   sfx('pk_power'); flash(d.c,.18);
-  const sc=overlay.scrollTop; setState('shop'); overlay.scrollTop=sc;
-  const card=overlay.querySelector(`[data-card="${id}"]`); if(card){ card.classList.add('bought'); }
+  const sc=overlay.scrollTop, us0=overlay.querySelector('.ushop'), su=us0?us0.scrollTop:0; setState('shop'); overlay.scrollTop=sc; { const us=overlay.querySelector('.ushop'); if(us) us.scrollTop=su; }
+  const card=overlay.querySelector(`[data-card="${id}"]`); if(card){ card.classList.add('bought'); const nb=card.querySelector('[data-buy]'); if(nb&&document.body.classList.contains('kbnav')){ try{ nb.focus({preventScroll:true}); }catch(_){} } }
 }
 let helpTab='ctl', helpBack='menu', heroBack='title';
 function goMenuFromTitle(){ audioInit(); sfx('boost'); flash('#ffffff',.35); renderLegend(true); loadLevel(Math.min(TOTAL-1,best)); setState('menu'); }
@@ -7940,7 +7943,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.03c';
+const GAME_VER='1.66.03d';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
