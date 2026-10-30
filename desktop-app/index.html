@@ -127,6 +127,8 @@ button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
 @media (max-width:640px){.goNum{position:static;width:auto}}
 @media (prefers-reduced-motion:reduce){.go h2.goT,.go h2.goT span,.tip,.goRow{animation:none}}
 body.kbnav .overlay button:focus,body.kbnav .overlay input:focus{outline:3px solid var(--brass);outline-offset:3px;box-shadow:0 0 0 7px rgba(231,181,74,.22)}
+/* клавиатура управляет — мышь не держит свою подсветку, пока ею не пошевелят */
+body.kbnav .overlay button,body.kbnav .overlay .opt{pointer-events:none}
 body.kbnav .overlay .tog:focus-within{outline:2px solid var(--brass);outline-offset:4px;border-radius:6px}
 body.kbnav .overlay .tog input:focus{outline:none;box-shadow:none}
 body.kbnav .overlay .primary:focus{transform:scale(1.04)}
@@ -7936,7 +7938,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.03a';
+const GAME_VER='1.66.03b';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
