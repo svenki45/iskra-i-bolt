@@ -1173,6 +1173,7 @@ const CAMP=[], ORD=[];
       else if(c==='B') CAMP.push({k:'b',m:CAMP.length});
       else CAMP.push({k:'t',t:c==='K'?10:Tt[ti++]});
       ORD[CAMP.length-1]=CAMP[CAMP.length-1].k==='t'?nt++:0; } } }
+{ const be=[]; CAMP.forEach((e,i)=>{ if(e.k==='b'||(e.k==='t'&&e.t===10)) be.push(i); }); if(JSON.stringify(be)!==JSON.stringify(ACT_END)) console.error('ACT_END не совпадает с боссами кампании',be,ACT_END); }
 /* ---------------- перехваты движка ---------------- */
 const _getLevel=getLevel;
 getLevel=function(i){ if(edTest&&edLevel) return edLevel; const e=CAMP[Math.max(0,Math.min(i,CAMP.length-1))]; return e.k==='t'?LEVELS[e.t]:_getLevel(e.m); };

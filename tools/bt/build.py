@@ -35,6 +35,28 @@ if k != 1:
     sys.exit('build.py: не найден BUILD_STAMP')
 sub('<title>Искра и Болт</title>', '<title>Искра и Болт</title>')
 sub('const TOTAL=100;', f'const TOTAL={n};')
+
+# ===== АКТЫ: акт = уровни до очередного босса (I–III: Пресс-Жаба, Око-Сварщик, Бешеная Шестерня; IV: Кузнец) =====
+src, k = re.subn(r"const CHAPTERS=\[[^\n]*\];\nconst chapterOf=i=>Math\.min\(9,Math\.floor\(i/10\)\);",
+    "const CHAPTERS=['Пробуждение','Сварочный пост','Шестерёнчатый ад','Литейный цех'];\n"
+    "const ACT_END=[9,19,29,40], ACT_ROM=['I','II','III','IV'], ACT_BOSS=['Пресс-Жаба','Око-Сварщик','Бешеная Шестерня','Кузнец'];\n"
+    "const chapterOf=i=>{ for(let a=0;a<ACT_END.length;a++) if(i<=ACT_END[a]) return a; return ACT_END.length-1; };", src)
+if k != 1:
+    sys.exit('build.py: не найден CHAPTERS/chapterOf')
+sub("Глава ${chapterOf(J.i)+1} · ${CHAPTERS[chapterOf(J.i)]}", "Акт ${ACT_ROM[chapterOf(J.i)]} · ${CHAPTERS[chapterOf(J.i)]}")
+sub("for(let i=ch*10;i<ch*10+10;i++){", "for(let i=(ch?ACT_END[ch-1]+1:0);i<=ACT_END[ch];i++){")
+sub("small:'Все звёзды главы',title:'Глава '+(ch+1)+': +3000 очков'", "small:'Все звёзды акта',title:'Акт '+ACT_ROM[ch]+': +3000 очков'")
+a0 = src.index("${(()=>{ const open=Math.min(TOTAL,maxPick()), decs=")
+a1 = src.index("}).join('')}</div>\n      <p class=\"padst\">", a0) + len("}).join('')}</div>")
+levels_html = r"""${(()=>{ const open=Math.min(TOTAL,maxPick()), acts=ACT_END.map((e,a)=>a).filter(a=>(a?ACT_END[a-1]+1:0)<open), ph=phoneUI()&&acts.length>1;
+        if(lvPage<0||lvPage>=acts.length) lvPage=acts.length-1;
+        const tabs=ph?`<div class="opts lvtabs">${acts.map(a=>`<button type="button" class="opt ${lvPage===a?'on':''}" data-dec="${a}">Акт ${ACT_ROM[a]}</button>`).join('')}</div>`:'';
+        const blocks=acts.filter(a=>!ph||a===lvPage).map(a=>{ const s0=a?ACT_END[a-1]+1:0, e0=Math.min(ACT_END[a],open-1);
+          return `<div class="lvact"><div class="lvah"><b>Акт ${ACT_ROM[a]} · ${CHAPTERS[a]}</b><span>босс: ${ACT_BOSS[a]}</span></div><div class="lvgrid">${Array.from({length:e0-s0+1},(_,k)=>s0+k).map(i=>{ const st=starsAll()[i]; return `<button type="button" class="opt lvb ${i===ACT_END[a]?'bossb':''}" data-lv="${i}" title="${st&&st.bt?'Рекорд '+st.bt.toFixed(1)+' с':''}">${i===ACT_END[a]?'Б':''}${i+1}${starHtml(st?st.s:0)}</button>`; }).join('')}</div></div>`; }).join('');
+        return tabs+blocks; })()}"""
+src = src[:a0] + levels_html + src[a1:]
+sub(".lvgrid{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:520px}",
+    ".lvgrid{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:520px}.lvact{width:100%;display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:8px}.lvah{display:flex;gap:12px;align-items:baseline;justify-content:center;font-size:13px}.lvah b{font-family:var(--display);color:var(--brass);letter-spacing:.04em}.lvah span{color:var(--muted)}.lvact .lvgrid{max-height:none!important;overflow:visible!important}")
 sub("if(levelIdx+1>=49) unlock('lv50');","if(levelIdx+1>=21) unlock('lv50');")
 sub('Доберитесь до 50-го уровня.','Доберитесь до 21-го уровня.')
 for _o in ('Пройдите все 100 уровней.','Открыты все 100 уровней','Все 100 уровней собраны'):
