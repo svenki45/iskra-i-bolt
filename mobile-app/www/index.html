@@ -2178,7 +2178,7 @@ function control(p,inp,dt){
   }
   if(!inp.jump&&p.vy<-260&&!p.boosted&&!p.cut){ p.vy*=0.5; p.cut=true; }
   if(inp.ap){
-    if(sp){ if(p.dashesLeft>0&&p.dash<=0){ p.dash=0.16*(U('dash')?1.4:1); p.dashesLeft--; p.cut=true; sfx('dash'); } }
+    if(sp){ if(p.dashesLeft>0&&p.dash<=0){ p.dash=0.16*(U('dash')?1.4:1); p.dashHit=null; p.dashesLeft--; p.cut=true; sfx('dash'); } }
     else {
       const s=players[0];
       if(!s.down&&s.wasGround&&s.ground===p){
@@ -2331,6 +2331,7 @@ function updateEnemies(dt){
     for(const p of players){
       if(p.down||en.hp<=0||!overlap(p,en)) continue;
       if(p.vy>0&&(p.y+p.h)-en.y<16){ damageEnemy(en,p.slam?8:3,true,p.slam?'slam':'stomp'); p.vy=-520; p.cut=true; p.airJumps=maxAir(p); if(p.slam){p.slam=false;} }
+      else if(p.dash>0||p.slam){ const H=p.dashHit||(p.dashHit=new Set()); if(p.dash>0&&!H.has(en)){ H.add(en); damageEnemy(en,3,true,'stomp'); p.cut=true; burst(en.x+en.w/2,en.y+en.h/2,8,'#ffd166',200,.3); } }   // рывок и смэш: урон не получаешь, а наносишь
       else hurt(p);
     }
   }
@@ -2445,6 +2446,7 @@ function updateBoss(dt){
   for(const p of players){
     if(p.down||!overlap(p,b)) continue;
     if(p.vy>0&&(p.y+p.h)-b.y<18&&b.type!=='gear'){ hitBoss(p.slam?8:4,p.slam?'slam':'stomp'); p.vy=-600; p.cut=true; p.airJumps=maxAir(p); p.slam=false; }
+    else if(p.dash>0||p.slam){ const H=p.dashHit||(p.dashHit=new Set()); if(p.dash>0&&!H.has(b)){ H.add(b); hitBoss(2,'stomp'); p.cut=true; shake=Math.max(shake,3); burst(b.x+b.w/2,Math.max(b.y,p.y),10,'#ffd166',220,.3); } }   // рывок и смэш: урон не получаешь, а наносишь
     else hurt(p);
   }
 }
@@ -7864,7 +7866,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.64';
+const GAME_VER='1.65';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
