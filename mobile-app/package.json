@@ -1,6 +1,6 @@
 {
   "name": "iskra-i-bolt-mobile",
-  "version": "1.66.4",
+  "version": "1.66.5",
   "private": true,
   "description": "Искра и Болт — мобильная версия (Android APK и iOS IPA через Capacitor)",
   "scripts": {
