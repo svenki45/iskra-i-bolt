@@ -1883,7 +1883,7 @@ function showToast(){
   const a=toastQ.shift(), el=$('toast');
   el.innerHTML=`${a.icon?achIcon(a.icon,true):`<span class="medal">${a.medal}</span>`}<span><small>${a.small}</small><b>${a.title}</b></span>`;
   el.classList.add('show'); sfx('pick');
-  setTimeout(()=>{ el.classList.remove('show'); setTimeout(()=>{ toastBusy=false; showToast(); },400); },2600);
+  setTimeout(()=>{ el.classList.remove('show'); setTimeout(()=>{ toastBusy=false; showToast(); },400); },a.ms||2600);
 }
 function unlock(id){
   if(typeof HINT_ACH!=='undefined'&&HINT_ACH[id]) HINT_ACH[id].forEach(learnHint);
@@ -3706,6 +3706,7 @@ function drawOrderHint(){
       if(done){ ctx.globalAlpha=z.hA; ctx.strokeStyle='#fff'; ctx.lineWidth=2.4; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(x-4,0); ctx.lineTo(x-1,3.5); ctx.lineTo(x+5,-3.5); ctx.stroke(); } });
     ctx.restore(); }
 }
+let fitTipT=0, fitTipOn=false;
 let tutMarks=[], tutSeen={}, tutQ=[], tutShow=null, tutT=0, tutCd=0, tutK0=0;
 /* ---------- подсказка «двойной прыжок»: появляется, только если игрок застрял у высокого уступа ---------- */
 let djSpots=[], djT=0, djA=0, djP=null, djBlink=false, djDone=false;   // djDone — в этой попытке уровня уже залезли (при перезапуске уровня подсказка снова с начала)
@@ -3783,7 +3784,8 @@ function tutorInit(i){
   for(const c of crates) add('crate',c.x+c.w/2,c.y);
   for(const p of plates) add('plate',p.x*T+T/2,p.y*T);
   for(const m of movers) add(Math.abs(m.bx-m.ax)<2*T?'lift':'mover',(m.ax+m.bx)/2+m.w/2,Math.min(m.ay,m.by));
-  djSpots=findDjumpSpots();
+  djSpots=i===0?findDjumpSpots():[];   // подсказка «двойной прыжок» — только на 1-м уровне
+  fitTipT=0; fitTipOn=(i===0&&!hintsLearned.fitTip);
   for(const e of enemies){ if(e.x===undefined) continue; const k=e.type==='flyer'?'flyer':e.type==='turret'?'turret':'crawler'; add(k,e.x+(e.w||T)/2,e.y); }
 }
 // «освоил»: механику уже применили на деле
@@ -3804,6 +3806,10 @@ function hintUsed(m){
   return false;
 }
 function tutorTick(dt){
+  // один раз за всё время, на 1-м уровне, на телефоне: напоминание про настройку размера кнопок и экрана
+  if(fitTipOn&&state==='play'&&!intro&&!outro&&settings.hints!==false){ fitTipT+=dt;
+    if(fitTipT>8){ fitTipOn=false; if(typeof touchUI!=='undefined'&&touchUI.on){ hintsLearned.fitTip=1; store.set('iskra-bolt-hints',hintsLearned);
+      toastQ.push({small:LI===0?'Порада':LI===1?'Tip':'Совет',title:LI===0?'Пауза ⏸ → «Кнопки и размер экрана»: змінюй розмір кнопок і гри':LI===1?'Pause ⏸ → “Buttons & screen size”: resize the buttons and the game':'Пауза ⏸ → «Кнопки и размер экрана»: меняйте размер кнопок и игры',icon:'first',ms:6500}); showToast(); } } }
   const el=document.getElementById('tutTip');
   if(!el){ return; }
   if(state!=='play'||!tutMarks.length||settings.hints===false){ el.hidden=true; tutShow=null; return; }
@@ -7983,7 +7989,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.05j';
+const GAME_VER='1.66.05k';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
