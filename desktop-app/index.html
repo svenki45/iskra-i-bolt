@@ -1111,6 +1111,8 @@ addEventListener('keydown',e=>{
 },true);
 addEventListener('keyup',e=>down.delete(e.code));
 addEventListener('mousemove',()=>document.body.classList.remove('kbnav'));
+// мышь перехватывает выбор: кнопка под курсором становится единственной выбранной (клавиатурная подсветка не остаётся на соседней)
+addEventListener('mouseover',e=>{ const b=e.target&&e.target.closest&&e.target.closest('.overlay button,.overlay .opt'); const a=document.activeElement; if(!b||b===a||b.disabled) return; if(a&&a!==document.body&&a.blur) a.blur(); try{ b.focus({preventScroll:true,focusVisible:false}); }catch(_){} });
 function focusables(){ return [...overlay.querySelectorAll('button,input,[tabindex]:not([tabindex="-1"])')].filter(el=>!el.disabled&&el.getClientRects().length); }
 function scrollNav(dir,force){
   if(!(force||state==='ach'||state==='help')||(dir!=='up'&&dir!=='down')) return false;
@@ -7938,7 +7940,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.03b';
+const GAME_VER='1.66.03c';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
