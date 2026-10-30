@@ -247,9 +247,9 @@ drawLive=function(){ const L=LIVE; if(!L||!L.bgx) return _dl(); _dl(); const c=c
 const _dh=drawHud;
 drawHud=function(){ _dh(); try{
   if(arena||intro||boss||!(state==='play'||state==='loading')) return; const n=levelIdx+1, d=n%10;
-  if(!(d>=7&&d<=9)) return; const t=clock, c=ctx, k=.55+.45*Math.sin(t*5), x0=W-92, y0=84;
-  c.save(); for(const [dx,dy] of [[0,0],[-15,24],[15,24]]){ const x=x0+dx, y=y0+dy;
-    c.globalAlpha=k*.8; glow(c,x,y,30,'rgba(255,60,50,.9)'); c.globalAlpha=.55+.45*k; c.fillStyle='#ff4d44'; circ(c,x,y,5.5); c.fill(); c.fillStyle='rgba(255,225,215,.85)'; circ(c,x-1.6,y-1.6,1.7); c.fill(); }
+  { const B=n<=30?bossAhead(n):null; if(!B||B.k<1||B.k>3||B.type===undefined) return; } const t=clock, c=ctx, k=.5+.5*Math.sin(t*2.4), x0=W-60, y0=96;
+  c.save(); for(const [dx,dy] of [[0,0],[-9,15],[9,15]]){ const x=x0+dx, y=y0+dy;
+    c.globalAlpha=k*.3; glow(c,x,y,16,'rgba(255,60,50,.9)'); c.globalAlpha=.3+.25*k; c.fillStyle='#ff4d44'; circ(c,x,y,3.4); c.fill(); }
   c.restore(); }catch(e){} };
 const _lt=levelTheme;
 levelTheme=function(){ const TH=_lt(), d=cur(); if(d&&d.h!=null){ const s=d.s||50; TH.h=d.h; TH.paper=`rgb(${hslRgb(d.h,s,11.5)})`; TH.wall=`rgb(${hslRgb(d.h,s+5,6.5)})`; TH.grid=hslRgb(d.h,70,80); TH.hatch=`rgba(${hslRgb(d.h,70,80)},.16)`; TH.edge=`rgba(${hslRgb(d.h,80,88)},.9)`; } return TH; };
