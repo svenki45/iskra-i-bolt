@@ -19,6 +19,7 @@ jobs:
         working-directory: .
         run: |
           cp bt/index.html mobile-app/www/index.html
+          cp bt/intro.mp4 mobile-app/www/intro.mp4
           python3 - <<'PY'
           p='mobile-app/www/index.html'; t=open(p,encoding='utf-8').read()
           t=t.replace('</head>','<style>#a2hs{display:none!important}</style></head>',1); open(p,'w',encoding='utf-8').write(t)
