@@ -1397,6 +1397,7 @@ function pipeTex(T3){
 }
 function w3Hook(c){
   const {scene,THREE:T3,cx,R}=c;
+  { const wv=wet(); if(W3.ov!==wv){ W3.ov=wv; scene.traverse(o=>{ if(o.userData&&o.userData.outline) o.visible=!wv; }); } }  // тёмная обводка блоков не должна просвечивать сквозь воду
   if(!wet()){ if(W3.g) W3.g.visible=false; if(R.back) R.back.visible=true; if(R.fx) R.fx.visible=true; if(R.sh) R.sh.visible=true; return; }
   const B=S.L.bt, LEN=B.len*T, WY=FL*T-4;
   if(!W3.g){ const g=new T3.Group(); scene.add(g); W3.g=g;
@@ -1440,7 +1441,7 @@ function drawScooterHull(p,pitch){
 }
 function drawScooterRider(f,p){
   const cx=p.x+p.w/2, deck=p.y+p.h-14, air=!(p.onGround||p.wasGround), pitch=scooterPitch(p), bolt=p.kind==='bolt';
-  const lx=22, ly=-30, bx=cx+Math.cos(pitch)*lx-Math.sin(pitch)*ly, by=deck+Math.sin(pitch)*lx+Math.cos(pitch)*ly;
+  const lx=bolt?21:22, ly=bolt?-22:-30, bx=cx+Math.cos(pitch)*lx-Math.sin(pitch)*ly, by=deck+Math.sin(pitch)*lx+Math.cos(pitch)*ly;
   p._lean=(p._lean||0)+(((air&&!p.duck)?1.15:.2)-(p._lean||0))*.22;
   drawScooterHull(p,pitch);
   const LIFT=26, bb=deck+14-LIFT, hh=p.duck?HD[p.kind]*1.08:p.h, col=bolt?'#7f93a3':'#b8431f';   // bb — низ тела: герой приподнят над палубой, чтобы были видны ноги
