@@ -1441,7 +1441,7 @@ function drawScooterHull(p,pitch){
 }
 function drawScooterRider(f,p){
   const cx=p.x+p.w/2, deck=p.y+p.h-14, air=!(p.onGround||p.wasGround), pitch=scooterPitch(p), bolt=p.kind==='bolt';
-  const lx=bolt?21:22, ly=bolt?-22:-30, bx=cx+Math.cos(pitch)*lx-Math.sin(pitch)*ly, by=deck+Math.sin(pitch)*lx+Math.cos(pitch)*ly;
+  const lx=22, ly=-30, bx=cx+Math.cos(pitch)*lx-Math.sin(pitch)*ly, by=deck+Math.sin(pitch)*lx+Math.cos(pitch)*ly;
   p._lean=(p._lean||0)+(((air&&!p.duck)?1.15:.2)-(p._lean||0))*.22;
   drawScooterHull(p,pitch);
   const LIFT=26, bb=deck+14-LIFT, hh=p.duck?HD[p.kind]*1.08:p.h, col=bolt?'#7f93a3':'#b8431f';   // bb — низ тела: герой приподнят над палубой, чтобы были видны ноги
@@ -1456,7 +1456,7 @@ function drawScooterRider(f,p){
   ctx.save(); ctx.translate(0,-LIFT); f(p); ctx.restore();
   p.h=h0; p.y=y0; p.sx=sx0; p.sy=sy0; p.face=fc; looks[p.kind].limbs=lim;
   // одна рука: от плеча к рулю, кисть сжимает рукоять
-  const shx=cx+p.w*.24, shy=bb-hh*(bolt?.42:.4), ex=(shx+bx)/2-3, ey=(shy+by)/2+7;
+  const shx=cx+p.w*.24, shy=bb-hh*(bolt?.3:.4), ex=(shx+bx)/2-3, ey=(shy+by)/2+7;
   ctx.strokeStyle='rgba(0,0,0,.3)'; ctx.lineWidth=(bolt?6.5:5.2); ctx.beginPath(); ctx.moveTo(shx,shy+1); ctx.quadraticCurveTo(ex,ey+1,bx,by+1); ctx.stroke();
   ctx.strokeStyle=col; ctx.lineWidth=(bolt?5:3.8); ctx.beginPath(); ctx.moveTo(shx,shy); ctx.quadraticCurveTo(ex,ey,bx,by); ctx.stroke();
   ctx.fillStyle=bolt?'#c7d3dd':col; ctx.beginPath(); ctx.arc(bx,by,bolt?4.2:3.2,0,Math.PI*2); ctx.fill();
