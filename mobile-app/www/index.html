@@ -5650,7 +5650,11 @@ addEventListener('keydown',actEv,true); addEventListener('pointerdown',actEv,tru
   document.body.appendChild(d);
   const block=e=>{ e.preventDefault(); e.stopImmediatePropagation(); };
   for(const ev of ['keydown','keyup','pointerdown','pointerup','click','touchstart','wheel']) addEventListener(ev,block,{capture:true,passive:false});
-  setTimeout(()=>{ for(const ev of ['keydown','keyup','pointerdown','pointerup','click','touchstart','wheel']) removeEventListener(ev,block,{capture:true}); d.classList.add('out'); lastAct=performance.now(); setTimeout(()=>d.remove(),600); },5000); })();
+  // заставка заодно прогревает игру (3D, шейдеры): закрывается не раньше 5 с и не раньше конца прогрева (но не позже 9 с)
+  const t0=performance.now(); window.__warmDone=false;
+  setTimeout(()=>{ try{ if(typeof R3D!=='undefined'&&R3D.warm) R3D.warm(); }catch(e){} try{ if(document.fonts&&document.fonts.ready) document.fonts.ready.catch(()=>{}); }catch(e){} window.__warmDone=true; },800);
+  const fin=()=>{ if(!window.__warmDone&&performance.now()-t0<9000) return setTimeout(fin,150); for(const ev of ['keydown','keyup','pointerdown','pointerup','click','touchstart','wheel']) removeEventListener(ev,block,{capture:true}); d.classList.add('out'); lastAct=performance.now(); setTimeout(()=>d.remove(),600); };
+  setTimeout(fin,5000); })();
 /* ===== touch polish: fit menus to screen, drop keyboard hints ===== */
 const isTouchUI=()=>document.body.classList.contains('touch');
 function fitOverlay(){ if(!overlay) return; const c=overlay.querySelector(':scope > .card'); if(!c) return; c.style.transform=''; c.style.marginBottom=''; c.style.zoom='';
@@ -6173,6 +6177,8 @@ const R3D=(()=>{
       else if(ge) console.warn('GL error',ge); }catch(e){} }
   };
   R.hide=()=>{ if(glc) glc.style.display='none'; document.body.classList.remove('r3'); };
+  // прогрев на заставке разработчика: создаём 3D-движок, собираем плитки и компилируем шейдеры заранее, пока экран закрыт заставкой
+  R.warm=()=>{ if(!R.on||R.warmed||!grid||!players) return; try{ R.render(1,0,0); R.warmed=true; }catch(e){ console.warn('warm',e); } finally{ try{ R.hide(); }catch(e){} } };
   R.fail=err=>{ R.on=false; document.body.classList.remove('b3d'); try{ if(glc) glc.style.display='none'; }catch(e){} const msg=(err&&(err.message||err))+''; console.error('3D error',err);
     let box=document.getElementById('err3d'); if(!box){ box=document.createElement('div'); box.id='err3d'; box.style.cssText='position:fixed;left:8px;bottom:8px;z-index:9998;max-width:70vw;background:#3a0d14ee;color:#ffd6d6;font:12px/1.35 system-ui;padding:8px 10px;border-radius:8px;border:1px solid #ff6b6b'; document.body.appendChild(box); }
     box.textContent='3D не запустилось, показан 2D. Ошибка: '+msg.slice(0,220);  };
@@ -7870,7 +7876,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.02a';
+const GAME_VER='1.66.02b';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
