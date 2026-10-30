@@ -5818,7 +5818,11 @@ const R3D=(()=>{
   const SOLIDCH='#SxZYGDXIK';
   const lamb=(c,o)=>new THREE.MeshLambertMaterial(Object.assign({color:c},o||{}));
   const phong=(c,o)=>new THREE.MeshPhongMaterial(Object.assign({color:c},o||{}));
+  // клетка без воды (ключ, старт и т.п.), окружённая водой слева и справа или сверху и снизу, тоже рисуется водой
+  function wch(x,y){ const c=grid[y]&&grid[y][x]; if(c!==undefined&&c!=='~'&&!SOLIDCH.includes(c)&&'.PkKEeCcTtrabdfgihmnoqsuvwz'.includes(c)){ const q=(xx,yy)=>grid[yy]&&grid[yy][xx]==='~'; if((q(x-1,y)&&q(x+1,y))||(q(x,y-1)&&q(x,y+1))) return '~'; } return c; }
+  function gsrc(ch){ return ch==='~'?grid.map((row,y)=>Array.from({length:COLS},(_,x)=>wch(x,y))):grid; }
   function rectsOf(ch){
+    const grid=gsrc(ch);
     const H=grid.length, seen=[...Array(H)].map(()=>new Uint8Array(COLS)), out=[];
     for(let y=0;y<H;y++) for(let x=0;x<COLS;x++){ if(seen[y][x]||grid[y][x]!==ch) continue;
       let w=1; while(x+w<COLS&&grid[y][x+w]===ch&&!seen[y][x+w]) w++;
@@ -5827,7 +5831,7 @@ const R3D=(()=>{
       out.push({x,y,w,h}); }
     return out;
   }
-  function surfaceRuns(r,ch){ // участки верхней кромки, над которыми воздух (не стена и не такая же жидкость)
+  function surfaceRuns(r,ch){ const grid=gsrc(ch); // участки верхней кромки, над которыми воздух (не стена и не такая же жидкость)
     const runs=[]; let s=-1;
     for(let i=0;i<=r.w;i++){ const up=i<r.w?(grid[r.y-1]&&grid[r.y-1][r.x+i]):'#'; const open=i<r.w&&up!==undefined&&up!==ch&&!SOLIDCH.includes(up); if(open&&s<0) s=i; if(!open&&s>=0){ runs.push([s,i]); s=-1; } }
     if(r.y===0) return [];
@@ -7963,7 +7967,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.05b';
+const GAME_VER='1.66.05c';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
