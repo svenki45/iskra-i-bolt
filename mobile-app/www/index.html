@@ -6143,7 +6143,7 @@ const R3D=(()=>{
     const w=new THREE.MeshLambertMaterial({color:0xffffff,emissive:0x333333}); const n=type==='eye'?1:2; for(let i=0;i<n;i++){ const e=new THREE.Mesh(new THREE.SphereGeometry(type==='eye'?.26:.12,14,10),w); e.position.set(n===1?0:(i?.2:-.2),.12,.55); g.add(e); const p=new THREE.Mesh(new THREE.SphereGeometry(type==='eye'?.12:.06,10,8),new THREE.MeshLambertMaterial({color:0x111111})); p.position.set(e.position.x,.12,type==='eye'?.78:.66); g.add(p); }
     scene.add(g); shadowOnly(g); g.userData.m=body.material; return g; }
   // ---------- per frame ----------
-  R.active=()=>R.on&&grid&&!['title','prologue','ending'].includes(state);
+  R.active=()=>R.on&&grid&&!['title','prologue','ending','hero','menu','levels','slots','diffpick'].includes(state);   // за непрозрачными экранами до игры 3D не рисуем (раньше это давало фриз при выборе героя)
   R.render=(z,ox,oy)=>{
     if(!R.ready) init();
     glc.style.display='block'; document.body.classList.add('r3');
@@ -7876,7 +7876,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.02b';
+const GAME_VER='1.66.02c';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
