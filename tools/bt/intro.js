@@ -50,11 +50,5 @@
   window.playIntro=play;
   // концовка: последние кадры ролика — герои выходят на свет и название
   window.playEnding=function(onEnd){ if(navigator.webdriver&&!window.__forceEnding){ onEnd&&onEnd(); return; } play(true,{start:56.2,subs:END,onEnd}); };
-  // первый запуск: после заставки с авторами
-  function auto(){
-    try{ if(navigator.webdriver||localStorage.getItem(KEY)||/[?&]nointro/.test(location.search)) return; }catch(e){}
-    const t0=performance.now();
-    (function wait(){ if(document.getElementById('splash')&&performance.now()-t0<9000) return setTimeout(wait,150); play(); })();
-  }
-  if(document.readyState==='complete') setTimeout(auto,300); else addEventListener('load',()=>setTimeout(auto,300));
+  // ролик показывается при начале новой игры (хук в build.py) и кнопкой в Настройках
 })();

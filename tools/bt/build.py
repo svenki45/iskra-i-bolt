@@ -60,6 +60,8 @@ intro = (ROOT / 'tools/bt/intro.js').read_text(encoding='utf-8')
 sub('<button class="secondary" id="bReport" type="button">Отчёт для тестов</button>','<button class="secondary" id="bIntro" type="button">${(window.__introUI||{}).replay||\'🎬 Смотреть вступление\'}</button><button class="secondary" id="bReport" type="button">Отчёт для тестов</button>')
 sub("if($('bReport')) $('bReport').onclick=()=>setState('report');","if($('bReport')) $('bReport').onclick=()=>setState('report'); if($('bIntro')) $('bIntro').onclick=()=>window.playIntro&&window.playIntro(true);")
 sub("\nconst GAME_VER=",'\n' + intro + '\nconst GAME_VER=')
+# новая игра: вместо старого пролога — наш ролик (в автотестах оставляем старый пролог)
+sub("storyNext=()=>startGame(0); proT=0; setState('prologue');","storyNext=()=>startGame(0); proT=0; if(window.playIntro&&!(navigator.webdriver&&!window.__forceEnding)) window.playIntro(true,{onEnd:()=>{ const f=storyNext; storyNext=null; f&&f(); }}); else setState('prologue');")
 import shutil
 shutil.copy(ROOT / 'tools/intro.mp4', ROOT / 'desktop-bt/intro.mp4')
 out = ROOT / 'desktop-bt/index.html'

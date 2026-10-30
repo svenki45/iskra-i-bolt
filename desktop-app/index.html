@@ -2772,7 +2772,7 @@ function complete(){
   if(edTest){ ED.endTest(true); return; }
   cpSave=null;
   if(demo){ demoNext(); return; }
-  { const L0=getLevel(levelIdx); if(L0&&L0.boss==='toad'&&!complete.cine&&!NET.role&&typeof CINE3D!=='undefined'){ complete.cine=true; proMode='toad'; proT=0; proLast=0; storyNext=()=>{ complete(); complete.cine=false; }; setState('prologue'); return; } }
+  { const L0=getLevel(levelIdx); if(false&&L0&&L0.boss==='toad'&&!complete.cine&&!NET.role&&typeof CINE3D!=='undefined'){ complete.cine=true; proMode='toad'; proT=0; proLast=0; storyNext=()=>{ complete(); complete.cine=false; }; setState('prologue'); return; } }
   recordStars(getLevel(levelIdx));
   lvlStat(levelIdx,'c',1); lvlStat(levelIdx,'t',Math.round(levelTime));
   sfx('win'); saveBest(levelIdx+1); saveStats();
@@ -7864,7 +7864,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.63';
+const GAME_VER='1.64';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
