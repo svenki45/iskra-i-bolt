@@ -3466,7 +3466,9 @@ function loadTick(){
   const bar=document.getElementById('ldBar'), pc=document.getElementById('ldPc'), st=document.getElementById('ldStep');
   if(bar) bar.style.width=(p*100).toFixed(1)+'%'; if(pc) pc.textContent=Math.floor(p*100)+'%';
   const k=J.marks.findIndex(m=>p<=m); if(st) st.textContent=(p>=1?'Готово!':J.steps[k<0?J.steps.length-1:k]+'…');
-  if(raw>=1){ setTimeout(()=>{ if(state!=='loading'||loadJob!==J) return; loadJob=null; loadLevel(J.i); setState('play'); },220); return; }
+  // самую тяжёлую работу (сборка уровня, фоны, 3D) делаем заранее, пока идёт полоска загрузки, а не в момент старта — иначе картинка «подвисает» на переходе
+  if(!J.pre&&raw>=0.45){ J.pre=true; try{ loadLevel(J.i); }catch(e){ console.error('preload',e); J.pre=false; J.preErr=true; } }
+  if(raw>=1){ setTimeout(()=>{ if(state!=='loading'||loadJob!==J) return; loadJob=null; if(!J.pre) loadLevel(J.i); setState('play'); },220); return; }
   requestAnimationFrame(loadTick);
 }
 function startGame(i,keep){ lastIntro=-1; audioInit(); runClean=(i===0); if(i===0&&!keep){ const df=run&&run.diff; run={score:0,wallet:0,up:{},offer:[],refresh:0,reward:null,inv:{},diff:pendingDiff||df||'normal',ng:0}; pendingDiff=null; saveRun(); } const se=document.getElementById('score'); if(se) se.textContent=run.score.toLocaleString('ru-RU'); if(i===0){deaths=0;totalTime=0;gears=0;$('deaths').textContent=0;$('gears').textContent=0;} loadingTo(i); }
@@ -5708,7 +5710,7 @@ const R3D=(()=>{
     glc=document.createElement('canvas'); glc.id='cv3d';
     glc.style.cssText='position:absolute;inset:0;width:100%;height:100%;display:block';
     cv.parentNode.insertBefore(glc,cv); cv.style.position='relative'; cv.style.background='transparent';
-    renderer=new THREE.WebGLRenderer({canvas:glc,antialias:!window.MOBILE_BUILD,alpha:false,powerPreference:'high-performance'});
+    renderer=new THREE.WebGLRenderer({canvas:glc,antialias:true,alpha:false,powerPreference:'high-performance'});
     glc.addEventListener('webglcontextlost',e=>{ e.preventDefault(); R.fail('WebGL context lost'); });
     renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFShadowMap;
     scene=new THREE.Scene();
@@ -7866,7 +7868,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66';
+const GAME_VER='1.66.01a';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
