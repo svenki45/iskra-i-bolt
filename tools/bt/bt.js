@@ -945,7 +945,7 @@ function setupIso(L){
   BTX.z=0; exitLocked=false; const I=S.iso={cam:0,lock:null,enc:0,act:null,foes:[],shots:[],drops:[],fx:[],t:0,go:0,done:false,seed:7};
   I.props=[]; { let s=11; const r=()=>((s=(s*16807)%2147483647)/2147483647);
     for(let x=300;x<ISO.LEN;x+=260+r()*220){ I.props.push({x,z:r()<.5?-.1:1.04,k:['crate','barrel','pipe','lamp'][Math.floor(r()*4)],r:r()}); } }
-  let n=0; for(const p of players){ if(p.absent) continue; p.ix=120+n*60; p.iz=.35+n*.3; p.ih=0; p.ivh=0; p.iat=0; p.icd=0; p.ikick=false; p.ihit=0; p.ifc=1; p.imv=0; n++; p.hp=Math.max(p.hp,1); }
+  let n=0; for(const p of players){ if(p.absent) continue; p.ix=120+n*60; p.iz=.35+n*.3; p.ih=0; p.ivh=0; p.iat=0; p.icd=0; p.ikick=false; p.istyle='fist'; p.combo=0; p.ihit=0; p.ifc=1; p.imv=0; n++; p.hp=Math.max(p.hp,1); }
   S.hintT=8; banner('ЗАВОДСКОЙ ДВОР','#ffd166',1.4);
 }
 (()=>{ const st=document.createElement('style'); st.textContent='@keyframes hlp{0%,100%{box-shadow:0 0 0 0 rgba(255,209,102,.9),0 0 14px 4px rgba(255,209,102,.55);transform:scale(1)}50%{box-shadow:0 0 0 12px rgba(255,209,102,0),0 0 22px 8px rgba(255,209,102,.8);transform:scale(1.12)}} body[data-hl=jump] #touch .tb[data-a=jump],body[data-hl=ability] #touch .tb[data-a=ability],body[data-hl=fire] #touch .tb[data-a=fire]{animation:hlp .55s ease-in-out infinite;border-color:#ffd166!important;background:rgba(255,209,102,.28)!important}'; document.head.appendChild(st); })();
@@ -1011,8 +1011,8 @@ function isoInput(p){
 function isoSpawn(f){ const I=S.iso, t=f[0], L=f[1]==='L'; const D=diffLv(), hpm=D<0?.7:1+.25*D;
   const e={t,x:I.cam+(L?-50:VW+50),z:.1+Math.random()*.8,h:0,hp:Math.round((t==='b'?7:t==='t'?3:3)*hpm),face:L?1:-1,st:'walk',tm:0,cd:1+Math.random(),kx:0,fl:0,ph:Math.random()*6,sp:t==='b'?78:t==='t'?96:104};
   e.max=e.hp; I.foes.push(e); }
-function isoDmg(e,d,p,kx){ if(e.hp<=0) return; e.hp-=d; e.fl=.15; e.st='hurt'; e.tm=.32; e.kx=kx; e.cd=Math.max(e.cd,.5); sfx('hit'); hitstop=Math.max(hitstop,.045); shake=Math.max(shake,3);
-  const I=S.iso, sx=e.x-I.cam; for(let i=0;i<8;i++) I.fx.push({x:e.x,z:e.z,h:30+Math.random()*20,vx:(Math.random()-.5)*260+kx*.3,vh:200+Math.random()*250,l:.4,c:['#ffd166','#fff','#ff8a3d'][i%3]});
+function isoDmg(e,d,p,kx){ if(e.hp<=0) return; e.hp-=d; e.fl=.15; e.st='hurt'; e.tm=.32; e.kx=kx; e.cd=Math.max(e.cd,.5); sfx('hit'); const cb=(p&&p.combo)||0; e.big=cb===2; hitstop=Math.max(hitstop,.045+cb*.03); shake=Math.max(shake,3+cb*3);
+  const I=S.iso, sx=e.x-I.cam; for(let i=0;i<8+cb*6;i++) I.fx.push({x:e.x,z:e.z,h:30+Math.random()*20,vx:(Math.random()-.5)*260+kx*.3,vh:200+Math.random()*250,l:.4,c:['#ffd166','#fff','#ff8a3d'][i%3]});
   texts.push({x:sx,y:isoZ(e.z)-e.h-70,t:d>1?'БАХ!':'ХЫ!',life:.5,c:'#ffd166',pop:true});
   if(e.hp<=0){ e.st='dead'; e.tm=.6; e.kx=kx*1.3; sfx('kill'); if(Math.random()<.34) I.drops.push({x:e.x,z:e.z}); } }
 function isoStep(dt){
@@ -1029,7 +1029,7 @@ function isoStep(dt){
     if(inp.jump&&!p.ih&&!p.ivh){ p.ivh=640; sfx('jump'); }
     if(p.ivh||p.ih){ p.ivh-=2100*dt; p.ih+=p.ivh*dt; if(p.ih<=0){ p.ih=0; p.ivh=0; p.ikick=false; p.sx=1.15; p.sy=.86; } }
     if(inp.atk&&p.icd<=0){ const air=p.ih>2; p.iat=air?.4:.24; p.icd=air?.5:(bolt?.46:.3); p.ikick=air; p.ihitDone=false; p.ihit=0;
-      p.combo=(p.iatC>0?(p.combo+1)%3:0); p.iatC=.7; sfx('shoot'); }
+      p.combo=(p.iatC>0?(p.combo+1)%3:0); p.iatC=.7; p.istyle=air?'boot':(Math.random()<.5?'fist':'boot'); sfx('shoot'); }
     p.iatC=Math.max(0,(p.iatC||0)-dt);
     if(p.iat>0&&!p.ihitDone&&p.iat<(p.ikick?.3:.15)){ p.ihitDone=true; let n=0; const reach=p.ikick?74:64, dmg=p.ikick?2:(bolt?2:1)+(p.combo===2?1:0);
       for(const e of I.foes){ if(e.hp<=0||e.st==='dead') continue; const dx=(e.x-p.ix)*p.ifc; if(dx>-14&&dx<reach&&Math.abs(e.z-p.iz)<.15&&Math.abs(e.h-p.ih)<60){ isoDmg(e,dmg,p,p.ifc*(p.combo===2||bolt||p.ikick?560:260)); n++; } }
@@ -1148,7 +1148,9 @@ function isoProp(pr,I){ const x=pr.x-I.cam; if(x<-80||x>VW+80) return; const y=i
 function isoFoe(e,I){
   const x=e.x-I.cam, y=isoZ(e.z)-e.h, k=isoK(e.z)*1.45, b=e.t==='b', t=e.t==='t', fl=e.fl>0, wk=Math.sin(e.ph)*3, face=e.face;
   isoShadow(x,e.z,b?30:22);
-  ctx.save(); ctx.translate(x,y); ctx.scale(k,k); if(e.st==='dead'){ ctx.globalAlpha=Math.max(0,e.tm/.6); ctx.rotate(-face*.9*(1-Math.max(0,e.tm/.6))); }
+  ctx.save(); ctx.translate(x,y); ctx.scale(k,k);
+  if(e.st==='hurt'){ const u=Math.max(0,e.tm/.32), dir=Math.sign(e.kx)||1; ctx.rotate(-dir*(e.big?.75:.4)*u+Math.sin(clock*55)*.09*u); ctx.scale(1+.18*u,1-.14*u); }
+  if(e.st==='dead'){ ctx.globalAlpha=Math.max(0,e.tm/.6); ctx.rotate(-face*.9*(1-Math.max(0,e.tm/.6))); }
   const body=fl?'#fff':(b?'#6d3a8a':t?'#3b7a63':'#b0463a'), dark=b?'#44235a':t?'#245041':'#7c2a22', W=b?24:18, H=b?44:34;
   ctx.strokeStyle=dark; ctx.lineWidth=4; ctx.lineCap='round'; for(const s of [-1,1]){ ctx.beginPath(); ctx.moveTo(s*W*.4,-10); ctx.lineTo(s*W*.4+(e.st==='walk'?s*wk:0),0); ctx.stroke(); }
   ctx.fillStyle=body; rr(ctx,-W,-H-6,W*2,H,b?9:8); ctx.fill(); ctx.fillStyle=dark; ctx.fillRect(-W+3,-H*.35,W*2-6,4);
@@ -1159,6 +1161,7 @@ function isoFoe(e,I){
   ctx.strokeStyle=body; ctx.lineWidth=b?8:6; ctx.beginPath(); ctx.moveTo(face*W*.7,-H*.7); ctx.lineTo(face*W*.7+ex+(wind&&e.tm<.18?face*34:0),-H*.55+(wind&&e.tm>.18?-14:0)); ctx.stroke();
   if(t){ ctx.fillStyle='#8a8f96'; ctx.fillRect(face*W*.7+ex-4,-H*.55-4,10,8); }
   if(wind){ ctx.fillStyle='#ff4d5e'; ctx.font="900 18px Unbounded, sans-serif"; ctx.textAlign='center'; ctx.fillText('!',0,-H-24); }
+  if(e.st==='hurt'&&e.big){ ctx.fillStyle='#ffd166'; for(let i=0;i<3;i++){ const a=clock*9+i*2.1, sx=Math.cos(a)*22, sy=-H-26+Math.sin(a)*7; ctx.fillRect(sx-5,sy-1.5,10,3); ctx.fillRect(sx-1.5,sy-5,3,10); } }
   ctx.restore();
   if(e.hp>0&&e.hp<e.max){ ctx.fillStyle='rgba(0,0,0,.6)'; ctx.fillRect(x-22,y-(b?86:70)*k/1.45*1.45,44,5); ctx.fillStyle='#ff6b6b'; ctx.fillRect(x-22,y-(b?86:70)*k/1.45*1.45,44*e.hp/e.max,5); }
 }
@@ -1166,14 +1169,22 @@ function isoHero(p,I){
   const x=p.ix-I.cam, k=isoK(p.iz)*1.55, base=isoZ(p.iz);
   isoShadow(x,p.iz,p.kind==='bolt'?22:16);
   const sv={x:p.x,y:p.y,face:p.face,vx:p.vx,wasGround:p.wasGround,shootCd:p.shootCd,hi5:p.hi5,w:p.w,h:p.h,sx:p.sx,sy:p.sy};
-  p.x=-p.w/2; p.y=-p.h; p.face=p.ifc||1; p.vx=p.imv?260*p.face:0; p.wasGround=!(p.ih>2); p.shootCd=p.iat>0&&!p.ikick?.2:0; p.hi5=false;
+  p.x=-p.w/2; p.y=-p.h; p.face=p.ifc||1; p.vx=p.imv?260*p.face:0; p.wasGround=!(p.ih>2); p.shootCd=p.iat>0&&!p.ikick&&p.istyle!=='boot'?.2:0; p.hi5=false;
   ctx.save(); ctx.translate(x,base-p.ih); ctx.scale(k,k);
   if(p.iat>0&&p.ikick){ ctx.translate(0,-p.h/2); ctx.rotate(p.face*.5); ctx.translate(0,p.h/2); }
+  else if(p.iat>0&&p.istyle==='boot'){ const a=Math.min(1,1-p.iat/.24); ctx.translate(0,-p.h/2); ctx.rotate(p.face*.22*Math.sin(a*Math.PI)); ctx.translate(0,p.h/2); }
   if(p.iat>0&&!p.ikick){ const a=1-p.iat/.24; ctx.translate(p.face*Math.sin(a*3.14)*7,0); }
   (p.kind==='bolt'?_drawBolt:_drawSpark)(p);
-  // кулак/нога удара
-  if(p.iat>0){ const a=1-p.iat/(p.ikick?.4:.24), r=Math.sin(Math.min(1,a)*Math.PI); ctx.fillStyle=p.kind==='bolt'?'#c7d3dd':'#ffd1a8'; ctx.strokeStyle='rgba(0,0,0,.4)'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.arc(p.face*(p.w/2+10+r*(p.ikick?30:26)),-(p.ikick?p.h*.25:p.h*.5),p.kind==='bolt'?8:6,0,7); ctx.fill(); ctx.stroke();
-    ctx.globalAlpha=.55*r; ctx.strokeStyle='#fff'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(p.face*(p.w/2+14),-(p.h*.45),26,p.face>0?-.8:Math.PI-.8+.4,p.face>0?.8:Math.PI+.8,false); ctx.stroke(); ctx.globalAlpha=1; }
+  // кулак/нога удара: с каждым ударом серии растёт (маленький, побольше, огромный)
+  if(p.iat>0){ const kick=p.ikick||p.istyle==='boot', dur=p.ikick?.4:.24, a=Math.min(1,1-p.iat/dur), r=Math.sin(a*Math.PI), c=p.combo||0, bolt=p.kind==='bolt', f=p.face;
+    const skin=bolt?'#c7d3dd':'#ffd1a8', limb=bolt?'#62c7c1':'#ff8a3d', sx0=f*p.w*.3, sy0=-p.h*(kick?.26:.4), len=(14+c*14)*r, tx=sx0+f*(p.w*.35+8+len), ty=sy0-(kick?(4+c*3)*r:0), rad=(bolt?8:6.5)+c*(kick?6:7), th=(kick?9:7)+c*4.5;
+    ctx.lineCap='round'; ctx.strokeStyle='rgba(0,0,0,.5)'; ctx.lineWidth=th+3; ctx.beginPath(); ctx.moveTo(sx0,sy0); ctx.lineTo(tx,ty); ctx.stroke();
+    ctx.strokeStyle=limb; ctx.lineWidth=th; ctx.beginPath(); ctx.moveTo(sx0,sy0); ctx.lineTo(tx,ty); ctx.stroke();
+    if(c===2&&r>.4){ ctx.save(); ctx.globalAlpha=.6*r; ctx.strokeStyle='#fff'; ctx.lineWidth=3; for(let i=-1;i<=1;i++){ ctx.beginPath(); ctx.moveTo(sx0-f*10,ty+i*14); ctx.lineTo(tx-f*(rad+6),ty+i*9); ctx.stroke(); } ctx.restore(); }
+    ctx.lineWidth=2; ctx.strokeStyle='rgba(0,0,0,.55)';
+    if(!kick){ ctx.fillStyle=skin; ctx.beginPath(); ctx.arc(tx,ty,rad,0,7); ctx.fill(); ctx.stroke(); ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.lineWidth=1.5; for(let i=-1;i<=1;i++){ ctx.beginPath(); ctx.moveTo(tx+f*rad*.15,ty+i*rad*.42); ctx.lineTo(tx+f*rad*.8,ty+i*rad*.42); ctx.stroke(); } }
+    else { ctx.save(); ctx.translate(tx,ty); ctx.rotate(f*(-.12+a*.2)); ctx.fillStyle=bolt?'#4a5568':'#8a4a2a'; rr(ctx,f>0?-rad*.8:-rad*1.4,-rad*.8,rad*2.2,rad*1.6,rad*.5); ctx.fill(); ctx.stroke(); ctx.fillStyle='#1b1f2a'; ctx.fillRect(f>0?-rad*.8:-rad*1.4,rad*.45,rad*2.2,rad*.35); ctx.restore(); }
+    if(c===2&&r>.5){ ctx.save(); ctx.globalAlpha=.75*r; ctx.strokeStyle='#ffd166'; ctx.lineWidth=4; ctx.beginPath(); ctx.arc(tx+f*rad*.4,ty,rad+8+r*12,0,7); ctx.stroke(); ctx.restore(); } }
   ctx.restore();
   Object.assign(p,sv);
 }
@@ -1948,6 +1959,21 @@ setState=function(s){
 };
 const _handleMeta=handleMeta;
 handleMeta=function(){ if((state==='bthelp'||state==='btend')&&pressed.has('Escape')){ setState('menu'); return; } return _handleMeta(); };
+
+/* ---------------- «упёрся головой в потолок»: расплющенное пламя Искры и наклон головы Болта ---------------- */
+const _heroEnv=heroEnv;
+heroEnv=function(p){
+  if(S.on&&S.kind==='iso') return {gap:48,free:-(p.face||1),wall:0};   // в изометрии потолка нет
+  if(S.on&&S.kind==='mag'&&p.mag&&p.mag.g<0&&grid&&players&&players.includes(p)){   // бежит по потолку вверх ногами: голова внизу, «потолок над головой» — это пол
+    const cx=p.x+p.w/2, top=p.y+p.h, R=48;
+    const hit=(x,y)=>{ if(solidPx(x,y)) return true; for(const c of crates||[]) if(x>=c.x&&x<=c.x+c.w&&y>=c.y&&y<=c.y+c.h) return true; for(const m of movers||[]) if(x>=m.x&&x<=m.x+m.w&&y>=m.y&&y<=m.y+m.h) return true; return false; };
+    let gap=R; for(let d=1;d<R;d+=3){ if(hit(cx-6,top+d)||hit(cx,top+d)||hit(cx+6,top+d)){ gap=d; break; } }
+    let l=0,r=0; for(let d=1;d<R;d+=6){ if(!hit(cx-24,top+d)) l++; if(!hit(cx+24,top+d)) r++; }
+    const wl=hit(p.x-5,top-8)?1:0, wr=hit(p.x+p.w+5,top-8)?1:0;
+    return {gap,free:r>l?1:l>r?-1:-(Math.sign(p.vx||0)||p.face||1),wall:wl-wr};
+  }
+  return _heroEnv(p);
+};
 
 /* ---------------- плашка с описанием уровня (экран «Выбрать уровень») ---------------- */
 function lvInfo(i){
