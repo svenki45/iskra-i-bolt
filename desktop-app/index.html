@@ -806,14 +806,14 @@ function applyScreen(){ if(!window.desk) return; const r=resWH()||{w:1600,h:900}
 let titleWide=0, TVW=VW, custBack='menu';
 function fit(){
   const r=$('stage').getBoundingClientRect(); const tch=document.body.classList.contains('touch')&&document.body.classList.contains('playing'), TL=(typeof touchLayout!=='undefined')?touchLayout:{};
-  const pm=document.body.classList.contains('padmode'), side=tch&&!TL.over&&!pm?touchSide()*2:0;
-  const s=Math.max(0.1,Math.min((r.width-side)/VW, r.height/VH))*(tch&&!pm?(TL.cam?Math.min(1,TL.field||1):(TL.field||1)):1);
+  const pm=document.body.classList.contains('padmode'), fullWin=tch&&!pm&&TL.win!=='custom', side=tch&&!TL.over&&!pm&&!fullWin?touchSide()*2:0;   // по умолчанию игровое окно — на весь экран (как загрузка и экран смерти); своё окно задаётся в настройках
+  const s=Math.max(0.1,Math.min((r.width-side)/VW, r.height/VH))*(tch&&!pm&&!fullWin?(TL.cam?Math.min(1,TL.field||1):(TL.field||1)):1);
   let w=Math.floor(VW*s), h=Math.floor(VH*s);
   titleWide=0; TVW=VW;
   if(document.body.classList.contains('touch')&&document.body.classList.contains('titling')&&r.width>0&&r.height>0){ const s2=r.height/VH; if(r.width/s2>VW+4){ titleWide=(r.width/s2-VW)/2; w=Math.floor(r.width); h=Math.floor(r.height); TVW=VW+titleWide*2; } }
-  const cw=w, ch=h; if(document.body.classList.contains('touch')&&(state==='gameover'||state==='loading'||state==='done'||state==='win'||(state==='arena'&&typeof ARENA!=='undefined'&&!ARENA.fighting))&&r.width>0&&r.height>0){ w=Math.floor(r.width); h=Math.floor(r.height); } else if(tch&&!pm){ w=Math.floor(w*(TL.sx||1)); h=Math.floor(h*(TL.sy||1)); }
+  const cw=w, ch=h; if(document.body.classList.contains('touch')&&(state==='gameover'||state==='loading'||state==='done'||state==='win'||(state==='arena'&&typeof ARENA!=='undefined'&&!ARENA.fighting))&&r.width>0&&r.height>0||fullWin&&r.width>0&&r.height>0){ w=Math.floor(r.width); h=Math.floor(r.height); } else if(tch&&!pm){ w=Math.floor(w*(TL.sx||1)); h=Math.floor(h*(TL.sy||1)); }
   $('screen').style.width=w+'px'; $('screen').style.height=h+'px';
-  { const OX=tch&&!pm?(TL.ox||0):0, OY=tch&&!pm?(TL.oy||0):0; $('screen').style.transform=(OX||OY)?`translate(${OX}px,${OY}px)`:''; }
+  { const OX=tch&&!pm&&!fullWin?(TL.ox||0):0, OY=tch&&!pm&&!fullWin?(TL.oy||0):0; $('screen').style.transform=(OX||OY)?`translate(${OX}px,${OY}px)`:''; }
   const R=(typeof resBox==='function')?resBox():null;
   if(R){ cv.width=R.w; cv.height=R.h; }
   else { const dpr=(typeof settings!=='undefined'&&settings.quality==='low')?1:Math.min(window.MOBILE_BUILD?1.5:2,window.devicePixelRatio||1);
@@ -3003,7 +3003,7 @@ function setState(s){
     tb.hidden=false; document.body.classList.add('playing','tedit');
     setTimeout(()=>{ try{ editFrame(); }catch(e){} },60);
     { const tfs=$('tfs'), tbs=$('tbs');
-      tfs.oninput=()=>{ touchLayout.field=tfs.value/100; $('tfv').textContent=tfs.value+'%'; saveTouchLayout(); const fr=document.getElementById('tefr'); if(fr&&fr._place) fr._place(); };
+      tfs.oninput=()=>{ touchLayout.win='custom'; touchLayout.field=tfs.value/100; $('tfv').textContent=tfs.value+'%'; saveTouchLayout(); const fr=document.getElementById('tefr'); if(fr&&fr._place) fr._place(); };
       tbs.oninput=()=>{ if(!editSel){ tbs.value=100; $('tbv').textContent='100%'; toastQ.push({small:'Кнопки',title:'Сначала нажмите на кнопку',icon:'first'}); showToast(); return; } editSizeTo(tbs.value/100); $('tbv').textContent=tbs.value+'%'; } }
     tb.querySelectorAll('[data-q]').forEach(x=>x.onclick=()=>{ const q=x.dataset.q, tfs=$('tfs'), tbs=$('tbs');
       if(q[0]==='f'){ tfs.value=Math.max(+tfs.min,Math.min(+tfs.max,+tfs.value+(q[1]==='+'?5:-5))); tfs.oninput(); }
@@ -3011,7 +3011,7 @@ function setState(s){
     tb.querySelectorAll('[data-t]').forEach(x=>x.onclick=()=>{ const t=x.dataset.t;
       if(t==='cam'){ touchLayout.cam=!touchLayout.cam; saveTouchLayout(); setState('touchedit'); }
       else if(t==='ov'){ touchLayout.over=!touchLayout.over; saveTouchLayout(); setState('touchedit'); }
-      else if(t==='rs'){ touchLayout={b:{},field:1,over:false,ox:0,oy:0,sx:1,sy:1}; editSel=null; saveTouchLayout(); setState('touchedit'); }
+      else if(t==='rs'){ touchLayout={b:{},field:1,over:true,win:'full',v:3}; editSel=null; saveTouchLayout(); setState('touchedit'); }
       else if(t==='ok'){ tb.hidden=true; editSel=null; buildTouch(true); if(editRet){ const r=editRet; editRet=null; editBack='pause'; setState(r); } else setState(editBack); } });
     setTimeout(()=>{ buildTouch(true); fit(); },0); return;
   } else if(s==='netleave'){
@@ -5360,8 +5360,8 @@ const TICON={left:'<svg viewBox="0 0 24 24"><path d="M15 4L7 12l8 8" fill="none"
   jump:'<svg viewBox="0 0 24 24"><path d="M12 20V5M5 11l7-7 7 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>'};
 function touchSide(){ return Math.round(Math.min(210,Math.max(118,innerWidth*0.165))); }
 var touchLayout=(()=>{ try{ const o=Object.assign({b:{},field:1,over:true},JSON.parse(localStorage.getItem('iskra-bolt-touchlayout')||'{}'));
-    if(o.v!==2){ o.v=2; o.over=true; o.field=1; delete o.sx; delete o.sy; delete o.ox; delete o.oy; delete o.cam; try{ localStorage.setItem('iskra-bolt-touchlayout',JSON.stringify(o)); }catch(e){} }   // новое умолчание: игровое окно на весь экран (кнопки поверх); размер и положение окна по-прежнему настраиваются
-    return o; }catch(e){ return {b:{},field:1,over:true,v:2}; } })();
+    if(o.v!==3){ o.v=3; o.win='full'; o.over=true; o.field=1; delete o.sx; delete o.sy; delete o.ox; delete o.oy; delete o.cam; try{ localStorage.setItem('iskra-bolt-touchlayout',JSON.stringify(o)); }catch(e){} }   // новое умолчание: игровое окно на весь экран (кнопки поверх); размер и положение окна по-прежнему настраиваются
+    return o; }catch(e){ return {b:{},field:1,over:true,v:3,win:'full'}; } })();
 function saveTouchLayout(){ try{ localStorage.setItem('iskra-bolt-touchlayout',JSON.stringify(touchLayout)); }catch(e){} buildTouch(true); fit(); }
 let editSel=null, editBack='pause';
 function wireEdit(el){
@@ -5385,7 +5385,7 @@ function editFrame(){
   fr.hidden=false; place(); fr._place=place;
   const base=()=>{ const r=$('stage').getBoundingClientRect(), pm=document.body.classList.contains('padmode'), side=(!touchLayout.over&&!pm)?touchSide()*2:0; const s0=Math.max(.1,Math.min((r.width-side)/VW,r.height/VH)); return {w:VW*s0,h:VH*s0,cx:r.left+r.width/2,cy:r.top+r.height/2}; };
   // любой размер: ширина и высота независимо (field — общий масштаб, sx/sy — растяжение)
-  const apply=(w,h,cx,cy)=>{ const B=base(); w=Math.min(w,innerWidth); h=Math.min(h,innerHeight); const fx=Math.max(.3,Math.min(2.4,w/B.w)), fy=Math.max(.3,Math.min(2.4,h/B.h)); const f=Math.sqrt(fx*fy); touchLayout.field=Math.max(.35,Math.min(2,f)); touchLayout.sx=fx/touchLayout.field; touchLayout.sy=fy/touchLayout.field; touchLayout.ox=Math.round(cx-B.cx); touchLayout.oy=Math.round(cy-B.cy); saveTouchLayout(); try{ fit(); }catch(_){} place(); const pc=Math.round(touchLayout.field*100), v=$('tfv'), s=$('tfs'); if(v) v.textContent=pc+'%'; if(s) s.value=Math.max(+s.min,Math.min(+s.max,pc)); };
+  const apply=(w,h,cx,cy)=>{ touchLayout.win='custom'; const B=base(); w=Math.min(w,innerWidth); h=Math.min(h,innerHeight); const fx=Math.max(.3,Math.min(2.4,w/B.w)), fy=Math.max(.3,Math.min(2.4,h/B.h)); const f=Math.sqrt(fx*fy); touchLayout.field=Math.max(.35,Math.min(2,f)); touchLayout.sx=fx/touchLayout.field; touchLayout.sy=fy/touchLayout.field; touchLayout.ox=Math.round(cx-B.cx); touchLayout.oy=Math.round(cy-B.cy); saveTouchLayout(); try{ fit(); }catch(_){} place(); const pc=Math.round(touchLayout.field*100), v=$('tfv'), s=$('tfs'); if(v) v.textContent=pc+'%'; if(s) s.value=Math.max(+s.min,Math.min(+s.max,pc)); };
   // перетаскивание одним пальцем, щипок двумя пальцами (растягивает по направлению пальцев)
   const P=new Map(); let g0=null;
   const snap=()=>{ const q=sc.getBoundingClientRect(), pts=[...P.values()]; g0={q,w:q.width,h:q.height,cx:q.left+q.width/2,cy:q.top+q.height/2,pts:pts.map(t=>({x:t.x,y:t.y}))}; };
@@ -5440,7 +5440,7 @@ function buildTouch(force){
       html+=btn(k,'fire',mir?L:R,bot-2*a-16,a,'✦','огонь')+btn(k,'use',mir?R:L,bot-2*a-16,a*.85,'★','');
     }
   }
-  html+=`<button type="button" class="tb" data-pause="1" style="left:${Math.round(S/2-20)}px;top:8px;width:40px;height:40px;border-radius:12px">II</button>`;
+  html+=`<button type="button" class="tb" data-pause="1" style="left:${Math.round(W/2-190)}px;top:8px;width:40px;height:40px;border-radius:12px">II</button>`;
   el.innerHTML=html;
   el.querySelectorAll('[data-a]').forEach(b=>{
     const code=()=>binds[b.dataset.k].kb[b.dataset.a];
@@ -8016,7 +8016,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.05o';
+const GAME_VER='1.66.05p';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
