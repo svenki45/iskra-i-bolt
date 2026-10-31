@@ -9,6 +9,33 @@ defaults:
   run:
     working-directory: mobile-app
 jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - name: Подставить сборку игры (та же, что на iPhone)
+        working-directory: .
+        run: |
+          cp bt/index.html mobile-app/www/index.html
+          cp bt/intro.mp4 mobile-app/www/intro.mp4
+          python3 - <<'PY'
+          p='mobile-app/www/index.html'; t=open(p,encoding='utf-8').read()
+          t=t.replace('</head>','<style>#a2hs{display:none!important}</style></head>',1); open(p,'w',encoding='utf-8').write(t)
+          PY
+          grep -c 'a2hs{display:none' mobile-app/www/index.html
+      - run: npm install
+      - run: npx cap add android
+      - run: npx @capacitor/assets generate --android --iconBackgroundColor '#0b1830' --splashBackgroundColor '#0b1830' || echo "icons skipped"
+      - run: node scripts/patch-android.js
+      - run: npx cap sync android
+      - run: cd android && chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+      - run: cp android/app/build/outputs/apk/debug/app-debug.apk iskra-i-bolt.apk
+      - uses: actions/upload-artifact@v4
+        with: { name: apk, path: mobile-app/iskra-i-bolt.apk }
   ios:
     runs-on: macos-15
     steps:
@@ -54,7 +81,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with: { name: ipa, path: mobile-app/iskra-i-bolt.ipa }
   release:
-    needs: [ios]
+    needs: [ios, android]
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: . } }
     steps:
@@ -62,4 +89,4 @@ jobs:
       - env: { GH_TOKEN: '${{ github.token }}' }
         run: |
           gh release delete mobile-bt --repo ${{ github.repository }} --yes --cleanup-tag || true
-          gh release create mobile-bt --repo ${{ github.repository }} --title "Искра и Болт — IPA для iPhone" --notes "IPA для установки через Sideloadly" ipa/iskra-i-bolt.ipa
+          gh release create mobile-bt --repo ${{ github.repository }} --title "Искра и Болт — iPhone и Android" --notes "IPA (iPhone) и APK (Android) — одна и та же игра" ipa/iskra-i-bolt.ipa apk/iskra-i-bolt.apk

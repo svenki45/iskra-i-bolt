@@ -1,8 +1,6 @@
 name: Mobile (APK + IPA)
 on:
   workflow_dispatch:
-  push:
-    paths: ['mobile-app/**', '.github/workflows/mobile.yml']
 permissions:
   contents: write
 defaults:
