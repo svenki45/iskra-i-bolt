@@ -1555,7 +1555,7 @@ function heroDraw(f,p){
   if(S.kind==='mag'&&p.mag){ if(p.mag.g<0){ const cx=p.x+p.w/2, cy=p.y+p.h/2; ctx.save(); ctx.translate(cx,cy); ctx.scale(1,-1); ctx.translate(-cx,-cy); f(p); ctx.restore(); } else f(p); return; }
   if(PLATF[S.kind]){ f(p); drawSmash(p); return; }
   if(S.kind==='cart'){
-    if(w3d()){ drawScooterRider(f,p); return; }
+    if(wet()){ drawScooterRider(f,p); return; }   // скутер и согнутые ноги — и в простом режиме воды, как в 3D
     if(p.duck){ const h=p.h,y=p.y,sx=p.sx,sy=p.sy; p.y=y+h-H0[p.kind]; p.h=H0[p.kind]; p.sx=1.22; p.sy=HD[p.kind]/H0[p.kind]*1.08; ctx.save(); ctx.translate(0,-6); f(p); ctx.restore(); p.h=h; p.y=y; p.sx=sx; p.sy=sy; }
     else { ctx.save(); ctx.translate(0,-6); f(p); ctx.restore(); }
     drawBoard(p); return;
