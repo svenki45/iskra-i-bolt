@@ -952,8 +952,8 @@ function setupIso(L){
 // сенсор: на «Заводском дворе» кнопки получают другие подписи (клавиши те же: вверх=«прыжок», вниз=«способность», удар=«огонь», прыжок=«бонус»)
 const TG=(g,sub,sz)=>`<span style="font-size:${sz||1.5}em;line-height:1">${g}</span><small>${sub}</small>`;
 const TLBL={
-  cart:(a,k)=>({ability:TG('▼','пригнись'),fire:TG('✦','стреляй'),left:'dim',right:'dim',use:'dim'})[a],
-  rope:(a,k)=>({left:TG('◀','раскачка'),right:TG('▶','раскачка'),jump:TG('▲','подтянись'),ability:TG('▼','быстрее'),fire:'dim',use:'dim'})[a],
+  cart:(a,k)=>({ability:TG('▼','пригнись'),fire:TG('✦','стреляй')})[a],   // «бонус» (use) тут работает, влево/вправо прячутся (touchCart)
+  rope:(a,k)=>({left:TG('◀','раскачка'),right:TG('▶','раскачка'),jump:TG('▲','подтянись'),ability:TG('▼','быстрее')})[a],   // огонь и бонус на тросе остаются активными
   rocket:(a,k)=>({jump:TG('▲','вверх'),ability:TG('▼','вниз'),left:'dim',right:'dim',use:'dim',fire:S.L&&S.L.bt&&S.L.bt.tube?'dim':TG('✦','огонь')})[a],
   wire:(a,k)=>({jump:TG('▲','выше'),ability:TG('▼','ниже'),left:'dim',right:'dim',fire:'dim',use:'dim'})[a],
   lift:(a,k)=>({jump:TG('▲','прыжок')})[a],
@@ -968,7 +968,7 @@ const TLBL={
   iso:(a,k)=>({jump:TG('▲','вглубь'),ability:TG('▼','к нам'),fire:TG('✊','удар',1.4),use:TG('⤒','прыжок',1.4)})[a]
 };
 // сенсор: в испытаниях с «вверх/вниз» стрелка ▲ должна стоять ВЫШЕ ▼ (раньше «вниз» стояла над «вверх» — путаница). Размер у обеих одинаковый.
-const TVERT={cart:1,rope:1,rocket:1,wire:1,iso:1};
+const TVERT={rope:1,rocket:1,wire:1,iso:1};
 function touchVert(el,on){
   const R=b=>({l:parseFloat(b.style.left),t:parseFloat(b.style.top),w:parseFloat(b.style.width)});
   const put=(b,l,t,w)=>{ b.style.left=Math.round(l)+'px'; b.style.top=Math.round(t)+'px'; b.style.width=Math.round(w)+'px'; b.style.height=Math.round(w)+'px'; };
@@ -991,10 +991,27 @@ function touchVert(el,on){
     }
   }
 }
+// сенсор, «доска»: стрелки влево/вправо не нужны — убираем их; слева остаётся «присед», справа — прыжок, огонь и бонус
+function touchCart(el,on){
+  for(const k of ['spark','bolt']){
+    const q=a=>el.querySelector('.tb[data-a="'+a+'"][data-k="'+k+'"]'), J=q('jump'), A=q('ability'), Lb=q('left'), Rb=q('right'); if(!J||!A||!Lb||!Rb) continue;
+    const bs=[J,A,Lb,Rb], P=b=>({l:parseFloat(b.style.left),t:parseFloat(b.style.top),w:parseFloat(b.style.width)});
+    const put=(b,l,t,w)=>{ b.style.left=Math.round(l)+'px'; b.style.top=Math.round(t)+'px'; b.style.width=Math.round(w)+'px'; b.style.height=Math.round(w)+'px'; };
+    if(!on){ for(const b of bs) if(b.dataset.co){ const o=JSON.parse(b.dataset.co); b.style.left=o.l; b.style.top=o.t; b.style.width=o.w; b.style.height=o.h; b.style.display=o.d; delete b.dataset.co; } continue; }
+    if(J.dataset.co) continue;
+    const j=P(J), a=P(A), l=P(Lb); if([j.l,j.t,j.w,a.l,a.t,a.w,l.l,l.t,l.w].some(isNaN)) continue;
+    for(const b of bs) b.dataset.co=JSON.stringify({l:b.style.left,t:b.style.top,w:b.style.width,h:b.style.height,d:b.style.display});
+    Lb.style.display='none'; Rb.style.display='none';
+    put(A,l.l,l.t,Math.max(a.w,l.w));                                   // присед — на место «влево» (слева)
+    put(J,a.l+a.w-j.w,a.t+a.w-j.w,j.w);                                 // прыжок — вниз справа, на место «присеста»
+  }
+}
 // сенсор: подписи кнопок под тип испытания (ненужные кнопки гаснут)
 setInterval(()=>{ try{
+  // подсветка кнопки-подсказки живёт только на уровне-тележке; после него она «залипала» на других уровнях и в босс-экране
+  if(document.body.dataset.hl&&!(S.on&&state==='play'&&S.kind==='cart')){ document.body.dataset.hl=''; S.cueSent=null; }
   const el=document.getElementById('touch'); if(!el) return; const f=S.on&&state==='play'?TLBL[S.kind]:null;
-  touchVert(el,!!(f&&TVERT[S.kind]));
+  touchVert(el,!!(f&&TVERT[S.kind])); touchCart(el,!!(f&&S.kind==='cart'));
   el.querySelectorAll('.tb[data-a]').forEach(b=>{ const a=b.dataset.a; let w=f?f(a,b.dataset.k):null; const dim=w==='dim'; if(dim) w=null; if(b.dataset.dim!==(dim?'1':'')){ b.dataset.dim=dim?'1':''; b.style.opacity=dim?'.28':''; }
     if(w){ if(b.dataset.iso!=='1'){ b.dataset.orig=b.innerHTML; b.dataset.iso='1'; } if(b.dataset.cur!==w){ b.innerHTML=w; b.dataset.cur=w; } }
     else if(b.dataset.iso==='1'){ b.innerHTML=b.dataset.orig||b.innerHTML; b.dataset.iso='0'; b.dataset.cur=''; } });
@@ -1174,19 +1191,22 @@ function isoHero(p,I){
   if(p.iat>0&&p.ikick){ ctx.translate(0,-p.h/2); ctx.rotate(p.face*.5); ctx.translate(0,p.h/2); }
   else if(p.iat>0&&p.istyle==='boot'){ const a=Math.min(1,1-p.iat/.24); ctx.translate(0,-p.h/2); ctx.rotate(p.face*.22*Math.sin(a*Math.PI)); ctx.translate(0,p.h/2); }
   if(p.iat>0&&!p.ikick){ const a=1-p.iat/.24; ctx.translate(p.face*Math.sin(a*3.14)*7,0); }
+  // удар делает СВОЯ рука/нога героя (drawLimbs читает p.atk): с каждым ударом серии она вытягивается дальше, а кулак/ступня крупнее
+  const own=looks[p.kind].limbs!==false&&looks[p.kind].limbs!=='off';
+  if(p.iat>0&&own){ const dk=p.ikick||p.istyle==='boot', dd=p.ikick?.4:.24, aa=Math.min(1,1-p.iat/dd), cc=p.combo||0; p.atk={kick:dk,r:Math.sin(aa*Math.PI),c:cc,len:(14+cc*14)*Math.sin(aa*Math.PI),rad:(p.kind==='bolt'?8:6.5)+cc*(dk?6:7)}; } else p.atk=null;
   (p.kind==='bolt'?_drawBolt:_drawSpark)(p);
-  // кулак/нога удара: с каждым ударом серии растёт (маленький, побольше, огромный)
+  // эффекты удара (линии скорости и кольцо на 3-м ударе); если конечностей нет совсем («Без них») — рисуем условную кисть/ступню
   if(p.iat>0){ const kick=p.ikick||p.istyle==='boot', dur=p.ikick?.4:.24, a=Math.min(1,1-p.iat/dur), r=Math.sin(a*Math.PI), c=p.combo||0, bolt=p.kind==='bolt', f=p.face;
     const skin=bolt?'#c7d3dd':'#ffd1a8', limb=bolt?'#62c7c1':'#ff8a3d', sx0=f*p.w*.3, sy0=-p.h*(kick?.26:.4), len=(14+c*14)*r, tx=sx0+f*(p.w*.35+8+len), ty=sy0-(kick?(4+c*3)*r:0), rad=(bolt?8:6.5)+c*(kick?6:7), th=(kick?9:7)+c*4.5;
-    ctx.lineCap='round'; ctx.strokeStyle='rgba(0,0,0,.5)'; ctx.lineWidth=th+3; ctx.beginPath(); ctx.moveTo(sx0,sy0); ctx.lineTo(tx,ty); ctx.stroke();
-    ctx.strokeStyle=limb; ctx.lineWidth=th; ctx.beginPath(); ctx.moveTo(sx0,sy0); ctx.lineTo(tx,ty); ctx.stroke();
+    if(!own){ ctx.lineCap='round'; ctx.strokeStyle='rgba(0,0,0,.5)'; ctx.lineWidth=th+3; ctx.beginPath(); ctx.moveTo(sx0,sy0); ctx.lineTo(tx,ty); ctx.stroke();
+    ctx.strokeStyle=limb; ctx.lineWidth=th; ctx.beginPath(); ctx.moveTo(sx0,sy0); ctx.lineTo(tx,ty); ctx.stroke(); }
     if(c===2&&r>.4){ ctx.save(); ctx.globalAlpha=.6*r; ctx.strokeStyle='#fff'; ctx.lineWidth=3; for(let i=-1;i<=1;i++){ ctx.beginPath(); ctx.moveTo(sx0-f*10,ty+i*14); ctx.lineTo(tx-f*(rad+6),ty+i*9); ctx.stroke(); } ctx.restore(); }
     ctx.lineWidth=2; ctx.strokeStyle='rgba(0,0,0,.55)';
-    if(!kick){ ctx.fillStyle=skin; ctx.beginPath(); ctx.arc(tx,ty,rad,0,7); ctx.fill(); ctx.stroke(); ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.lineWidth=1.5; for(let i=-1;i<=1;i++){ ctx.beginPath(); ctx.moveTo(tx+f*rad*.15,ty+i*rad*.42); ctx.lineTo(tx+f*rad*.8,ty+i*rad*.42); ctx.stroke(); } }
+    if(own){} else if(!kick){ ctx.fillStyle=skin; ctx.beginPath(); ctx.arc(tx,ty,rad,0,7); ctx.fill(); ctx.stroke(); ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.lineWidth=1.5; for(let i=-1;i<=1;i++){ ctx.beginPath(); ctx.moveTo(tx+f*rad*.15,ty+i*rad*.42); ctx.lineTo(tx+f*rad*.8,ty+i*rad*.42); ctx.stroke(); } }
     else { ctx.save(); ctx.translate(tx,ty); ctx.rotate(f*(-.12+a*.2)); ctx.fillStyle=bolt?'#4a5568':'#8a4a2a'; rr(ctx,f>0?-rad*.8:-rad*1.4,-rad*.8,rad*2.2,rad*1.6,rad*.5); ctx.fill(); ctx.stroke(); ctx.fillStyle='#1b1f2a'; ctx.fillRect(f>0?-rad*.8:-rad*1.4,rad*.45,rad*2.2,rad*.35); ctx.restore(); }
     if(c===2&&r>.5){ ctx.save(); ctx.globalAlpha=.75*r; ctx.strokeStyle='#ffd166'; ctx.lineWidth=4; ctx.beginPath(); ctx.arc(tx+f*rad*.4,ty,rad+8+r*12,0,7); ctx.stroke(); ctx.restore(); } }
   ctx.restore();
-  Object.assign(p,sv);
+  Object.assign(p,sv); p.atk=null;
 }
 function isoDraw(){
   const I=S.iso; if(!I) return; R3D.hide(); ctx.setTransform(scale,0,0,scale,0,0); ctx.clearRect(0,0,cv.width,cv.height); GLOW=settings.glow?1:0;
@@ -1499,16 +1519,17 @@ function drawScooterRider(f,p){
   const lx=22, ly=-30, bx=cx+Math.cos(pitch)*lx-Math.sin(pitch)*ly, by=deck+Math.sin(pitch)*lx+Math.cos(pitch)*ly;
   p._lean=(p._lean||0)+(((air&&!p.duck)?1.15:.2)-(p._lean||0))*.22;
   drawScooterHull(p,pitch);
-  const LIFT=26, bb=deck+14-LIFT, hh=p.duck?HD[p.kind]*1.08:p.h, col=bolt?'#7f93a3':'#b8431f';   // bb — низ тела: герой приподнят над палубой, чтобы были видны ноги
+  const DD=p.duck?10:0, LIFT=26, bb=deck+14-LIFT,   // DD: присел — тело опускается, ноги сгибаются в коленях (а не сплющивается туловище)
+   hh=p.duck?HD[p.kind]*1.08+DD*.5:p.h, col=bolt?'#7f93a3':'#b8431f';   // bb — низ тела: герой приподнят над палубой, чтобы были видны ноги
   ctx.save(); ctx.translate(bx,by); ctx.rotate(p._lean); ctx.translate(-bx,-by);
   // ноги: колени согнуты, ступни на палубе (рисуем за телом)
   ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle=col; ctx.lineWidth=bolt?5:3.6;
-  ctx.lineWidth=bolt?6:4.6; for(const o of [-5,6]){ ctx.beginPath(); ctx.moveTo(cx+o*.6,bb-5); ctx.lineTo(cx+o+7,bb+3); ctx.lineTo(cx+o+2-(air?8:0),deck-3); ctx.stroke(); ctx.fillStyle=bolt?'#2a3a47':'#6b2a12'; ctx.beginPath(); ctx.ellipse(cx+o+4-(air?8:0),deck-2,5,2.6,0,0,7); ctx.fill(); }
+  ctx.lineWidth=bolt?6:4.6; for(const o of [-5,6]){ ctx.beginPath(); if(DD){ ctx.moveTo(cx+o*.6-3,deck-8); ctx.lineTo(cx+o+13,deck-10); ctx.lineTo(cx+o+2-(air?8:0),deck-3); } else { ctx.moveTo(cx+o*.6,bb-5); ctx.lineTo(cx+o+7,bb+3); ctx.lineTo(cx+o+2-(air?8:0),deck-3); } ctx.stroke(); ctx.fillStyle=bolt?'#2a3a47':'#6b2a12'; ctx.beginPath(); ctx.ellipse(cx+o+4-(air?8:0),deck-2,5,2.6,0,0,7); ctx.fill(); }
   // тело: смотрит вперёд (вправо), без собственных рук — руки рисуем ниже, одну на руль
   const lim=looks[p.kind].limbs, fc=p.face, h0=p.h, y0=p.y, sx0=p.sx, sy0=p.sy;
   looks[p.kind].limbs='off'; p.face=1;
-  if(p.duck){ p.y=y0+h0-H0[p.kind]; p.h=H0[p.kind]; p.sx=1.22; p.sy=HD[p.kind]/H0[p.kind]*1.08; }
-  ctx.save(); ctx.translate(0,-LIFT); f(p); ctx.restore();
+  if(p.duck){ p.y=y0+h0-H0[p.kind]; p.h=H0[p.kind]; p.sx=1.1; p.sy=Math.min(1,(DD+HD[p.kind]*1.08+3)/H0[p.kind]); }
+  ctx.save(); ctx.translate(0,-LIFT+DD); f(p); ctx.restore();
   p.h=h0; p.y=y0; p.sx=sx0; p.sy=sy0; p.face=fc; looks[p.kind].limbs=lim;
   // одна рука: от плеча к рулю, кисть сжимает рукоять
   const shx=cx+p.w*.24, shy=bb-hh*(bolt?.3:.4), ex=(shx+bx)/2-3, ey=(shy+by)/2+7;
@@ -1885,7 +1906,7 @@ setState=function(s){
       _setState('btintro'); overlay.innerHTML=btIntroHtml(e.t,levelIdx);
       $('btGo').onclick=()=>{ const q=seenIntro(); q[e.t]=1; store.set(SEEN_KEY,q); sfx('pick'); setState('play'); };
       setTimeout(()=>{ try{ $('btGo').focus(); }catch(er){} },0); return; } }
-  if(CAMPAIGN&&s==='ending'&&window.playEnding&&!window.__endGo){ window.playEnding(()=>{ window.__endGo=1; try{ setState('ending'); }finally{ window.__endGo=0; } }); return; }
+  if(CAMPAIGN&&s==='ending'&&window.playEnding&&!window.__endGo){ window.playEnding(()=>{ window.__endGo=1; try{ particles=[]; setState('win'); }finally{ window.__endGo=0; } }); return; }   // старую картинку-финал («Главный Механизм остановлен») после нового ролика не показываем
   if(CAMPAIGN){ _setState(s);
     return; }
   if(s==='ending'){ _setState('btend');

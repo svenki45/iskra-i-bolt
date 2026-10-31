@@ -32,7 +32,8 @@
     function block(e){
       const inside=d.contains(e.target);
       if(e.type==='keydown'&&(e.code==='Escape'||e.code==='Enter'||e.code==='Space'||e.code==='NumpadEnter')){ e.preventDefault(); e.stopImmediatePropagation(); finish(); return; }
-      if(inside&&(e.type==='click'||e.type==='pointerdown'||e.type==='touchstart')&&(e.target===sk)){ e.preventDefault(); e.stopImmediatePropagation(); if(e.type==='click') finish(); return; }
+      // «Пропустить»: на телефоне preventDefault на touchstart/pointerdown гасит последующий click — поэтому завершаем на отпускании пальца
+      if(inside&&sk.contains(e.target)){ e.preventDefault(); e.stopImmediatePropagation(); if(e.type==='click'||e.type==='pointerup'||e.type==='touchend'||e.type==='mouseup') finish(); return; }
       if(inside&&(e.type==='click'||e.type==='touchend')){ unmute(); }
       e.preventDefault(); e.stopImmediatePropagation();
     }
