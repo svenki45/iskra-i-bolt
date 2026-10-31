@@ -804,13 +804,13 @@ const SCREEN_MODES=[['full','Полный экран'],['window','В окне'],
 function applyScreen(){ if(!window.desk) return; const r=resWH()||{w:1600,h:900}; window.desk.setScreen({mode:settings.win||'full',w:r.w,h:r.h}); }
 let titleWide=0, TVW=VW, custBack='menu';
 function fit(){
-  const r=$('stage').getBoundingClientRect(); const tch=document.body.classList.contains('touch')&&(document.body.classList.contains('playing')||state==='gameover'), TL=(typeof touchLayout!=='undefined')?touchLayout:{};
+  const r=$('stage').getBoundingClientRect(); const tch=document.body.classList.contains('touch')&&document.body.classList.contains('playing'), TL=(typeof touchLayout!=='undefined')?touchLayout:{};
   const pm=document.body.classList.contains('padmode'), side=tch&&!TL.over&&!pm?touchSide()*2:0;
   const s=Math.max(0.1,Math.min((r.width-side)/VW, r.height/VH))*(tch&&!pm?(TL.cam?Math.min(1,TL.field||1):(TL.field||1)):1);
   let w=Math.floor(VW*s), h=Math.floor(VH*s);
   titleWide=0; TVW=VW;
   if(document.body.classList.contains('touch')&&document.body.classList.contains('titling')&&r.width>0&&r.height>0){ const s2=r.height/VH; if(r.width/s2>VW+4){ titleWide=(r.width/s2-VW)/2; w=Math.floor(r.width); h=Math.floor(r.height); TVW=VW+titleWide*2; } }
-  const cw=w, ch=h; if(document.body.classList.contains('touch')&&(state==='done'||state==='win')&&r.width>0&&r.height>0){ w=Math.floor(r.width); h=Math.floor(r.height); } else if(tch&&!pm){ w=Math.floor(w*(TL.sx||1)); h=Math.floor(h*(TL.sy||1)); }
+  const cw=w, ch=h; if(document.body.classList.contains('touch')&&(state==='gameover'||state==='loading'||state==='done'||state==='win'||(state==='arena'&&typeof ARENA!=='undefined'&&!ARENA.fighting))&&r.width>0&&r.height>0){ w=Math.floor(r.width); h=Math.floor(r.height); } else if(tch&&!pm){ w=Math.floor(w*(TL.sx||1)); h=Math.floor(h*(TL.sy||1)); }
   $('screen').style.width=w+'px'; $('screen').style.height=h+'px';
   { const OX=tch&&!pm?(TL.ox||0):0, OY=tch&&!pm?(TL.oy||0):0; $('screen').style.transform=(OX||OY)?`translate(${OX}px,${OY}px)`:''; }
   const R=(typeof resBox==='function')?resBox():null;
@@ -4638,8 +4638,7 @@ function draw(){
   if(WH>VH&&!intro&&!outro&&players&&state!=='title'){ const live=players.filter(p=>!p.absent&&!p.dead); if(live.length){ const cy=live.reduce((a,p)=>a+p.y+p.h/2,0)/live.length;
       const V=draw.cv||(draw.cv={y:cy,lv:-1}); if(V.lv!==levelIdx||V.g!==grid){ V.lv=levelIdx; V.g=grid; V.y=cy; } V.y+=(cy-V.y)*(1-Math.pow(.88,Math.max(.5,Math.min(3,(clock-(draw.lc3||clock))*60)))); draw.lc3=clock; const zz=z||1; oy=Math.min(0,Math.max(VH-WH*zz,VH*0.58-V.y*zz)); } }
   if((state==='dying'||state==='gameover')&&typeof atomFocus!=='undefined'&&atomFocus){ const F=atomFocus, pv=draw.view||{z:1,ox:0,oy:0}; if(!F.v) F.v={z:pv.z,ox:pv.ox,oy:pv.oy};
-    const k=state==='gameover'?1:Math.min(1,(2.4-deathTimer)/1.6), e=k*k*(3-2*k), tz=F.v.z*(1+0.35*e), W=WW, tx=Math.min(0,Math.max(VW-W*tz,VW/2-F.x*tz)), ty=Math.min(0,Math.max(VH-WH*tz,VH/2-F.y*tz));
-    z=tz; ox=F.v.ox+(tx-F.v.ox)*e; oy=F.v.oy+(ty-F.v.oy)*e; }
+    z=F.v.z; ox=F.v.ox; oy=F.v.oy; }   // камера в момент гибели замирает: тело рассыпается на месте, без наезда и сдвига
   else if(state==='play') atomFocus=null;
   draw.view={z,ox,oy};
   ctx.setTransform(scale*z,0,0,scale*z,(sx+ox)*scale,(sy+oy)*scale);
@@ -8013,7 +8012,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.05m';
+const GAME_VER='1.66.05n';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;

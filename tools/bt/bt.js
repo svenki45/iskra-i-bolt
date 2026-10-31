@@ -969,48 +969,39 @@ const TLBL={
 };
 // сенсор: в испытаниях с «вверх/вниз» стрелка ▲ должна стоять ВЫШЕ ▼ (раньше «вниз» стояла над «вверх» — путаница). Размер у обеих одинаковый.
 const TVERT={rope:1,rocket:1,wire:1,iso:1};
-function touchVert(el,on){
-  const R=b=>({l:parseFloat(b.style.left),t:parseFloat(b.style.top),w:parseFloat(b.style.width)});
-  const put=(b,l,t,w)=>{ b.style.left=Math.round(l)+'px'; b.style.top=Math.round(t)+'px'; b.style.width=Math.round(w)+'px'; b.style.height=Math.round(w)+'px'; };
+// Правило раскладки: кнопки НИКОГДА не уходят со своих мест, выбранных игроком в настройках, и не наезжают друг на друга.
+// Испытание только меняет кнопки местами (каждая встаёт на «слот» другой, по центру слота) или прячет ненужные.
+const cen=b=>({x:parseFloat(b.style.left)+parseFloat(b.style.width)/2, y:parseFloat(b.style.top)+parseFloat(b.style.width)/2, w:parseFloat(b.style.width)});
+const atC=(b,x,y,w0)=>{ const w=w0||parseFloat(b.style.width); if(w0){ b.style.width=Math.round(w)+'px'; b.style.height=Math.round(w)+'px'; } b.style.left=Math.round(x-w/2)+'px'; b.style.top=Math.round(y-w/2)+'px'; };
+function touchSwap(el,on,A_,B_,tag,cond){   // поменять местами кнопки A_ и B_ (если cond), вернуть обратно при on=false
   for(const k of ['spark','bolt']){
-    const q=a=>el.querySelector('.tb[data-a="'+a+'"][data-k="'+k+'"]'), J=q('jump'), A=q('ability'), F=q('fire'); if(!J||!A) continue;
-    const bs=[J,A,F].filter(Boolean);
-    if(!on){ for(const b of bs) if(b.dataset.vo){ const o=JSON.parse(b.dataset.vo); put(b,o.l,o.t,o.w); delete b.dataset.vo; } continue; }
-    if(J.dataset.vo) continue;                                   // уже переставлено
-    for(const b of bs) b.dataset.vo=JSON.stringify(R(b));
-    const j=R(J), a=R(A), f=F?R(F):null;
-    if(isNaN(j.l)||isNaN(a.l)||isNaN(j.w)){ for(const b of bs) delete b.dataset.vo; continue; }
-    if(a.t<j.t-8){                                               // один игрок: «способность» стоит над «прыжком»
-      const sz=Math.min(j.w,76), Rg=j.l+j.w, B=j.t+j.w;
-      put(A,Rg-sz,B-sz,sz); put(J,Rg-sz,B-2*sz-6,sz);          // ▼ внизу, ▲ над ним
-      if(F&&f.l+f.w>Rg-sz-4) put(F,f.l,f.t,Math.max(44,Rg-sz-4-f.l));
-    } else {                                                     // вдвоём: кнопки рядом — ▼ на место «прыжка», ▲ выше, «огонь» на место «способности»
-      const sz=Math.min(j.w,a.w);
-      put(A,j.l,j.t,sz); put(J,j.l,j.t-sz-6,sz);
-      if(F) put(F,a.l,a.t,Math.min(f.w,a.w));
-    }
+    const q=a=>el.querySelector('.tb[data-a="'+a+'"][data-k="'+k+'"]'), A=q(A_), B=q(B_); if(!A||!B) continue;
+    if(!on){ for(const b of [A,B]) if(b.dataset[tag]){ const o=JSON.parse(b.dataset[tag]); b.style.left=o.l; b.style.top=o.t; b.style.width=o.w; b.style.height=o.h; delete b.dataset[tag]; } continue; }
+    if(A.dataset[tag]) continue;
+    const ca=cen(A), cb=cen(B); if([ca.x,ca.y,cb.x,cb.y].some(isNaN)) continue;
+    if(!cond(ca,cb)) continue;
+    for(const b of [A,B]) b.dataset[tag]=JSON.stringify({l:b.style.left,t:b.style.top,w:b.style.width,h:b.style.height});
+    atC(A,cb.x,cb.y,cb.w); atC(B,ca.x,ca.y,ca.w);   // каждая кнопка занимает слот другой целиком (и место, и размер)
   }
 }
-// сенсор, «доска»: стрелки влево/вправо не нужны — убираем их; слева остаётся «присед», справа — прыжок, огонь и бонус
+// «вверх/вниз»: стрелка ▲ должна стоять ВЫШЕ ▼. Если у игрока наоборот — меняем их местами (без сдвига с его слотов)
+function touchVert(el,on){ touchSwap(el,on,'jump','ability','vo',(cj,ca)=>ca.y<cj.y-8); }
+// «доска»: стрелки влево/вправо не нужны — прячем их; «присед» встаёт на слот кнопки «влево», остальное стоит как поставил игрок
 function touchCart(el,on){
   for(const k of ['spark','bolt']){
-    const q=a=>el.querySelector('.tb[data-a="'+a+'"][data-k="'+k+'"]'), J=q('jump'), A=q('ability'), Lb=q('left'), Rb=q('right'); if(!J||!A||!Lb||!Rb) continue;
-    const bs=[J,A,Lb,Rb], P=b=>({l:parseFloat(b.style.left),t:parseFloat(b.style.top),w:parseFloat(b.style.width)});
-    const put=(b,l,t,w)=>{ b.style.left=Math.round(l)+'px'; b.style.top=Math.round(t)+'px'; b.style.width=Math.round(w)+'px'; b.style.height=Math.round(w)+'px'; };
-    if(!on){ for(const b of bs) if(b.dataset.co){ const o=JSON.parse(b.dataset.co); b.style.left=o.l; b.style.top=o.t; b.style.width=o.w; b.style.height=o.h; b.style.display=o.d; delete b.dataset.co; } continue; }
-    if(J.dataset.co) continue;
-    const j=P(J), a=P(A), l=P(Lb); if([j.l,j.t,j.w,a.l,a.t,a.w,l.l,l.t,l.w].some(isNaN)) continue;
-    for(const b of bs) b.dataset.co=JSON.stringify({l:b.style.left,t:b.style.top,w:b.style.width,h:b.style.height,d:b.style.display});
-    Lb.style.display='none'; Rb.style.display='none';
-    put(A,l.l,l.t,Math.max(a.w,l.w));                                   // присед — на место «влево» (слева)
-    put(J,a.l+a.w-j.w,a.t+a.w-j.w,j.w);                                 // прыжок — вниз справа, на место «присеста»
+    const q=a=>el.querySelector('.tb[data-a="'+a+'"][data-k="'+k+'"]'), A=q('ability'), Lb=q('left'), Rb=q('right'); if(!A||!Lb||!Rb) continue;
+    if(!on){ if(A.dataset.co){ const o=JSON.parse(A.dataset.co); A.style.left=o.l; A.style.top=o.t; delete A.dataset.co; } Lb.style.display=''; Rb.style.display=''; continue; }
+    if(A.dataset.co) continue;
+    const c=cen(Lb); if(isNaN(c.x)||isNaN(c.y)) continue;
+    A.dataset.co=JSON.stringify({l:A.style.left,t:A.style.top});
+    Lb.style.display='none'; Rb.style.display='none'; atC(A,c.x,c.y);
   }
 }
 // сенсор: подписи кнопок под тип испытания (ненужные кнопки гаснут)
 setInterval(()=>{ try{
   // подсветка кнопки-подсказки живёт только на уровне-тележке; после него она «залипала» на других уровнях и в босс-экране
   if(document.body.dataset.hl&&!(S.on&&state==='play'&&S.kind==='cart')){ document.body.dataset.hl=''; S.cueSent=null; }
-  const el=document.getElementById('touch'); if(!el) return; const f=S.on&&state==='play'?TLBL[S.kind]:null;
+  const el=document.getElementById('touch'); if(!el) return; const f=S.on&&(state==='play'||state==='dying'||state==='pause')?TLBL[S.kind]:null;
   touchVert(el,!!(f&&TVERT[S.kind])); touchCart(el,!!(f&&S.kind==='cart'));
   el.querySelectorAll('.tb[data-a]').forEach(b=>{ const a=b.dataset.a; let w=f?f(a,b.dataset.k):null; const dim=w==='dim'; if(dim) w=null; if(b.dataset.dim!==(dim?'1':'')){ b.dataset.dim=dim?'1':''; b.style.opacity=dim?'.28':''; }
     if(w){ if(b.dataset.iso!=='1'){ b.dataset.orig=b.innerHTML; b.dataset.iso='1'; } if(b.dataset.cur!==w){ b.innerHTML=w; b.dataset.cur=w; } }
