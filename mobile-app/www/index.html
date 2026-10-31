@@ -882,7 +882,11 @@ function audioInit(){
     applyVolumes(true);
   }catch(e){ actx=null; }
 }
-addEventListener('pointerdown',()=>audioInit());
+/* звук включается сразу: контекст создаётся при запуске (ПК и Android разрешают без касания), а на iPhone и в браузере —
+   от первого же касания/клавиши, даже во время заставки разработчика (раньше заставка глотала касание, и звук ждал второго тапа) */
+for(const d of [0,400,1500]) setTimeout(()=>{ try{ audioInit(); }catch(e){} },d);   // не сразу: настройки объявлены ниже по файлу
+for(const ev of ['pointerdown','pointerup','touchstart','touchend','mousedown','click','keydown']) addEventListener(ev,()=>audioInit(),{capture:true,passive:true});
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) audioInit(); });
 function applyVolumes(now){
   if(!actx) return;
   const t=actx.currentTime, m=settings.mute?0:settings.master;
@@ -8034,7 +8038,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.05t';
+const GAME_VER='1.66.05u';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
