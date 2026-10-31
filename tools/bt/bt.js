@@ -1184,7 +1184,7 @@ function isoHero(p,I){
   if(p.iat>0&&!p.ikick){ const a=1-p.iat/.24; ctx.translate(p.face*Math.sin(a*3.14)*7,0); }
   // удар делает СВОЯ рука/нога героя (drawLimbs читает p.atk): с каждым ударом серии она вытягивается дальше, а кулак/ступня крупнее
   const own=looks[p.kind].limbs!==false&&looks[p.kind].limbs!=='off';
-  if(p.iat>0&&own){ const dk=p.ikick||p.istyle==='boot', dd=p.ikick?.4:.24, aa=Math.min(1,1-p.iat/dd), cc=p.combo||0; p.atk={kick:dk,r:Math.sin(aa*Math.PI),c:cc,len:(14+cc*14)*Math.sin(aa*Math.PI),rad:(p.kind==='bolt'?8:6.5)+cc*(dk?6:7)}; } else p.atk=null;
+  if(p.iat>0&&own){ const dk=p.ikick||p.istyle==='boot', dd=p.ikick?.4:.24, aa=Math.min(1,1-p.iat/dd), cc=p.combo||0; p.atk={kick:dk,r:Math.sin(aa*Math.PI),c:cc,len:(7+cc*7)*Math.sin(aa*Math.PI),rad:(p.kind==='bolt'?8:6.5)+cc*(dk?6:7)}; } else p.atk=null;
   (p.kind==='bolt'?_drawBolt:_drawSpark)(p);
   // эффекты удара (линии скорости и кольцо на 3-м ударе); если конечностей нет совсем («Без них») — рисуем условную кисть/ступню
   if(p.iat>0){ const kick=p.ikick||p.istyle==='boot', dur=p.ikick?.4:.24, a=Math.min(1,1-p.iat/dur), r=Math.sin(a*Math.PI), c=p.combo||0, bolt=p.kind==='bolt', f=p.face;
