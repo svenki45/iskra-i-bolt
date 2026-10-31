@@ -351,7 +351,7 @@ table.rep tr.hot td{color:#ff9a9a}
 .beta{position:absolute;right:-.2em;top:-.35em;font:900 clamp(11px,1.6vw,20px) var(--display);letter-spacing:.08em;color:#0b1830;background:linear-gradient(135deg,#ffe27a,#ffb347);padding:.25em .6em;border-radius:.4em;transform:rotate(12deg);box-shadow:0 3px 0 #9a5b12,0 6px 16px rgba(0,0,0,.4);border:2px dashed rgba(11,24,48,.35);animation:stk 2.4s ease-in-out infinite}
 .beta.sm{font-size:10px;right:-4.2em;top:-.4em}
 @keyframes stk{50%{transform:rotate(8deg) scale(1.06)}}
-#verTag{position:absolute;left:max(36px,calc(env(safe-area-inset-left,0px) + 24px));bottom:max(14px,env(safe-area-inset-bottom,0px));z-index:6;font:600 11px var(--body);color:rgba(207,216,230,.55);pointer-events:none;letter-spacing:.04em}
+#verTag{position:absolute;left:30px;bottom:6px;z-index:6;font:600 11px var(--body);color:rgba(207,216,230,.55);pointer-events:none;letter-spacing:.04em}
 .diffs{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;width:100%}
 .diffb{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:4px;padding:14px 16px;border-left:4px solid var(--dc)!important}
 .diffb b{font:800 18px var(--display)}.diffb small{font-weight:500;opacity:.8;line-height:1.35}
@@ -8065,7 +8065,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.05x';
+const GAME_VER='1.66.05y';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
