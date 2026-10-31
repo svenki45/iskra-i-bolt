@@ -539,6 +539,8 @@ body.touch.playing:not(.cine):not(.titling) #screen::after{content:'';position:a
 #hudPill{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:4;display:none;gap:18px;align-items:center;padding:6px 16px;border-radius:12px;background:rgba(8,22,44,.74);border:1px solid rgba(231,181,74,.55);box-shadow:0 4px 0 rgba(5,10,24,.9),0 8px 18px rgba(0,0,0,.35);font-family:var(--display);font-size:14px;letter-spacing:.04em;color:var(--ink);pointer-events:none;white-space:nowrap}
 #hudPill b{color:var(--brass);margin-left:7px}
 body.playing #hudPill{display:flex}
+#amb{position:absolute;inset:0;width:100%;height:100%;display:none;filter:blur(18px) brightness(.75) saturate(1.15);transform:scale(1.15);pointer-events:none}
+body.ambon #amb{display:block}
 body.bossfight #hudPill{left:auto;right:14px;top:34px!important;transform:none}   /* полоска здоровья босса сверху по центру — плашка времени уходит в правый угол */
 body{padding:0!important}
 html body:not(.touch) .app{padding:0!important;gap:0!important}
@@ -804,6 +806,20 @@ function resBox(){ const r=resWH(); if(!r) return null; const w=Math.min(r.w,Mat
 const SCREEN_MODES=[['full','Полный экран'],['window','В окне'],['borderless','Окно без рамки']];
 function applyScreen(){ if(!window.desk) return; const r=resWH()||{w:1600,h:900}; window.desk.setScreen({mode:settings.win||'full',w:r.w,h:r.h}); }
 let titleWide=0, TVW=VW, custBack='menu';
+/* размытый «фон по бокам»: игра остаётся в своих пропорциях на всю высоту, а свободное место по краям экрана
+   заполняется размытой копией картинки (как у видеоплеера) — без чёрных полей и без растяжения игры */
+const ambC=document.createElement('canvas'); ambC.id='amb'; ambC.width=96; ambC.height=54;
+{ const st=document.getElementById('stage'); if(st) st.insertBefore(ambC,st.firstChild); }
+let ambLast=0;
+function ambTick(now){
+  const on=document.body.classList.contains('touch')&&document.body.classList.contains('playing')&&!document.body.classList.contains('padmode')&&(typeof touchLayout==='undefined'||touchLayout.win!=='custom');
+  if(document.body.classList.contains('ambon')!==on) document.body.classList.toggle('ambon',on);
+  if(!on||now-ambLast<90) return; ambLast=now;
+  const g=ambC.getContext('2d'); g.globalAlpha=1; g.fillStyle='#0a1020'; g.fillRect(0,0,96,54);
+  const gl=document.getElementById('cv3d'); if(gl&&gl.style.display!=='none'&&gl.width>1){ try{ g.drawImage(gl,0,0,96,54); }catch(e){} }
+  try{ g.drawImage(cv,0,0,96,54); }catch(e){}
+}
+
 function fit(){
   const r=$('stage').getBoundingClientRect(); const tch=document.body.classList.contains('touch')&&document.body.classList.contains('playing'), TL=(typeof touchLayout!=='undefined')?touchLayout:{};
   const pm=document.body.classList.contains('padmode'), fullWin=tch&&!pm&&TL.win!=='custom', side=tch&&!TL.over&&!pm&&!fullWin?touchSide()*2:0;   // по умолчанию игровое окно — на весь экран (как загрузка и экран смерти); своё окно задаётся в настройках
@@ -811,7 +827,7 @@ function fit(){
   let w=Math.floor(VW*s), h=Math.floor(VH*s);
   titleWide=0; TVW=VW;
   if(document.body.classList.contains('touch')&&document.body.classList.contains('titling')&&r.width>0&&r.height>0){ const s2=r.height/VH; if(r.width/s2>VW+4){ titleWide=(r.width/s2-VW)/2; w=Math.floor(r.width); h=Math.floor(r.height); TVW=VW+titleWide*2; } }
-  const cw=w, ch=h; if(document.body.classList.contains('touch')&&(state==='gameover'||state==='loading'||state==='done'||state==='win'||(state==='arena'&&typeof ARENA!=='undefined'&&!ARENA.fighting))&&r.width>0&&r.height>0||fullWin&&r.width>0&&r.height>0){ w=Math.floor(r.width); h=Math.floor(r.height); } else if(tch&&!pm){ w=Math.floor(w*(TL.sx||1)); h=Math.floor(h*(TL.sy||1)); }
+  const cw=w, ch=h; if(document.body.classList.contains('touch')&&(state==='gameover'||state==='loading'||state==='done'||state==='win'||(state==='arena'&&typeof ARENA!=='undefined'&&!ARENA.fighting))&&r.width>0&&r.height>0){ w=Math.floor(r.width); h=Math.floor(r.height); } else if(tch&&!pm&&!fullWin){ w=Math.floor(w*(TL.sx||1)); h=Math.floor(h*(TL.sy||1)); }
   $('screen').style.width=w+'px'; $('screen').style.height=h+'px';
   { const OX=tch&&!pm&&!fullWin?(TL.ox||0):0, OY=tch&&!pm&&!fullWin?(TL.oy||0):0; $('screen').style.transform=(OX||OY)?`translate(${OX}px,${OY}px)`:''; }
   const R=(typeof resBox==='function')?resBox():null;
@@ -3894,7 +3910,7 @@ function frame(now){
   demoTick(dt);
   tick(dt); netSend(dt);
   hudT-=dt; if(hudT<=0){ hudT=.25; $('time').textContent=fmt(totalTime); }
-  draw();
+  draw(); try{ ambTick(now); }catch(e){}
   if(state==='custom'||state==='hero'||state==='pause'||state==='story') drawPreviews();
   if(state==='controls') pollPadCapture();
   updateMusic();
@@ -8016,7 +8032,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.05p';
+const GAME_VER='1.66.05q';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
