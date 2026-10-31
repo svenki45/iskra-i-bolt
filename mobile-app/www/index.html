@@ -1051,9 +1051,78 @@ SONGS.title={bpm:84,custom:(step,t,s16)=>{ const st=step%16, bar=Math.floor(step
   if(f1==='one'&&st%4===2){ const a=[0,3,7,12][(st/4|0)%4]; voice(mf(root+24+a),t,s16*2,'triangle',.03,2400); }
   if(f1==='two'&&st%2===0){ const a=[0,7,12,15,12,7,3,7][(st/2)%8]; voice(mf(root+24+a),t,s16*1.5,'square',.018,1800); if(st%8===4) drum('snare',t); }
   if(st===4&&bar%2===0) voice(mf(root+31),t,s16*6,'triangle',.02,1500); } };
+/* ---- музыка по уровням: у каждого из 40 уровней свой трек (тональность, темп, аккорды, барабаны, мелодия) ---- */
+function lvSongMake(i,kind){   // kind: 'p' логика (спокойнее), 't' испытание (быстрее), 'b' босс-уровень
+  let a=(i*2654435761+977)>>>0; const R=()=>{ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return((t^t>>>14)>>>0)/4294967296; };
+  const pick=arr=>arr[Math.floor(R()*arr.length)];
+  const act=Math.min(3,Math.floor(i/10));
+  const ROOTS=[45,47,48,50,52,43,41,46,44,40], root=ROOTS[(i*7+act*3)%10];
+  const SC=pick([[0,2,3,5,7,8,10],[0,2,3,5,7,9,10],[0,1,3,5,7,8,10],[0,2,3,5,7,8,11]]);
+  const calm=kind==='p', bpm=Math.round((calm?96:118)+act*6+R()*22);
+  const PR=[[0,5,2,6],[0,3,4,0],[0,6,5,6],[0,2,5,4],[0,5,3,4],[0,3,6,4],[0,0,5,6],[0,4,5,3]];
+  const p1=pick(PR), p2=pick(PR), prog=p1.concat(p1.slice(0,3),[p1[3]]).slice(0,4).concat(p2.slice(0,4)); // 8 тактов
+  const N=(d,o)=>root+SC[((d%7)+7)%7]+12*(Math.floor(d/7)+(o||0));
+  const BASS=[[1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0],[1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0],[1,0,0,0,0,0,1,0,0,0,1,0,0,0,0,1],[1,0,1,1,0,1,1,0,1,0,1,1,0,1,0,1],[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0]];
+  const bp=pick(BASS);
+  const KICK=calm?[[0,10],[0,8],[0],[0,6,10]]:[[0,8,10],[0,4,8,12],[0,6,8,14],[0,3,8,11],[0,8,12]];
+  const kick=pick(KICK), snare=calm?[12]:pick([[4,12],[12],[4,10,12],[8]]), hatStep=pick(calm?[4,4,2]:[2,2,1]);
+  const arpT=pick(['square','triangle','sawtooth']), leadT=pick(['square','triangle','sawtooth','square']), bassT=pick(['square','triangle','sawtooth']);
+  const arpPat=pick([[0,1,2,1],[0,2,1,2],[0,1,2,3],[2,1,0,1]]), arpEvery=calm?pick([2,2,4]):pick([1,2,2]);
+  const mk=()=>{ const m=[]; let d=pick([7,9,11]); for(let k=0;k<8;k++){ m.push(R()<(calm?.5:.32)?null:d); d+=pick([-2,-1,0,1,2,2,-3,3]); d=Math.max(5,Math.min(15,d)); } return m; };
+  const A=mk(), B=mk(), C=mk();
+  const mel=[A,A,B,A,C,C,B,A];     // 8 тактов мелодии, потом повтор с вариацией
+  const pad=calm||R()<.4;
+  return {bpm,custom:(step,t,s16)=>{
+    const st=step%16, bar=Math.floor(step/16)%16, b8=bar%8, d=prog[b8%prog.length];
+    const ch=[d,d+2,d+4];
+    if(kick.includes(st)) drum('kick',t);
+    if(snare.includes(st)) drum('snare',t);
+    if(st%hatStep===0&&!(calm&&st===0)) drum('hat',t);
+    if(bp[st]){ const o=(st%8===6||st===15)?0:-2; voice(mf(N(d,o)),t,s16*1.8,bassT,.2,bassT==='triangle'?0:700); }
+    if(st%arpEvery===0){ const q=arpPat[(st/arpEvery|0)%4]; voice(mf(N(ch[q%3],q>2?2:1)),t,s16*.9*arpEvery,arpT,.045,arpT==='triangle'?0:2600); }
+    if(pad&&st===0){ for(const c of ch) voice(mf(N(c,1)),t,s16*15,'triangle',.03,1200); }
+    if(st%2===0){ const row=mel[bar>=8?(b8+1)%8:b8], n=row[st/2];   // вторая половина — сдвинутая мелодия
+      if(n!=null){ const shift=bar>=8?(d>=3?2:-1):0; voice(mf(N(n+shift,0)+12),t,s16*1.9,leadT,.1,leadT==='square'?3200:0); } }
+  }};
+}
+/* ---- «Ритм»: неоновый синтвейв, 120 bpm, бочка на каждую долю, ноты уровня лежат строго на ударах ---- */
+const RH={bpm:120, chart:[], cues:false};
+{ // ноты: [шаг16, кто: 's'|'b'|'w'(вместе), действие: 'j'|'d'|'f']; 4 такта вступления без нот
+  const P=[ // 4-тактовые фразы, позиции в долях (0..15 = четверти в 4 тактах)
+    [[0,'s','j'],[4,'b','j'],[8,'s','d'],[12,'b','d']],
+    [[0,'s','j'],[2,'b','f'],[4,'s','f'],[6,'b','j'],[8,'w','j'],[12,'s','d'],[14,'b','d']],
+    [[0,'b','j'],[1,'s','j'],[4,'s','f'],[5,'b','f'],[8,'s','d'],[10,'b','j'],[12,'w','f']],
+    [[0,'s','j'],[2,'s','j'],[4,'b','d'],[6,'b','d'],[8,'s','f'],[9,'b','f'],[10,'s','f'],[12,'w','j'],[14,'w','d']] ];
+  let bar=4; for(const ph of [0,1,2,3,1,2,3,3]){ for(const [q,who,a] of P[ph]) RH.chart.push([bar*16+q*4,who,a]); bar+=4; } }
+const rhProg=[['Am','F','C','G'],['Am','F','C','E']];
+function rhCue(a,t){ // звуки действий (в игре они сыграют при нажатии; в примере — как будто нажали точно в бит)
+  if(a==='j'){ const o=actx.createOscillator(), g=actx.createGain(); o.type='square'; o.frequency.setValueAtTime(520,t); o.frequency.exponentialRampToValueAtTime(1250,t+.09); g.gain.setValueAtTime(.07,t); g.gain.exponentialRampToValueAtTime(.0001,t+.13); o.connect(g).connect(musicG); o.start(t); o.stop(t+.15); }
+  if(a==='d'){ const o=actx.createOscillator(), g=actx.createGain(); o.type='sawtooth'; o.frequency.setValueAtTime(420,t); o.frequency.exponentialRampToValueAtTime(110,t+.14); g.gain.setValueAtTime(.07,t); g.gain.exponentialRampToValueAtTime(.0001,t+.17); o.connect(g).connect(musicG); o.start(t); o.stop(t+.2); }
+  if(a==='f'){ drum('snare',t); const o=actx.createOscillator(), g=actx.createGain(); o.type='square'; o.frequency.setValueAtTime(1600,t); o.frequency.exponentialRampToValueAtTime(400,t+.06); g.gain.setValueAtTime(.05,t); g.gain.exponentialRampToValueAtTime(.0001,t+.08); o.connect(g).connect(musicG); o.start(t); o.stop(t+.1); }
+}
+SONGS.rhythm={bpm:RH.bpm,custom:(step,t,s16)=>{
+  const st=step%16, bar=Math.floor(step/16), sec=bar<4?0:bar<12?1:bar<20?2:3, prog=rhProg[bar>=28?1:0], chn=prog[bar%4], ch=CH[chn];
+  // бочка на каждую долю (с вступления — через такт мягче), хлопок на 2 и 4, хэт на слабые
+  if(st%4===0) drum('kick',t);
+  if(sec>0&&(st===4||st===12)) drum('snare',t);
+  if(st%4===2) drum('hat',t); if(sec>=2&&st%2===1) drum('hat',t+.0);
+  // бас «качает» после бочки (синтвейв): октавы на восьмых
+  if(st%2===0&&st%4!==0||st%4===0&&sec>0){ const bn=ch.b+(st%8===6?12:0); voice(mf(bn),t+(st%4===0?s16*.25:0),s16*1.4,'sawtooth',.16,600); }
+  // аккорд-пэд на такт
+  if(st===0) for(const n of ch.a.slice(0,3)) voice(mf(n),t,s16*15,'triangle',sec===0?.04:.03,1400);
+  // арпеджио 16-ми с 2 части
+  if(sec>=1){ const n=ch.a[[0,1,2,3,2,1,2,3][st%8]]+12; voice(mf(n),t,s16*.8,'square',.032,2400); }
+  // мелодия с 3 части
+  if(sec>=2&&st%4===0){ const M=[[81,79,76,79],[77,76,72,74],[76,79,84,83],[79,76,74,71]], n=M[bar%4][st/4]; voice(mf(n),t,s16*3.6,'square',.06,3000); }
+  // вспышка-тарелка в начале каждой фразы
+  if(st===0&&bar%4===0&&bar>0) boom('crash',t);
+  // отсчёт перед первыми нотами: 3 щелчка на последнем такте вступления
+  if(bar===3&&st%4===0&&st<12){ const o=actx.createOscillator(), g=actx.createGain(); o.type='square'; o.frequency.value=st===8?1320:880; g.gain.setValueAtTime(.06,t); g.gain.exponentialRampToValueAtTime(.0001,t+.08); o.connect(g).connect(musicG); o.start(t); o.stop(t+.1); }
+  if(RH.cues) for(const [s,who,a] of RH.chart) if(s===step) rhCue(a,t);
+}};
 function updateMusic(){
   if(state!=='settings') previewSong=null;
-  const want=(state==='gameover'||state==='dying')?null:state==='settings'&&previewSong?previewSong:(state==='play'||state==='dying'||state==='pause'||state==='done')?(intro?null:(boss&&!boss.dead?'boss_'+boss.type:'ch'+chapterOf(levelIdx))):(state==='title'?'title':'menu');
+  const want=(state==='gameover'||state==='dying')?null:state==='settings'&&previewSong?previewSong:(state==='play'||state==='dying'||state==='pause'||state==='done')?(intro?null:(boss&&!boss.dead?'boss_'+boss.type:SONGS['lv'+levelIdx]?'lv'+levelIdx:'ch'+chapterOf(levelIdx))):(state==='title'?'title':'menu');
   playMusic(want); applyVolumes(false);
 }
 function noise(freq,dur,vol,type='bandpass',delay=0){
@@ -1077,6 +1146,20 @@ function babble(text,v='narr'){
     o.connect(b1); o.connect(b2); b1.connect(g); b2.connect(g); g.connect(sfxG); o.start(t); o.stop(t+d+.02);
     t+=d+(Math.random()<.18?.12:.02); }
   return t-actx.currentTime;
+}
+/* шаги: по пройденному по земле пути; звук зависит от героя и поверхности (металл, вода, лёд) */
+function stepSounds(dt){
+  if(intro||state!=='play'||(window.btNoSteps&&window.btNoSteps())) return;
+  for(const p of players){
+    if(p.absent||p.dead||p.down||!(p.onGround||p.inWater)){ p.stepD=0; continue; }
+    const v=Math.abs(p.vx||0); if(v<50) continue;
+    const L=p.kind==='bolt'?64:50; p.stepD=(p.stepD||0)+v*dt; if(p.stepD<L) continue; p.stepD-=L;
+    const big=p.kind==='bolt', row=grid[Math.floor((p.y+p.h+2)/T)], c=row?row[Math.floor((p.x+p.w/2)/T)]:'.';
+    if(p.inWater){ noise(big?700:1000,.12,big?.05:.04,'lowpass'); tone(big?240:360,big?160:260,.08,'sine',.02); }
+    else if(c==='I'){ noise(5200,.05,big?.035:.028,'highpass'); tone(big?1500:1900,big?1300:1700,.04,'sine',.01); }
+    else if(big){ noise(1300,.05,.045); tone(150,90,.07,'triangle',.05); }
+    else { noise(2600,.035,.03); tone(320,230,.035,'triangle',.022); }
+  }
 }
 function tone(f1,f2,dur,type='square',vol=0.05,delay=0){
   if(!actx) return;
@@ -3874,6 +3957,7 @@ function step(dt){
   }
   if(NET.role==='host'&&NET.rpos&&b&&!b.absent&&!b.down){ const r=NET.rpos;
     if(Math.hypot(r[0]-b.x,r[1]-b.y)<260){ b.x=r[0]; b.y=r[1]; b.vx=r[2]; b.vy=r[3]; b.face=r[4]; } }
+  stepSounds(dt);
   for(const p of players) p.wasGround=p.onGround;
   updateLamps(dt); updateEnemies(dt); updateBoss(dt); updateArena(dt); updateBullets(dt); updatePickups(dt);
   if(state==='play') updateWorld(dt);
@@ -8065,7 +8149,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.05y';
+const GAME_VER='1.66.05z';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;

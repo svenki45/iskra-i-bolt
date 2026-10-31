@@ -53,7 +53,7 @@ const DEFS=[
   {kind:'boss',name:'Кузнец',desc:'босс-робот · три фазы, смэш и огонь',motif:'Литейная',hue:8,par:100,
    hint:'Огромный робот-Кузнец. Топот — волны по полу (перепрыгни), ракеты — уходи с красных полос, в ярости летят пилы. Болт: способность вблизи — смэш. Искра: стреляй и рывком жги. Три фазы!'},
   {kind:'cart',name:'Ритм',desc:'гонка по бит · прыжок, пригибание, выстрел',motif:'Ржавый цех',hue:300,par:55,base:400,top:400,boost:0,lead:15,rhythm:true,beats:84,
-   hint:'Всё идёт в такт: пульс внизу — это удар. Жёлтая стрелка — прыжок, красная — пригнись (способность), мишень-ящик — СТРЕЛЯЙ (держи огонь). Попадай в ритм!'},
+   hint:'Сверху едут ноты. Нота дошла до кружка — жми: ↑ прыжок, ↓ пригнись (держи), ✦ стреляй. Точно в бит — «ИДЕАЛЬНО!» и комбо. Ноты «вместе» — жмут оба.'},
   {kind:'mag',name:'Магнит',desc:'гравитация вверх-вниз · потолок и пол',motif:'Масляный подвал',hue:190,par:65,
    hint:'Способность — перевернуть гравитацию: падаешь вверх и бежишь по потолку. Шипы на полу — беги по потолку, на потолке — по полу. Стены с щелью: проходи с той стороны, где щель. Прыжок — оттолкнуться.'},
   {kind:'relay',name:'Эстафета',desc:'вдвоём · несите друг друга · общий таймер',motif:'Литейная',hue:30,par:90,time:90,
@@ -749,15 +749,72 @@ function platformPost(dt){
 }
 
 // ---------- гонка: рыбы, мины и Механик ----------
+
+/* ---------------- «Ритм»: ноты, оценка попадания, комбо, музыка в такт ----------------
+   нота = момент нажатия: передний край героя за RH_PRE пикселей до препятствия (пол-такта, 2.5 клетки);
+   удары музыки совпадают с нотами: такт = 5 клеток = 200 px = 0.5 с при 400 px/с (120 bpm) */
+const RH_PRE=100, RH_PERF=.075, RH_GOOD=.16;
+function rhSetup(){ const B=S.L.bt; if(!B.rhythm){ S.rh=null; return; }
+  let sh=0; const notes=[];
+  for(const o of B.obs){ if(o.fish||o.buoy||o.ramp) continue; const a=o.t==='jump'?'j':o.t==='duck'?'d':o.t==='shoot'?'f':null; if(!a) continue;
+    notes.push({x:o.x0*T-RH_PRE,a,who:a==='f'?(sh++%2?'bolt':'spark'):'w',st:{}}); }
+  const K=S.rh&&S.cp?S.rh:null; S.rh={notes,combo:0,best:K?K.best:0,score:K?K.score:0,pops:[],flash:{},prev:{}}; }   // после флажка счёт сохраняется, комбо — нет
+function rhNoteFor(p,n){ return n.who==='w'||n.who===p.kind||players.filter(q=>!q.absent).length<2; }
+function rhInput(p,inp,dn){ const R=S.rh; if(!R||S.freeze>0||p.dead||p.down) return; const k=p.kind, pv=R.prev[k]||(R.prev[k]={});
+  const ev=[]; if(inp.jp||(inp.jump&&!pv.j)) ev.push('j'); if(dn&&!pv.d) ev.push('d'); if(inp.fire&&!pv.f) ev.push('f');
+  pv.j=!!inp.jump; pv.d=!!dn; pv.f=!!inp.fire; if(!ev.length) return;
+  const e=p.x+p.w, v=Math.max(S.v,1);
+  for(const a of ev){ let best=null, bd=9;
+    for(const n of R.notes){ if(n.a!==a||n.st[k]||!rhNoteFor(p,n)) continue; const d=Math.abs((n.x-e)/v); if(d<bd){ bd=d; best=n; } }
+    if(!best||bd>RH_GOOD) continue;
+    const perf=bd<=RH_PERF; best.st[k]=perf?'p':'g'; R.combo++; R.best=Math.max(R.best,R.combo);
+    R.score+=Math.round((perf?100:50)*(1+Math.min(R.combo,50)/10)); R.flash[k]=.35;
+    R.pops.push({k,t:perf?'ИДЕАЛЬНО!':'ХОРОШО',c:perf?'#ffe27a':'#9cc3ff',life:.7});
+    if(perf) tone(1320,1760,.07,'triangle',.03); }
+}
+function rhMiss(L){ const R=S.rh; if(!R) return; const v=Math.max(S.v,1);
+  for(const p of L){ if(p.absent) continue; const k=p.kind, e=p.x+p.w;
+    for(const n of R.notes){ if(!rhNoteFor(p,n)) continue;
+      if(n.st[k]&&n.x-e>300) n.st[k]=null;          // откатились к флажку — ноты снова впереди
+      else if(!n.st[k]&&S.freeze<=0&&(e-n.x)/v>RH_GOOD+.05&&e-n.x<400){ n.st[k]='m';
+        if(n.a==='f'&&B_shotDead(n)) continue;          // мишень уже сбита напарником — не промах
+        R.combo=0; R.pops.push({k,t:'МИМО',c:'#ff7a8a',life:.6}); } } }
+}
+function B_shotDead(n){ const B=S.L.bt; return (B.shoots||[]).some(c=>c.dead&&Math.abs(c.x*T-RH_PRE-n.x)<2); }
+function rhSync(lead){   // музыка «Ритма» идёт строго по ударам трассы
+  const k=(lead+RH_PRE)/T/5-16/5, b=Math.floor(k); if(S.beatN!==b){ S.beatN=b; S.beatT=0; } S.beatT=(S.beatT||0);
+  if(!actx||!music.song||SONGS[music.song]!==SONGS.rhythm||S.freeze>0||S.v<50) return;
+  const s16=60/SONGS.rhythm.bpm/4, want=(k+14)*4, now=actx.currentTime, virt=music.step-(music.next-now)/s16;
+  if(Math.abs(virt-want)*s16>.06){ const st=Math.ceil(want); music.step=st; music.next=now+(st-want)*s16; } }
+function rhHud(L){ const R=S.rh; if(!R) return; const dt=1/60;
+  const two=L.filter(p=>!p.absent).length>1, lanes=two?['spark','bolt']:[L.find(p=>!p.absent).kind];
+  const x0=170, x1=VW-170, hx=x0+120, pxs=230, v=Math.max(S.v,1), lead=Math.max(...L.map(q=>q.x+q.w)), kb=(lead+RH_PRE)/T/5-16/5, pu=Math.pow(1-(kb-Math.floor(kb)),2);
+  ctx.save();
+  lanes.forEach((k,li)=>{ const y=92+li*52, col=k==='spark'?'#ff8a3d':'#62c7c1', p=L.find(q=>q.kind===k);
+    ctx.fillStyle='rgba(8,5,18,.72)'; rr(ctx,x0,y-21,x1-x0,42,21); ctx.fill(); ctx.strokeStyle=col; ctx.globalAlpha=.65; ctx.lineWidth=2.5; ctx.stroke(); ctx.globalAlpha=1;
+    label(k==='spark'?'ИСКРА':'БОЛТ',x0+16,y+5,13,col,'left');
+    const fl=R.flash[k]||0; R.flash[k]=Math.max(0,fl-dt);
+    ctx.strokeStyle=fl>0?'#fff':col; ctx.lineWidth=fl>0?6:3.5; ctx.beginPath(); ctx.arc(hx,y,20+4*pu,0,7); ctx.stroke();
+    if(!p) return; const e=p.x+p.w;
+    for(const n of R.notes){ if(!rhNoteFor(p,n)) continue; const tt=(n.x-e)/v, nx=hx+tt*pxs; if(nx<hx-30||nx>x1-14) continue; const st=n.st[k];
+      if(st==='p'||st==='g') continue; const c=n.a==='j'?'#ffd166':n.a==='d'?'#ff5a5a':'#9cc3ff';
+      ctx.globalAlpha=st==='m'?.3:1; ctx.fillStyle=c; ctx.beginPath(); ctx.arc(nx,y,15,0,7); ctx.fill();
+      ctx.fillStyle='#1a0d18'; ctx.font="700 18px 'Russo One', sans-serif"; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(n.a==='j'?'↑':n.a==='d'?'↓':'✦',nx,y+1); ctx.globalAlpha=1;
+      if(two&&n.who==='w'&&li===0){ ctx.strokeStyle='rgba(255,255,255,.55)'; ctx.lineWidth=2; rr(ctx,nx-19,y-19,38,90,19); ctx.stroke(); } }
+    ctx.textBaseline='alphabetic'; });
+  for(const q of R.pops){ q.life-=dt; } R.pops=R.pops.filter(q=>q.life>0);
+  lanes.forEach((k,li)=>{ const q=R.pops.filter(z=>z.k===k).slice(-1)[0]; if(q){ ctx.globalAlpha=Math.min(1,q.life*2); label(q.t,hx+40,92+li*52-26,16,q.c,'left'); ctx.globalAlpha=1; } });
+  const ry=92+(lanes.length)*52-6; label('СЧЁТ '+R.score,x1,ry+8,15,'#e8effa','right'); if(R.combo>1) label('КОМБО ×'+R.combo,x1,ry+30,15,'#ffd166','right');
+  ctx.restore(); }
 function cartExtraSetup(L){
   const B=L.bt; S.dyn=[]; S.mines=[];
-  for(const f of B.fish) f.t=-1; for(const c of B.shoots||[]) c.dead=false; S.beatN=null;
+  for(const f of B.fish) f.t=-1; for(const c of B.shoots||[]) c.dead=false; S.beatN=null; rhSetup();
   if(B.rival){ const sx=(S.cp?S.cp.x:3)+14; S.R={x:sx*T,v:0,hp:B.rival,max:B.rival,cd:2.5,dead:false,flash:0,deadT:0}; exitLocked=true; } else { S.R=null; exitLocked=false; }
 }
 function cartExtraPost(dt,L){
   const B=S.L.bt, lead=Math.max(...L.map(p=>p.x+p.w));
   for(const c of B.shoots||[]){ if(c.dead) continue; const r={x:c.x*T,y:FL*T-80,w:40,h:80}; for(const bl of bullets){ if(bl.life<=0||!overlap(bl,r)) continue; c.dead=true; bl.life=0; burst(c.x*T+20,FL*T-40,16,['#ffd166','#ff8a3d','#fff'],300,.45); sfx('kill'); texts.push({x:c.x*T+20,y:FL*T-90,t:'ТАК!',life:.6,c:'#7fe08a',pop:true}); break; } }
-  if(B.rhythm&&L.length){ const k=(lead/T-16)/5, b=Math.floor(k); if(S.beatN!==b){ S.beatN=b; S.beatT=0; if(S.freeze<=0&&b>=0) tone(b%4===0?300:200,b%4===0?260:180,.05,'square',.03); } S.beatT=(S.beatT||0)+dt; }
+  if(B.rhythm&&L.length){ rhSync(lead); rhMiss(L); }
   for(const f of B.fish){ if(f.t<0){ if(lead>f.x*T-Math.max(S.v,200)*0.55&&lead<f.x*T) { f.t=0; burst(f.x*T+20,FL*T-4,14,['#9cf','#fff'],220,.4); sfx('jump'); } } else f.t+=dt; }
   const R=S.R;
   if(R){
@@ -1239,6 +1296,10 @@ const CAMP=[], ORD=[];
       else if(c==='B') CAMP.push({k:'b',m:CAMP.length});
       else CAMP.push({k:'t',t:c==='K'?10:Tt[ti++]});
       ORD[CAMP.length-1]=CAMP[CAMP.length-1].k==='t'?nt++:0; } } }
+/* шаги не звучат там, где герои едут (доска, трос, ракета, труба, змеи, колесо) */
+window.btNoSteps=()=>S.on&&/^(cart|rope|rocket|tube|snake|wire)$/.test(S.kind);
+/* музыка: у каждого уровня кампании свой трек; у «Ритма» — свой трек под ноты */
+CAMP.forEach((e,i)=>{ if(typeof lvSongMake!=='function') return; SONGS['lv'+i]=(e.k==='t'&&DEFS[e.t]&&DEFS[e.t].rhythm&&SONGS.rhythm)?SONGS.rhythm:lvSongMake(i,e.k==='p'?'p':'t'); });
 { const be=[]; CAMP.forEach((e,i)=>{ if(e.k==='b'||(e.k==='t'&&e.t===10)) be.push(i); }); if(JSON.stringify(be)!==JSON.stringify(ACT_END)) console.error('ACT_END не совпадает с боссами кампании',be,ACT_END); }
 /* ---------------- перехваты движка ---------------- */
 const _getLevel=getLevel;
@@ -1292,6 +1353,7 @@ control=function(p,inp,dt){
   if(S.kind==='cart'){
     const dn=inp.ab||padDn(pi);
     if(p.down||p.dead) return _control(p,inp,dt);
+    if(S.L.bt.rhythm) rhInput(p,inp,dn);
     setDuck(p,dn&&p.wasGround&&!inp.jp);
     const q=Object.assign({},inp,{dir:0,ab:false,ap:false,use:inp.use,nx:inp.nx});
     if(p.duck){ q.jump=false; q.jp=false; }
@@ -1690,7 +1752,7 @@ function hud(){
   const B=S.L.bt, L=live();
   if(S.kind==='relay'){ const m=Math.floor(S.rt/60), sc=Math.floor(S.rt%60), low=S.rt<20; ctx.fillStyle='rgba(6,10,22,.85)'; rr(ctx,VW/2-70,70,140,32,12); ctx.fill(); label((m+':'+String(sc).padStart(2,'0')),VW/2,87,20,low&&Math.floor(clock*4)%2?'#ff6b6b':'#ffd166'); label('ОБЩЕЕ ВРЕМЯ',VW/2,64,10,'#e8effa');
     if(S.hintT>0){ hintCard('способность рядом с напарником — взять на плечи · ещё раз — бросить вперёд (с прыжком — подбросить вверх)',44); } }
-  if(S.kind==='cart'&&B.rhythm&&L.length){ const lead=Math.max(...L.map(q=>q.x+q.w)), k=(lead/T-16)/5, ph=k-Math.floor(k), pu=Math.pow(1-ph,2), cx=VW/2, cy=VH-64; ctx.save(); ctx.globalAlpha=.35+.65*pu; ctx.strokeStyle=(Math.floor(k)%4===0)?'#ffd166':'#c79bff'; ctx.lineWidth=4; ctx.beginPath(); ctx.arc(cx,cy,12+26*pu,0,7); ctx.stroke(); ctx.fillStyle=ctx.strokeStyle; ctx.beginPath(); ctx.arc(cx,cy,7,0,7); ctx.fill(); ctx.restore(); }
+  if(S.kind==='cart'&&B.rhythm&&L.length) rhHud(L);
   if(S.kind==='boss'&&S.bo){ const b=S.bo, bw=420, bx=VW/2-bw/2, by=78; ctx.fillStyle='rgba(6,10,22,.88)'; rr(ctx,bx-10,by-14,bw+20,30,12); ctx.fill(); label('КУЗНЕЦ',bx,by-26,12,'#ff9a8a','left'); ctx.fillStyle='rgba(255,77,94,.2)'; rr(ctx,bx,by-6,bw,12,5); ctx.fill(); ctx.fillStyle=b.ph===3?'#ff4d5e':b.ph===2?'#ff9a3d':'#ffd166'; rr(ctx,bx,by-6,Math.max(0,bw*b.hp/b.max),12,5); ctx.fill(); ctx.fillStyle='#0b1220'; for(const k of [0.34,0.67]) ctx.fillRect(bx+bw*k-1,by-8,3,16);
     if(S.hintT>0){ hintCard('Болт: способность вблизи — смэш · Искра: огонь и рывок',40); } }
   if(S.kind==='lift'){ const w=520, x=VW/2-w/2, y=VH-26, k=clamp((S.lt||0)/B.dur,0,1); ctx.fillStyle='rgba(6,10,22,.8)'; rr(ctx,x-8,y-10,w+16,20,10); ctx.fill(); ctx.fillStyle='#c79bff'; rr(ctx,x,y-3,Math.max(6,w*k),6,3); ctx.fill(); label(S.opened?'ПРИЕХАЛИ':'ПОДЪЁМ '+Math.round(k*100)+'%',VW/2,y-22,12,'#e8effa');
