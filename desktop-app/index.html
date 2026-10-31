@@ -5457,7 +5457,8 @@ function buildTouch(force){
       html+=btn(k,'fire',mir?L:R,bot-2*a-16,a,'✦','огонь')+btn(k,'use',mir?R:L,bot-2*a-16,a*.85,'★','');
     }
   }
-  html+=`<button type="button" class="tb" data-pause="1" style="left:${Math.round(W/2-190)}px;top:14px;width:40px;height:40px;border-radius:12px">II</button>`;
+  { const pid=LK+'|pause|x', po=(touchLayout.b||{})[pid]; let pz=44, px=12, py=14; if(po){ pz=44*(po.s||1); px=po.x*W-pz/2; py=po.y*H-pz/2; }   // кнопку паузы можно двигать и менять размер, как остальные; по умолчанию — левый верхний угол
+    html+=`<button type="button" class="tb" data-pause="1" data-id="${pid}" style="left:${Math.round(px)}px;top:${Math.round(py)}px;width:${Math.round(pz)}px;height:${Math.round(pz)}px;border-radius:12px">II</button>`; }
   el.innerHTML=html;
   el.querySelectorAll('[data-a]').forEach(b=>{
     const code=()=>binds[b.dataset.k].kb[b.dataset.a];
@@ -8033,7 +8034,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.05s';
+const GAME_VER='1.66.05t';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
