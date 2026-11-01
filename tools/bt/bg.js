@@ -213,9 +213,17 @@ BG['Рычаги и решётки']={h:210,st(g,R){ for(let i=0;i<5;i++){ const
   g.strokeStyle='rgba(180,195,215,.16)'; g.lineWidth=6; for(let k=0;k<3;k++){ const x=60+k*420, y=30; g.strokeRect(x,y,240,Hh*.42); for(let b=1;b<8;b++) line(g,x+b*30,y,x+b*30,y+Hh*.42,'rgba(180,195,215,.16)',4); } },
   lv(c,t,Q){ c.globalAlpha=.4; for(let i=0;i<5;i++){ const on=Math.sin(t*1.4+i*2)>0; c.fillStyle=on?'#6ee0c8':'#ff6e5a'; c.beginPath(); c.arc(80+i*250+(Q.items[i].x%40)-18,60,5,0,TAU); c.fill(); } c.globalAlpha=1; }};
 
-BG['Вращающаяся комната']={h:35,st(g,R){ g.strokeStyle='rgba(255,200,130,.07)'; g.lineWidth=2; for(let k=1;k<14;k++){ circ(g,W/2,Hh/2,k*60); g.stroke(); } for(let a=0;a<TAU;a+=TAU/16) line(g,W/2,Hh/2,W/2+Math.cos(a)*900,Hh/2+Math.sin(a)*900,'rgba(255,200,130,.07)',2);
-  gear(g,W*.18,Hh*.3,95,14,'rgba(255,190,110,.18)',7); gear(g,W*.82,Hh*.7,120,16,'rgba(255,190,110,.18)',7); },
-  lv(c,t,Q){ c.save(); c.translate(W/2,Hh/2); c.rotate(t*.18); for(let k=0;k<4;k++){ c.rotate(Math.PI/2); c.fillStyle='rgba(255,200,130,.07)'; c.beginPath(); c.moveTo(0,0); c.lineTo(520,-70); c.lineTo(520,70); c.fill(); } c.restore(); c.save(); c.translate(W*.18,Hh*.3); c.rotate(t*.35); c.globalAlpha=.22; c.strokeStyle='rgba(255,190,110,1)'; c.lineWidth=7; c.beginPath(); for(let k=0;k<=28;k++){ const a=k/28*TAU, rr=k%2?95:108; c.lineTo(Math.cos(a)*rr,Math.sin(a)*rr); } c.stroke(); c.restore(); c.save(); c.translate(W*.82,Hh*.7); c.rotate(-t*.3); c.globalAlpha=.22; c.beginPath(); for(let k=0;k<=32;k++){ const a=k/32*TAU, rr=k%2?120:137; c.lineTo(Math.cos(a)*rr,Math.sin(a)*rr); } c.stroke(); c.restore(); c.globalAlpha=1; }};
+BG['Вращающаяся комната']={h:28,st(g,R){ vgrad(g,0,Hh,'rgba(40,22,10,.55)','rgba(10,5,3,.6)'); },
+  lv(c,t,Q){ // барабан: обод — внизу (там пол), стенки крутятся вместе со всей комнатой; смотрим вдоль оси барабана
+    const cx=W/2, cy=300, R0=380, th=((typeof S!=='undefined'&&S.off)||0)/R0, N=28;
+    c.save(); c.lineJoin='round';
+    for(let k=5;k>=0;k--){ const r0=R0*(1+.34*k), r1=R0*(1+.34*(k+1));
+      for(let i=0;i<N;i++){ const a0=th+i/N*TAU, a1=th+(i+1)/N*TAU; c.fillStyle=(i+k)%2?'rgba(120,76,36,.30)':'rgba(70,44,22,.30)'; c.beginPath(); c.arc(cx,cy,r1,a0,a1); c.arc(cx,cy,r0,a1,a0,true); c.closePath(); c.fill(); }
+      c.strokeStyle=`rgba(255,196,96,${.30-k*.03})`; c.lineWidth=5-k*.5; c.beginPath(); c.arc(cx,cy,r0,0,TAU); c.stroke(); }
+    c.fillStyle='rgba(18,10,6,.8)'; c.beginPath(); c.arc(cx,cy,R0,0,TAU); c.fill();
+    c.strokeStyle='rgba(255,196,96,.12)'; c.lineWidth=2; for(let k=1;k<6;k++){ c.beginPath(); c.arc(cx,cy,R0*k/6,0,TAU); c.stroke(); } for(let i=0;i<24;i++){ const a=th+i/24*TAU; c.beginPath(); c.moveTo(cx,cy); c.lineTo(cx+Math.cos(a)*R0,cy+Math.sin(a)*R0); c.stroke(); }
+    c.save(); c.translate(cx,cy); c.rotate(th*1.3); c.globalAlpha=.22; c.strokeStyle='rgb(255,190,110)'; c.lineWidth=7; c.beginPath(); for(let k=0;k<=36;k++){ const a=k/36*TAU, rr=k%2?105:125; c.lineTo(Math.cos(a)*rr,Math.sin(a)*rr); } c.stroke(); c.restore();
+    c.restore(); }};
 
 BG['Пружинный цех']={h:195,st(g,R){ for(let i=0;i<8;i++){ const x=60+i*150+R()*50, y=Hh*(.25+R()*.4), h=90+R()*120, w=20+R()*20; g.strokeStyle='rgba(190,215,240,.20)'; g.lineWidth=5; g.beginPath(); for(let k=0;k<=12;k++) g.lineTo(x+(k%2?w:-w),y+k*h/12); g.stroke(); g.fillStyle='rgba(190,215,240,.14)'; g.fillRect(x-w-10,y-8,w*2+20,10); g.fillRect(x-w-10,y+h,w*2+20,10); }
   for(let i=0;i<3;i++) gear(g,R()*W,R()*Hh,50+R()*40,10,'rgba(190,215,240,.08)',5); },
@@ -242,7 +250,7 @@ drawThemeDecor=function(g,TH){ if(cur()) return; return _dtd(g,TH); };
 const _mkl=makeLive;
 makeLive=function(TH,name){ const L=_mkl(TH,name), d=cur(); if(d){ L.m='bgx'; L.bgx=d; } return L; };
 const _dl=drawLive;
-drawLive=function(){ const L=LIVE; if(!L||!L.bgx) return _dl(); _dl(); const c=ctx, t=clock; c.save(); try{ L.bgx.lv(c,t,L); }catch(e){} c.restore(); c.globalAlpha=1; };
+drawLive=function(){ const L=LIVE; if(!L||!L.bgx) return _dl(); _dl(); const c=ctx, t=clock; c.save(); try{ L.bgx.lv(c,t,L); }catch(e){ if(!window.__bge){ window.__bge=1; console.warn("bgx",e); } } c.restore(); c.globalAlpha=1; };
 /* три красные лампы-тревога (как в вступительном ролике): перед боссом (уровни 7–9 каждого акта) мигают в углу экрана — «впереди босс». Рисуются поверх 3D */
 const _dh=drawHud;
 drawHud=function(){ _dh(); try{

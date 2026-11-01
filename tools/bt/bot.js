@@ -85,20 +85,23 @@ window.BOT=(function(){
       break; }
     return inp;
   }
-  // вращающаяся комната: бежит вправо, но останавливается, если на пути (по расчёту вперёд) лопасть заденет
+  // вращающаяся комната (барабан): прыгает через шипы, широкие ряды проезжает на платформе, не прыгает под лопастью
   function rotIn(p,pi){
-    const S=BT.S,B=S.L.bt,inp=Object.assign({},N); if(p.absent||p.down||p.dead) return inp;
-    const cx=p.x+p.w/2, c=cx/T;
-    if(c>=B.finishX-3){ const tx=(p.kind==='spark'?B.finishX+0.8:B.finishX+2.1)*T, dx=tx-cx; inp.dir=Math.abs(dx)<5?0:Math.sign(dx); return inp; }
-    const v=p.kind==='spark'?290:225, y=17*T-p.h;
-    const hit=(x,t)=>{ const r={x,y,w:p.w,h:p.h}; for(const m of B.mills){ const px=(m.x+0.5)*T, py=8*T, Lp=m.L*T; if(r.x+r.w<px-Lp-20||r.x>px+Lp+20) continue;
-        for(let i=0;i<m.n;i++){ const a=m.ph+m.dir*m.w*(S.rt+t*S.rm)+i*Math.PI*2/m.n, ca=Math.cos(a), sa=Math.sin(a);
-          for(let s=0;s<=Lp;s+=8){ const bx=px+ca*s, by=py+sa*s; if(bx>r.x-18&&bx<r.x+r.w+18&&by>r.y-18&&by<r.y+r.h+18) return true; } } } return false; };
-    // считаем путь только до конца ближайшей опасной зоны (между ветряками можно стоять)
-    let xEnd=1e9; for(const m of B.mills){ const dz=Math.sqrt(m.L*m.L-7.2*7.2), ze=m.x+0.5+dz; if(ze>c&&(ze+1.2)*T<xEnd) xEnd=(ze+1.2)*T; }
-    let bad=false; for(let t=0;t<=7;t+=1/30){ const x=p.x+v*t; if(hit(x,t)){ bad=true; break; } if(x>=xEnd) break; }
-    inp.dir=1;
-    if(bad){ let here=false; for(let t=0;t<=0.5;t+=1/30){ if(hit(p.x,t)){ here=true; break; } } if(!here) inp.dir=0; }
+    const S=BT.S,inp=Object.assign({},N); if(p.absent||p.down||p.dead||!S.arm) return inp;
+    const v=S.rv||0, sg=Math.sign(v)||1, cx=p.x+p.w/2, E=window.BT_ROT;
+    if(S.opened){ const tx=24.6*T+(p.kind==='bolt'?30:0)-p.w/2; inp.dir=Math.abs(tx-cx)<6?0:Math.sign(tx-cx); return inp; }
+    const onPl=p.ground&&p.ground.kind==='mover';
+    if(onPl){ inp.dir=sg; return inp; }   // на платформе идём против хода — платформа уезжает из-под ног уже за шипами
+    let tt=9, wide=false;
+    E.SP.forEach((g,i)=>{ if(S.arm[i]<1) return; const x=E.X(g.s,S.off), x1=x+g.n*T; const d=sg>0?(x-(p.x+p.w)):(p.x-x1); if(d<-g.n*T) return; const t=Math.max(0,d)/Math.max(30,Math.abs(v)); if(t<tt){ tt=t; wide=g.n>=5; } });
+    let pt=9; E.PL.forEach((pl,i)=>{ if(S.parm[i]<1) return; const x=E.X(pl.s,S.off), x1=x+pl.w*T; const d=sg>0?(x-(p.x+p.w)):(p.x-x1); if(d<-20) return; pt=Math.min(pt,Math.max(0,d)/Math.max(30,Math.abs(v))); });
+    const a=E.A(cx), bl=S.bladeA; let near=false; if(S.rtm>=34) for(const b of [bl,bl+Math.PI]){ const d=((a-b)%(2*Math.PI)+3*Math.PI)%(2*Math.PI)-Math.PI; if(d>-.18&&d<.62) near=true; }   // лопасть пройдёт над героем в ближайшие ~0.6 с
+    if(wide&&pt<.12&&p.onGround&&!near){ inp.jump=inp.jp=true; jt[pi]=10; return inp; }
+    if(near&&tt<.6&&p.onGround){ inp.dir=-sg; return inp; }   // под лопастью не прыгаем — отходим вместе с ободом
+    if(!wide&&tt<.16&&p.onGround&&!near){ inp.jump=inp.jp=true; jt[pi]=14; inp.dir=sg; return inp; }
+    if(jt[pi]>0){ jt[pi]--; inp.jump=true; inp.dir=sg; return inp; }
+    if(!p.onGround&&!onPl){ let over=false; E.SP.forEach((g,i)=>{ if(S.arm[i]<1) return; const x=E.X(g.s,S.off); if(p.x<x+g.n*T+4&&p.x+p.w>x-4) over=true; }); inp.dir=over?sg:0; return inp; }   // в воздухе: пока над шипами — против хода, потом не бежим
+    const home=640+(p.kind==='bolt'?50:-50); if(tt>.3){ const lo=Math.min(cx,home)-50, hi=Math.max(cx,home)+50; const blk=E.SP.some((g,i)=>{ if(S.arm[i]<1) return false; const x=E.X(g.s,S.off); return x<hi&&x+g.n*T>lo; }); if(!blk) inp.dir=Math.abs(home-cx)<20?0:Math.sign(home-cx); }
     return inp;
   }
   function play(kind,maxSec,tr){
@@ -113,5 +116,5 @@ window.BOT=(function(){
     }
     return {crash:BT.S.log.slice(0,6),state,frames:f,sec:+(f/60).toFixed(1),hits:log,x:+(Math.max(...P.filter(p=>!p.absent).map(p=>p.x))/T).toFixed(1),fin:B.finishX||null};
   }
-  return {play,ms};
+  return {play,ms,rotIn};
 })();

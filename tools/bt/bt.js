@@ -71,10 +71,8 @@ const DEFS=[
   {kind:'ice',name:'Лёд',desc:'скользкие острова · ямы с шипами · льдины · лавина',motif:'Склад пружин',hue:195,par:80,
    hint:'Пол скользкий: разгоняешься и тормозишь не сразу. Прыжок — через шипы и ямы с шипами. Широкие ямы — на плывущей льдине. Сзади сходит лавина — не отставай!',
    track:'g10 f12 s1 f9 s1 f8 s2 f8 k f4 f6 p2 f8 p3 f7 p2 f9 s1 f6 s2 f8 k f4 f8 m7 f9 p3 f10 m8 f10 h f5 s2 f6 s1 f6 s1 f8 k f4 f8 p3 f6 p3 f6 p3 f6 s2 f6 s2 f6 s1 f10 m9 f8 s2 f7 p3 f6 s2 f8 k f4 f10 p2 f6 p3 f6 p2 f6 p3 f10 m8 f10 s2 f6 s2 f6 p3 f6 s1 f6 s1 f12'},
-  {kind:'rot',name:'Вращающаяся комната',desc:'ветряки с лопастями · пережди и беги',motif:'Часовой механизм',hue:35,par:55,len:216,flags:[36,64,104,146,198],
-   hint:'Огромные ветряки с лопастями. Лопасть бьёт — подожди, пока она пройдёт, и беги дальше. Между ветряками можно стоять спокойно. Пары ветряков рядом — подгадывай окно. Флажки сохраняют место.',
-   mills:[{x:22,n:2,w:0.8,L:8.5,dir:1,ph:0},{x:50,n:2,w:0.9,L:8.5,dir:-1,ph:0.5},{x:78,n:2,w:0.9,L:8.5,dir:1,ph:0},{x:90,n:2,w:0.9,L:8.5,dir:-1,ph:1.57},
-          {x:120,n:2,w:0.9,L:8.5,dir:1,ph:0.3},{x:132,n:2,w:0.9,L:8.5,dir:-1,ph:1.0},{x:162,n:2,w:0.85,L:8.5,dir:1,ph:0},{x:174,n:2,w:0.9,L:8.5,dir:-1,ph:0.8},{x:186,n:2,w:0.9,L:8.5,dir:1,ph:1.9}]},
+  {kind:'rot',name:'Вращающаяся комната',desc:'круглый барабан · шипы едут по ободу, платформы, лопасти',motif:'Часовой механизм',hue:35,par:110,len:32,
+   hint:'Барабан крутится — шипы на ободе едут к вам. Прыгай через них. Много шипов подряд — запрыгни на платформу и проедь. Посередине крутятся лопасти: подожди, пока пройдёт. Выживи 3 этапа — откроется выход.'},
   {kind:'iso',name:'Заводской двор',desc:'драка в глубину · враги со всех сторон',motif:'Литейная',hue:25,par:110,
    hint:'Двор, враги идут со всех сторон. Ходи не только вправо-влево, но и в глубину — вверх-вниз по двору. Бей врагов, прыгай, уходи с линии бросков. Победи все волны и иди вправо к выходу.'},
 ];
@@ -924,68 +922,140 @@ function iceHud(B,L){
   if(S.hintT>0){ hintCard('лёд скользкий: тормозишь не сразу · прыжок — через шипы и ямы · широкие ямы — на льдине · лавина догоняет',56); }
 }
 
-// ---------- вращающаяся комната: ветряки с вращающимися лопастями ----------
-const ROTF=17, ROTY=8;   // ряд пола и ряд оси ветряков
-const rotAng=(m,i,t)=>m.ph+m.dir*m.w*t+i*Math.PI*2/m.n;
-function rotHit(m,t,r,pad){   // задевает ли какая-нибудь лопасть ветряка прямоугольник r в момент t
-  const px=(m.x+0.5)*T, py=ROTY*T, Lp=m.L*T;
-  if(r.x+r.w<px-Lp-20||r.x>px+Lp+20) return false;
-  for(let i=0;i<m.n;i++){ const a=rotAng(m,i,t), ca=Math.cos(a), sa=Math.sin(a);
-    for(let s=0;s<=Lp;s+=8){ const bx=px+ca*s, by=py+sa*s; if(bx>r.x-pad&&bx<r.x+r.w+pad&&by>r.y-pad&&by<r.y+r.h+pad) return true; } }
-  return false;
-}
+// ---------- вращающаяся комната: круглый барабан, вид спереди вдоль оси ----------
+// Физика как у обычного уровня (ровный пол, x — положение вдоль обода), а рисуется всё по кругу: x → угол на ободе, высота → к центру.
+const ROTF=17, ROTY=8;
+const RD={cx:640,cy:262,RF:860,K:3.6,zH:.37,RH:380,RB:186,Rh:407};
+const ROT_LP=2*Math.PI*RD.Rh;      // длина обода в пикселях физики (один оборот)
+const ROT_END=118;
+const ROT_ST=[{t0:0,sp:115,ids:[0,1,2,3],pl:0,bl:0},{t0:34,sp:145,ids:[0,1,2,3,4,5],pl:1,bl:.7},{t0:76,sp:170,ids:[0,1,2,3,4,5],pl:1,bl:.9,rev:98}];
+const ROT_SP=[{s:2,n:2},{s:28,n:2},{s:38,n:3},{s:60,n:2},{s:12,n:6},{s:47,n:5}];   // после широких рядов — запас места
+const ROT_PL=[{s:11.4,w:7.2},{s:46.4,w:6.2}];   // платформа — мостик: по ней переходят над широким рядом шипов против хода
+const rotX=(s,off)=>{ const m=ROT_LP, x=s*T-off-RD.cx+m/2; return ((x%m)+m)%m-m/2+RD.cx; };   // x, ближайший к низу барабана   // x ближайшего к низу положения
+const rotAngX=x=>Math.PI/2-(x-RD.cx)/RD.Rh;                 // угол на экране для x физики
+const rotR=z=>RD.RF/(1+z*RD.K);                              // радиус обода на глубине z (0 — ближе к нам, 1 — задняя стенка)
+const rotStage=t=>{ let k=0; for(let i=0;i<ROT_ST.length;i++) if(t>=ROT_ST[i].t0) k=i; return k; };
+const rotNear=(x,w)=>x+w>RD.cx-560&&x<RD.cx+560;             // фигура у низа барабана (где герои)
 function rotLevel(D){
-  const H=18, W=D.len, cols=[], pick=[], flags=D.flags.map(x=>({x,on:false}));
-  const surf=()=>{ const c=Array(H).fill('.'); c[0]='#'; c[ROTF]='#'; return c; };
-  for(let x=0;x<W;x++) cols.push(x===0||x===W-1?Array(H).fill('#'):surf());
-  const finishX=W-8;
-  for(let x=finishX;x<finishX+3;x++){ cols[x][ROTF-1]='E'; cols[x][ROTF-2]='E'; }
-  cols[3][ROTF-1]='1'; cols[5][ROTF-1]='2';
-  for(const m of D.mills){ for(let i=0;i<5;i++) pick.push({type:'gear',tx:m.x-2+i,ty:13}); }
-  for(const f of flags) pick.push({type:'heart',tx:f.x+4,ty:ROTF-1});
+  const H=18, W=32, cols=[];
+  for(let x=0;x<W;x++){ const c=Array(H).fill('.'); if(x<6||x>25) c.fill('#'); else { c[0]='#'; c[ROTF]='#'; } cols.push(c); }
+  for(let x=24;x<26;x++){ cols[x][ROTF-1]='E'; cols[x][ROTF-2]='E'; }
+  cols[14][ROTF-1]='1'; cols[16][ROTF-1]='2';
   const map=[]; for(let y=0;y<H;y++){ let s=''; for(let x=0;x<W;x++) s+=cols[x][y]; map.push(s); }
-  return {name:D.name,motif:D.motif,hue:D.hue,dark:false,hint:D.hint,map,enemies:[],pickups:pick,movers:[],winds:[],checkpoints:[],pz:[],tier:2,hand:true,decor:[],darkA:.94,openBottom:false,par:D.par,
-    bt:{kind:'rot',mills:D.mills,flags,finishX,len:W}};
+  const movers=ROT_PL.map(p=>({ax:-100,ay:ROTF-1.9,bx:-100,by:ROTF-1.9,w:p.w,sp:.01}));
+  return {name:D.name,motif:D.motif,hue:D.hue,dark:false,hint:D.hint,map,enemies:[],pickups:[],movers,winds:[],checkpoints:[],pz:[],tier:2,hand:true,decor:[],darkA:.94,openBottom:false,par:D.par,
+    bt:{kind:'rot',finishX:24,len:W}};
 }
-function placeRot(x){ for(const p of players){ if(p.absent) continue;
-  const off=solo?0:(p.kind==='bolt'?2:0); p.x=(x+off)*T+(T-p.w)/2; p.y=ROTF*T-p.h; p.vx=0; p.vy=0; p.dash=0; p.slam=false; p.onGround=true; p.wasGround=true; } }
 function setupRot(L){
-  const B=L.bt; BTX.z=1.5; BTX.lx=VW*0.15/1.5;
-  for(const f of B.flags) f.on=!!(S.cp&&S.cp.x>=f.x);
-  if(S.cp) placeRot(S.cp.x);
-  const D=diffLv(); S.rm=D<0?0.85:1+0.06*D; S.rt=0; S.hintT=S.cp?0:8; banner(S.cp?'С ФЛАЖКА':'КОМНАТА!','#ffd166',1.4);
+  BTX.z=0; const D=diffLv(); S.rm=D<0?0.85:1+0.06*D;
+  S.rtm=S.cp&&S.cp.lvl===levelIdx&&S.cp.t!=null?S.cp.t:0; S.off=0; S.rv=0; S.bladeA=-Math.PI/2; S.rdir=1; S.opened=false; S.revDone=S.rtm>=ROT_ST[2].rev; S.bell=false;
+  S.arm=ROT_SP.map(()=>0); S.parm=ROT_PL.map(()=>0);
+  exitLocked=true; S.hintT=S.rtm>0?0:9; banner(S.rtm>0?'С ФЛАЖКА':'БАРАБАН!','#ffd166',1.4);
+  for(const p of players){ if(p.absent) continue; const off=solo?0:(p.kind==='bolt'?2:0); p.x=(14+off)*T+(T-p.w)/2; p.y=ROTF*T-p.h; p.vx=0; p.vy=0; p.dash=0; p.slam=false; p.onGround=true; p.wasGround=true; }
+  S.cpT=S.rtm;
 }
+function rotHurt(p,txt,dirx){
+  burst(p.x+p.w/2,p.y+p.h/2,22,['#ffd166','#ff8a3d','#fff'],360,.55); p.inv=0; _hurt(p); p.vy=-380; p.vx=dirx*240;
+  texts.push({x:p.x+p.w/2,y:p.y-30,t:txt,life:1,c:'#ff6b6b',pop:true}); sfx('hit'); shake=Math.max(shake,8); hitstop=Math.max(hitstop,.08);
+  if(p.down||p.hp<=0){ p.down=false; die(p,'down'); return true; } return false;
+}
+function rotArm(arr,i,on,x,w,dt){ if(!on){ arr[i]=0; return; } if(arr[i]===0){ if(!rotNear(x,w)) arr[i]=.001; return; } arr[i]=Math.min(1,arr[i]+dt*1.2); }
 function rotPost(dt){
-  const B=S.L.bt, L=live(); if(!L.length) return; S.hintT=Math.max(0,S.hintT-dt); S.rt+=dt*S.rm;
-  const lead=Math.max(...L.map(p=>p.x+p.w));
-  for(const f of B.flags) if(!f.on&&lead>f.x*T+10){ f.on=true; S.cp={lvl:levelIdx,x:f.x}; sfx('pk_shield'); const p=L[0]; texts.push({x:p.x,y:p.y-50,t:'ФЛАЖОК!',life:1.4,c:'#7fe08a',pop:true}); }
-  for(const p of L){ if(p.down||p.inv>0) continue;
-    for(const m of B.mills){ if(!rotHit(m,S.rt,p,6)) continue;
-      const px=(m.x+0.5)*T; burst(p.x+p.w/2,p.y+p.h/2,22,['#ffd166','#ff8a3d','#fff'],360,.55); p.inv=0; _hurt(p); p.vy=-320; p.vx=(p.x+p.w/2<px?-1:1)*260;
-      texts.push({x:p.x+p.w/2,y:p.y-30,t:'ЛОПАСТЬ!',life:1,c:'#ff6b6b',pop:true}); sfx('hit'); shake=Math.max(shake,8); hitstop=Math.max(hitstop,.08);
-      if(p.down||p.hp<=0){ p.down=false; die(p,'down'); return; } break; } }
+  const L=live(); if(!L.length) return; S.hintT=Math.max(0,S.hintT-dt);
+  const k0=rotStage(S.rtm); if(!S.opened) S.rtm+=dt;
+  const k=rotStage(S.rtm), cur=ROT_ST[k];
+  if(k>k0){ S.cpT=cur.t0; S.cp={lvl:levelIdx,t:cur.t0}; sfx('pk_shield'); banner('ЭТАП '+(k+1)+'  ·  ФЛАЖОК!','#7fe08a',1.4); }
+  let target=S.opened?0:cur.sp*S.rm*S.rdir;
+  if(cur.rev&&!S.revDone&&S.rtm>=cur.rev-2.2){ target=0; if(!S.bell){ S.bell=true; tone(880,880,.5,'triangle',.07); tone(660,660,.6,'triangle',.05,.12); banner('РАЗВОРОТ!','#ffd166',1.3); }
+    if(S.rtm>=cur.rev){ S.revDone=true; S.rdir=-1; } }
+  S.rv+=(target-S.rv)*Math.min(1,dt*2.4); S.off+=S.rv*dt; S.off%=ROT_LP;
+  if(!S.opened) S.bladeA+=cur.bl*S.rm*dt;
+  // платформы: едут вместе с ободом; у низа — настоящие (на них можно стоять), в остальное время убраны
+  ROT_PL.forEach((pl,i)=>{ const m=movers[i]; if(!m) return; const x=rotX(pl.s,S.off), w=pl.w*T; rotArm(S.parm,i,!!cur.pl&&!S.opened,x,w,dt);
+    const nx=S.parm[i]>=1&&rotNear(x,w)?x:-4000; if(Math.abs(nx-m.ax)>200){ for(const p of players) if(p.ground===m) p.ground=null; } m.ax=m.bx=nx; m.ay=m.by=(ROTF-1.9)*T; });
+  // шипы
+  ROT_SP.forEach((g,i)=>{ const x=rotX(g.s,S.off), w=g.n*T; rotArm(S.arm,i,cur.ids.includes(i)&&!S.opened,x,w,dt); });
+  for(let i=0;i<ROT_SP.length;i++){ if(S.arm[i]<1) continue; const g=ROT_SP[i], x=rotX(g.s,S.off), r={x:x+9,y:ROTF*T-24,w:g.n*T-18,h:24};
+    for(const p of L){ if(p.down||p.inv>0||!overlap(p,r)) continue; if(rotHurt(p,'ШИПЫ!',p.x+p.w/2<x+g.n*T/2?-1:1)) return; } }
+  // лопасти (со 2 этапа): достают только того, кто высоко прыгнул под ними; стоящих на ободе и на платформе не задевают
+  if(cur.bl>0&&!S.opened) for(const p of L){ if(p.down||p.inv>0) continue;
+    const a=rotAngX(p.x+p.w/2), top=RD.RH-(ROTF*T-p.y), dw=(p.w/2)/RD.RH+.07;
+    for(const bA of [S.bladeA,S.bladeA+Math.PI]){ let d=((a-bA)%(2*Math.PI)+3*Math.PI)%(2*Math.PI)-Math.PI; if(Math.abs(d)<dw&&top<RD.RH-150){ if(rotHurt(p,'ЛОПАСТЬ!',d<0?1:-1)) return; break; } } }
+  for(const p of L) if(!p.onGround&&!p.down) p.vy-=G*.35*dt;   // в барабане прыжок «легче»: дольше в воздухе, можно перелететь ряд шипов даже у стенки
+  if(S.rtm>=ROT_END&&!S.opened){ S.opened=true; exitLocked=false; banner('ВЫХОД ОТКРЫТ!  →','#7fe08a',1.6); sfx('win'); }
   platformPost(dt);
 }
-function drawRot(B){
-  const t=clock; ctx.save();
-  for(const f of B.flags){ const fx=f.x*T+6, fy=ROTF*T; ctx.strokeStyle='#c7d3dd'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(fx,fy); ctx.lineTo(fx,fy-86); ctx.stroke();
-    ctx.fillStyle=f.on?'#7fe08a':'#6f8191'; ctx.beginPath(); ctx.moveTo(fx,fy-86); ctx.quadraticCurveTo(fx+18,fy-80+Math.sin(t*6)*3,fx+30,fy-76); ctx.lineTo(fx,fy-64); ctx.closePath(); ctx.fill(); }
-  for(const m of B.mills){ const px=(m.x+0.5)*T, py=ROTY*T, Lp=m.L*T;
-    ctx.globalAlpha=.12; ctx.strokeStyle='#ffd166'; ctx.lineWidth=2; ctx.setLineDash([6,8]); ctx.beginPath(); ctx.arc(px,py,Lp,0,7); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha=1;
-    for(let i=0;i<m.n;i++){ const a=rotAng(m,i,S.rt||0), ex=px+Math.cos(a)*Lp, ey=py+Math.sin(a)*Lp;
-      ctx.lineCap='round'; ctx.strokeStyle='#5a2a1c'; ctx.lineWidth=18; ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(ex,ey); ctx.stroke();
-      const g=ctx.createLinearGradient(px,py,ex,ey); g.addColorStop(0,'#e7b54a'); g.addColorStop(1,'#ff5a3d'); ctx.strokeStyle=g; ctx.lineWidth=12; ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(ex,ey); ctx.stroke();
-      ctx.shadowColor='#ff8a3d'; ctx.shadowBlur=14*GLOW; ctx.fillStyle='#ffe3a0'; ctx.beginPath(); ctx.arc(ex,ey,9,0,7); ctx.fill(); ctx.shadowBlur=0; }
-    ctx.fillStyle='#3a4660'; ctx.beginPath(); ctx.arc(px,py,22,0,7); ctx.fill(); ctx.strokeStyle='#e7b54a'; ctx.lineWidth=3; ctx.stroke(); ctx.fillStyle='#e7b54a'; ctx.beginPath(); ctx.arc(px,py,7,0,7); ctx.fill(); }
+function drawRot(B){}   // всё рисует rotDraw (полный кадр)
+window.BT_ROT={SP:ROT_SP,PL:ROT_PL,X:(s,off)=>rotX(s,off),A:x=>rotAngX(x)};
+// точка физики → экран (по кругу обода на глубине героев)
+function rotPt(x,y){ const a=rotAngX(x), r=RD.RH-(ROTF*T-y); return [RD.cx+Math.cos(a)*r,RD.cy+Math.sin(a)*r,a]; }
+const ROT_BACK={};
+function rotHeroBack(p){   // герой спиной: тот же рисунок игры, без лица, щёк и экрана-глаз
+  const [sx,sy,a]=rotPt(p.x+p.w/2,p.y+p.h); ctx.save(); ctx.translate(sx,sy); ctx.rotate(a-Math.PI/2); ctx.scale(1.45,1.45); ctx.translate(-(p.x+p.w/2),-(p.y+p.h));
+  const g=ctx, of=g.fill; const nz=v=>{ const o=g.fillStyle; g.fillStyle=v; const r=String(g.fillStyle).toLowerCase(); g.fillStyle=o; return r; };
+  const S0=skinOf(p.kind), skip=new Set(p.kind==='spark'?[nz(S0.belly),nz('rgba(255,90,60,.55)')]:[nz('#0b2230'),nz(S0.eye)]);
+  g.fill=function(...q){ if(skip.has(String(g.fillStyle).toLowerCase())) return; return of.apply(g,q); };
+  const oe=eyes, oes=drawEyeStyle; eyes=()=>{}; drawEyeStyle=()=>{}; const fc=p.face; p.face=0;
+  try{ (p.kind==='spark'?_drawSpark:_drawBolt)(p); }catch(e){} finally{ g.fill=of; eyes=oe; drawEyeStyle=oes; p.face=fc; }
   ctx.restore();
 }
+function rotDraw(){
+  R3D.hide(); ctx.setTransform(scale,0,0,scale,0,0); ctx.clearRect(0,0,cv.width,cv.height); GLOW=settings.glow?1:0;
+  const sk=settings.shake?shake:0, c=ctx, cx=RD.cx, cy=RD.cy, th=(S.off||0)/RD.Rh, TAU=Math.PI*2, cur=ROT_ST[rotStage(S.rtm||0)];
+  c.save(); c.translate((Math.random()-.5)*sk,(Math.random()-.5)*sk);
+  c.fillStyle='#120b07'; c.fillRect(-20,-20,VW+40,VH+40);
+  // стенки барабана: плиты между кольцами (от задней стенки к нам), крутятся вместе с барабаном
+  const Z=[1,.82,.66,.52,.4,.3,.2,.11,.03,0], N=32;
+  for(let k=0;k<Z.length-1;k++){ const r0=rotR(Z[k]), r1=rotR(Z[k+1]), sh=.55+.45*(1-Z[k]);
+    for(let i=0;i<N;i++){ const a0=th+i/N*TAU, a1=th+(i+1)/N*TAU, m=(i%2?150:105)*sh; c.fillStyle=`rgb(${m|0},${(m*.68)|0},${(m*.42)|0})`; c.beginPath(); c.arc(cx,cy,r1,a0,a1); c.arc(cx,cy,r0,a1,a0,true); c.closePath(); c.fill(); } }
+  // задняя стенка: часовой механизм
+  const RB=rotR(1); c.fillStyle='#2a1a10'; c.beginPath(); c.arc(cx,cy,RB,0,TAU); c.fill(); c.strokeStyle='rgba(214,160,80,.28)'; c.lineWidth=1.5;
+  for(let k=1;k<6;k++){ c.beginPath(); c.arc(cx,cy,RB*k/6,0,TAU); c.stroke(); } for(let i=0;i<24;i++){ const a=th+i/24*TAU; c.beginPath(); c.moveTo(cx,cy); c.lineTo(cx+Math.cos(a)*RB,cy+Math.sin(a)*RB); c.stroke(); }
+  // золотые рёбра
+  for(const z of [.88,.6,.4,.18]){ const r=rotR(z); c.strokeStyle='rgba(255,190,70,.9)'; c.lineWidth=3+7*(1-z); c.shadowColor='#ffb347'; c.shadowBlur=10*GLOW; c.beginPath(); c.arc(cx,cy,r,0,TAU); c.stroke(); } c.shadowBlur=0;
+  // шипы рядами поперёк обода
+  const ZS=[.9,.76,.64,.54,.46,.39,.33];
+  ROT_SP.forEach((g,i)=>{ const al=S.arm?S.arm[i]:0; if(al<=0) return; c.globalAlpha=Math.min(1,al); const x=rotX(g.s,S.off||0);
+    for(let j=0;j<g.n;j++){ const a=rotAngX(x+(j+.5)*T), ca=Math.cos(a), sa=Math.sin(a);
+      for(const z of ZS){ const r=rotR(z), s=Math.sqrt(r/RD.RH), hw=T*.4*s, hh=26*s, bx=cx+ca*r, by=cy+sa*r, tx=cx+ca*(r-hh), ty=cy+sa*(r-hh), px=-sa*hw, py=ca*hw;
+        c.fillStyle='#2c3446'; c.fillRect(bx-2*s,by-2*s,4*s,4*s);
+        c.fillStyle='#c9d2dc'; c.beginPath(); c.moveTo(bx+px,by+py); c.lineTo(tx,ty); c.lineTo(bx-px,by-py); c.closePath(); c.fill();
+        c.fillStyle='#e5533d'; c.beginPath(); c.moveTo(tx,ty); c.lineTo(tx+(bx-tx)*.3+px*.3,ty+(by-ty)*.3+py*.3); c.lineTo(tx+(bx-tx)*.3-px*.3,ty+(by-ty)*.3-py*.3); c.closePath(); c.fill(); } } });
+  c.globalAlpha=1;
+  // платформы — доски поперёк барабана
+  ROT_PL.forEach((pl,i)=>{ const al=S.parm?S.parm[i]:0; if(al<=0) return; c.globalAlpha=Math.min(1,al); const x=rotX(pl.s,S.off||0), a0=rotAngX(x), a1=rotAngX(x+pl.w*T), z0=.62, z1=.3, hh=1.9*T;
+    const P=(a,z,h)=>{ const r=rotR(z)-h*rotR(z)/RD.RH; return [cx+Math.cos(a)*r,cy+Math.sin(a)*r]; };
+    c.fillStyle='#7d8aa6'; c.strokeStyle='#c7d3dd'; c.lineWidth=2; c.beginPath(); for(const [a,z] of [[a0,z0],[a1,z0],[a1,z1],[a0,z1]]){ const q=P(a,z,hh); c.lineTo(q[0],q[1]); } c.closePath(); c.fill(); c.stroke();
+    c.fillStyle='#4a5672'; c.beginPath(); for(const [a,h] of [[a0,hh],[a1,hh],[a1,hh-14],[a0,hh-14]]){ const q=P(a,z1,h); c.lineTo(q[0],q[1]); } c.closePath(); c.fill(); });
+  c.globalAlpha=1;
+  // выход
+  if(S.opened){ const [ex,ey,a]=rotPt(25*T,ROTF*T); c.save(); c.translate(ex,ey); c.rotate(a-Math.PI/2); c.globalAlpha=.55+.35*Math.sin(clock*5); c.fillStyle='#7fe08a'; c.shadowColor='#7fe08a'; c.shadowBlur=24*GLOW; rr(c,-46,-110,92,110,40); c.fill(); c.restore(); c.globalAlpha=1; c.shadowBlur=0; label('ВЫХОД',ex-40,ey-130,18,'#7fe08a'); }
+  // лопасти в центре (плоские, 2D)
+  if(cur.bl>0&&!S.opened){ const Lp=RD.RH-150;
+    c.globalAlpha=.16; c.strokeStyle='#ffd166'; c.lineWidth=2; c.setLineDash([6,8]); c.beginPath(); c.arc(cx,cy,Lp,0,TAU); c.stroke(); c.setLineDash([]); c.globalAlpha=1;
+    for(let i=0;i<2;i++){ const a=S.bladeA+i*Math.PI, ex=cx+Math.cos(a)*Lp, ey=cy+Math.sin(a)*Lp;
+      c.lineCap='round'; c.strokeStyle='#5a2a1c'; c.lineWidth=22; c.beginPath(); c.moveTo(cx,cy); c.lineTo(ex,ey); c.stroke();
+      const g=c.createLinearGradient(cx,cy,ex,ey); g.addColorStop(0,'#e7b54a'); g.addColorStop(1,'#ff5a3d'); c.strokeStyle=g; c.lineWidth=14; c.beginPath(); c.moveTo(cx,cy); c.lineTo(ex,ey); c.stroke();
+      c.shadowColor='#ff8a3d'; c.shadowBlur=14*GLOW; c.fillStyle='#ffe3a0'; c.beginPath(); c.arc(ex,ey,11,0,TAU); c.fill(); c.shadowBlur=0; }
+    c.fillStyle='#3a4660'; c.beginPath(); c.arc(cx,cy,30,0,TAU); c.fill(); c.strokeStyle='#e7b54a'; c.lineWidth=4; c.stroke(); c.fillStyle='#e7b54a'; c.beginPath(); c.arc(cx,cy,9,0,TAU); c.fill(); }
+  else { c.fillStyle='#3a4660'; c.beginPath(); c.arc(cx,cy,30,0,TAU); c.fill(); c.strokeStyle='#e7b54a'; c.lineWidth=4; c.stroke(); }
+  // герои спиной к нам
+  for(const p of players){ if(p.absent||p.dead) continue; c.save(); if(p.down) c.globalAlpha=.55; else if(p.inv>0&&Math.floor(clock*18)%2) c.globalAlpha=.4; rotHeroBack(p); c.restore(); }
+  // частицы и надписи — по тем же координатам обода
+  for(const q of particles){ const [x,y]=rotPt(q.x,q.y); c.globalAlpha=Math.max(0,q.life/q.max); c.fillStyle=q.c; c.fillRect(x-q.s/2,y-q.s/2,q.s,q.s); } c.globalAlpha=1;
+  for(const t of texts){ const [x,y]=rotPt(t.x,t.y); c.save(); c.globalAlpha=Math.min(1,t.life*3); label(t.t,x,y,t.pop?24:18,t.c||'#fff'); c.restore(); }
+  c.restore();
+  if(flashA>0){ c.globalAlpha=Math.min(.6,flashA); c.fillStyle=flashC||'#fff'; c.fillRect(0,0,VW,VH); c.globalAlpha=1; }
+  drawHud();
+  if(S.banner){ const b=S.banner, a=Math.min(1,b.life*3,(b.max-b.life)*8+.2); c.globalAlpha=a; label(b.t,VW/2,150,46,b.c); c.globalAlpha=1; }
+}
 function rotHud(B,L){
-  const w=520, x=VW/2-w/2, y=VH-26;
+  const w=520, x=VW/2-w/2, y=VH-26, k=clamp((S.rtm||0)/ROT_END,0,1), st=rotStage(S.rtm||0);
   ctx.fillStyle='rgba(6,10,22,.8)'; rr(ctx,x-8,y-10,w+16,20,10); ctx.fill(); ctx.fillStyle='rgba(255,209,102,.25)'; rr(ctx,x,y-3,w,6,3); ctx.fill();
-  for(const m of B.mills){ ctx.fillStyle='rgba(255,138,61,.55)'; ctx.fillRect(x+w*(m.x-m.L)/B.finishX,y-3,w*2*m.L/B.finishX,6); }
-  for(const f of B.flags){ ctx.fillStyle=f.on?'#7fe08a':'#6f8191'; ctx.fillRect(x+w*f.x/B.finishX-1,y-8,3,16); }
-  for(const p of L){ const k=clamp(p.x/T/B.finishX,0,1); ctx.fillStyle=p.kind==='spark'?'#ff8a3d':'#62c7c1'; ctx.beginPath(); ctx.arc(x+w*k,y,6,0,Math.PI*2); ctx.fill(); }
-  if(S.hintT>0){ hintCard('жди, пока лопасть пройдёт, и беги · между ветряками можно стоять · флажки сохраняют место',56); }
+  ctx.fillStyle='#ffd166'; rr(ctx,x,y-3,Math.max(6,w*k),6,3); ctx.fill();
+  for(let i=1;i<ROT_ST.length;i++){ const f=S.cpT>=ROT_ST[i].t0; ctx.fillStyle=f?'#7fe08a':'#6f8191'; ctx.fillRect(x+w*ROT_ST[i].t0/ROT_END-1,y-8,3,16); }
+  label(S.opened?'ВЫХОД ОТКРЫТ':'ЭТАП '+(st+1)+' ИЗ 3',VW/2,y-22,12,'#e8effa');
+  if(S.hintT>0){ hintCard('шипы едут по ободу — прыгай · много шипов — запрыгни на платформу · лопасть — пережди',56); }
 }
 
 /* ---------------- «Заводской двор»: драка в глубину (как в beat'em-up) ---------------- */
@@ -1596,7 +1666,8 @@ function drawScooterRider(f,p){
 }
 
 /* ---------------- рисование ---------------- */
-const _draw=draw; draw=function(){ if(S.on&&S.kind==='iso'&&S.iso&&players&&(state==='play'||state==='pause'||state==='dying')){ isoDraw(); return; } return _draw(); };
+const _draw=draw; draw=function(){ if(S.on&&S.kind==='iso'&&S.iso&&players&&(state==='play'||state==='pause'||state==='dying')){ isoDraw(); return; }
+  if(S.on&&S.kind==='rot'&&players&&S.arm&&(state==='play'||state==='pause'||state==='dying')){ rotDraw(); return; } return _draw(); };
 const _drawBolt=drawBolt, _drawSpark=drawSpark;
 drawBolt=function(p){ if(S.on&&p===players[1]&&grid) { try{ drawWorld(); }catch(e){} } heroDraw(_drawBolt,p); };
 drawSpark=function(p){ heroDraw(_drawSpark,p); };
