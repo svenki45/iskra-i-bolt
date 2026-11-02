@@ -1732,6 +1732,7 @@ function heroDraw(f,p){
   if(PLATF[S.kind]){ f(p); drawSmash(p); return; }
   if(S.kind==='cart'){
     if(wet()){ drawScooterRider(f,p); return; }   // скутер и согнутые ноги — и в простом режиме воды, как в 3D
+    if(!S.L.bt.surf){ capHero(f,p); drawBoard(p); return; }
     if(p.duck){ const h=p.h,y=p.y,sx=p.sx,sy=p.sy; p.y=y+h-H0[p.kind]; p.h=H0[p.kind]; p.sx=1.22; p.sy=HD[p.kind]/H0[p.kind]*1.08; ctx.save(); ctx.translate(0,-6); f(p); ctx.restore(); p.h=h; p.y=y; p.sx=sx; p.sy=sy; }
     else { ctx.save(); ctx.translate(0,-6); f(p); ctx.restore(); }
     drawBoard(p); return;
@@ -1749,8 +1750,50 @@ function drawSurf(p){
   ctx.fillStyle='#1d2a40'; ctx.beginPath(); ctx.moveTo(-L/2+6,7); ctx.lineTo(-L/2+2,13); ctx.lineTo(-L/2+14,7); ctx.closePath(); ctx.fill();
   ctx.restore();
 }
+// ---- латунная ховер-капсула: герой сидит внутри, под низкой преградой прячется ----
+const CAP_SC=[1.4,1.2];
+function capGeom(p){ const SC=CAP_SC, dk=p._dk||0, sy=SC[1], lift=3-11*sy, y0=p.y+p.h-5, top=y0+lift-13*sy; return {sy,lift,top,y0}; }
+function capHero(f,p){
+  const ov=p.duck||tileHit(p.x-30,(FL-1)*T-6,p.w+90,4);   // впереди/сверху низкая преграда — капсула заранее приседает
+  p._dk=(p._dk||0)+((ov?1:0)-(p._dk||0))*.3;
+  const hv=Math.sin(clock*6)*1.2;
+  const dk=p._dk, h=p.h,y=p.y,sx=p.sx,sy=p.sy;
+  if(p.duck){ p.y=y+h-H0[p.kind]; p.h=H0[p.kind]; p.sx=1.18; p.sy=HD[p.kind]/H0[p.kind]*1.08; }
+  const G=capGeom({x:p.x,y:y,h:h,_dk:dk}), heroH=p.h*(p.sy||1);
+  const FLY=FL*T, gapTop=FLY-T, allowed=Math.max(4,(G.top - (gapTop+3)) - (p.kind==='spark'?5:3));   // у Искры над головой ещё огонёк   // сколько героя может торчать над капсулой и не задеть преграду
+  const vis=ov?Math.min(allowed, heroH*.55):heroH*.6;
+  const feet=G.top+hv+(heroH-vis);
+  ctx.save(); ctx.beginPath(); ctx.rect(p.x-80,p.y-300,p.w+160,(G.top+hv+3)-(p.y-300)); ctx.clip();
+  p._capGap=ov?Math.max(0,(feet-heroH)-gapTop):null; ctx.translate(0,feet-(p.y+p.h)); f(p); ctx.restore(); p._capGap=null;
+  p.h=h; p.y=y; p.sx=sx; p.sy=sy;
+}
+function drawCapsule(p){
+  const x=p.x+p.w/2, y=p.y+p.h-5, L=p.kind==='bolt'?56:46, c=p.kind==='bolt'?'#62c7c1':'#ff8a3d', c2=p.kind==='bolt'?'#2e8f8a':'#d9602a', sp=S.v;
+  ctx.save(); ctx.translate(x,y); ctx.lineJoin='round'; ctx.lineCap='round';
+  const hv=Math.sin(clock*6)*1.2; ctx.translate(0,hv); const SC=CAP_SC, G=capGeom(p); ctx.translate(0,G.lift); ctx.scale(SC[0],G.sy); const dk=p._dk||0;
+  const rr=(a,b,w,h,r)=>{ ctx.beginPath(); ctx.roundRect(a,b,w,h,r); };
+  const hull=()=>{ ctx.beginPath(); ctx.moveTo(-L/2-8,-16); ctx.lineTo(-L/2-2,-10); ctx.lineTo(-L/2+2,-13); ctx.lineTo(L/2-4,-13); ctx.quadraticCurveTo(L/2+14,-12,L/2+14,-2); ctx.quadraticCurveTo(L/2+8,6,L/2-8,6); ctx.lineTo(-L/2+4,6); ctx.quadraticCurveTo(-L/2-8,4,-L/2-4,-4); ctx.closePath(); };
+  const glow=(col,a)=>{ ctx.globalAlpha=a*(.75+.25*Math.sin(clock*9)); const gg=ctx.createRadialGradient(0,13,2,0,13,L*.75); gg.addColorStop(0,col); gg.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=gg; ctx.beginPath(); ctx.ellipse(0,13,L*.75,7,0,0,7); ctx.fill(); ctx.globalAlpha=1; };
+  const jet=(bx,by,len,col,w)=>{ const fl=len+Math.sin(clock*45+by)*3+(S.boost>0?16:0); const g=ctx.createLinearGradient(bx,0,bx-fl,0); g.addColorStop(0,'#ffffff'); g.addColorStop(.25,col); g.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=g; ctx.beginPath(); ctx.moveTo(bx,by-w); ctx.quadraticCurveTo(bx-fl*.5,by-w*.6,bx-fl,by); ctx.quadraticCurveTo(bx-fl*.5,by+w*.6,bx,by+w); ctx.closePath(); ctx.fill(); };
+  const speedLines=col=>{ if(sp<60) return; ctx.strokeStyle=col; ctx.lineWidth=1.2; for(let k=0;k<4;k++){ const yy=-14+k*6, ph=(clock*3+k*.37)%1, xx=-L/2-20-ph*40; ctx.globalAlpha=.5*(1-ph); ctx.beginPath(); ctx.moveTo(xx,yy); ctx.lineTo(xx-14,yy); ctx.stroke(); } ctx.globalAlpha=1; };
+  const thr=(tx,col)=>{ ctx.fillStyle='#10151f'; rr(tx-5,5,10,3,1.5); ctx.fill(); ctx.globalAlpha=.6+.4*Math.sin(clock*20+tx); ctx.fillStyle=col; ctx.beginPath(); ctx.ellipse(tx,9,4,2+Math.sin(clock*30+tx),0,0,7); ctx.fill(); ctx.globalAlpha=1; };
+    glow('#ffb347',.5);
+    if(sp>20){ jet(-L/2-6,-8,13+sp/20,S.boost>0?'#c79bff':'#ffb347',3.5); for(let k=0;k<3&&dk<.3;k++){ const ph=(clock*1.6+k/3)%1; ctx.globalAlpha=.35*(1-ph); ctx.fillStyle='#e8e2d6'; ctx.beginPath(); ctx.arc(-L/2-8-ph*30,-20-ph*10,3+ph*6,0,7); ctx.fill(); } ctx.globalAlpha=1; }
+    { const ch=6; ctx.fillStyle='#8a5530'; rr(-L/2-6,-12-ch,5,ch,2); ctx.fill(); ctx.strokeStyle='#2a1a0e'; ctx.lineWidth=1.2; ctx.stroke(); }
+    hull(); const g=ctx.createLinearGradient(0,-13,0,6); g.addColorStop(0,'#f0c86a'); g.addColorStop(.5,'#c9a24a'); g.addColorStop(1,'#8a6a2a'); ctx.fillStyle=g; ctx.fill(); ctx.strokeStyle='#3a2410'; ctx.lineWidth=1.8; ctx.stroke();
+    ctx.fillStyle='#3a2410'; for(let i=0;i<7;i++){ ctx.beginPath(); ctx.arc(-L/2+2+i*8,-10,1,0,7); ctx.fill(); ctx.beginPath(); ctx.arc(-L/2+4+i*8,3,1,0,7); ctx.fill(); }
+    ctx.save(); ctx.translate(L/2-4,-3); ctx.rotate(clock*(1+sp/40)); ctx.fillStyle='#6b3b1f'; ctx.beginPath(); for(let i=0;i<16;i++){ const r=i%2?3.6:5, t=i/16*Math.PI*2; ctx.lineTo(Math.cos(t)*r,Math.sin(t)*r); } ctx.closePath(); ctx.fill(); ctx.fillStyle='#f0c86a'; ctx.beginPath(); ctx.arc(0,0,1.6,0,7); ctx.fill(); ctx.restore();
+    ctx.fillStyle=c; ctx.fillRect(-L/2+2,-6,L-12,2.4);
+    ctx.fillStyle='#3a2410'; rr(-10,-14.5,20,3,1.5); ctx.fill();
+    thr(-L/4,'#ffb347'); thr(L/4,'#ffb347');
+  ctx.restore();
+}
+
 function drawBoard(p){
   if(S.L.bt.surf) return drawSurf(p);
+  return drawCapsule(p);
+}
+function drawBoardOld(p){
   const x=p.x+p.w/2, y=p.y+p.h-5, L=p.kind==='bolt'?56:46, c=p.kind==='bolt'?'#62c7c1':'#ff8a3d', sp=S.v;
   ctx.save(); ctx.translate(x,y);
   if(sp>40){ const fl=10+sp/22+Math.sin(clock*40)*4+(S.boost>0?18:0);
@@ -2168,7 +2211,7 @@ heroEnv=function(p){
     const wl=hit(p.x-5,top-8)?1:0, wr=hit(p.x+p.w+5,top-8)?1:0;
     return {gap,free:r>l?1:l>r?-1:-(Math.sign(p.vx||0)||p.face||1),wall:wl-wr};
   }
-  return _heroEnv(p);
+  { const e=_heroEnv(p); if(p._capGap!=null) e.gap=p._capGap; return e; }
 };
 
 /* ---------------- плашка с описанием уровня (экран «Выбрать уровень») ---------------- */
