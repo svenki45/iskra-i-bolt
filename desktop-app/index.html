@@ -5965,7 +5965,7 @@ const R3D=(()=>{
     { const SOL='#SxZYKXD', tk=3, tw=14, dk=[], sf=[];
       const q=(arr,x0,y0,x1,y1)=>{ arr.push(x0,-y0,0, x1,-y0,0, x1,-y1,0, x0,-y0,0, x1,-y1,0, x0,-y1,0); };
       for(let y=0;y<grid.length;y++) for(let x=0;x<COLS;x++){ const ch=grid[y][x]; if(!ch||!SOL.includes(ch)) continue;
-        const sd=(dx,dy)=>{ const g=grid[y+dy]&&grid[y+dy][x+dx]; return !!g&&(SOL.includes(g)||g==='~'); }, px=x*T, py=y*T;
+        const sd=(dx,dy)=>{ const g=grid[y+dy]&&grid[y+dy][x+dx]; return !!g&&SOL.includes(g); }, px=x*T, py=y*T;
         for(const [arr,w] of [[dk,tk],[sf,tw]]){
           const l=sd(-1,0)?0:w, r=sd(1,0)?0:w, u=sd(0,-1)?0:w, d=sd(0,1)?0:w;
           if(u) q(arr,px-l,py-u,px+T+r,py);
@@ -6459,7 +6459,14 @@ let edTest=false, edLevel=null, edSaved=null;
 #editor .edlogo{font:900 15px Unbounded,'Arial Black',sans-serif;color:#ffd166;margin-right:8px}
 #editor input:not([type]),#editor select{background:#0a1426;color:#e8effa;border:1px solid #33456a;border-radius:6px;padding:4px 6px;font:inherit}
 #editor input#edHint{width:320px}
-#editor .edmain{flex:1;display:flex;min-height:0}
+#editor .edmain{flex:1;display:flex;min-height:0;position:relative}
+#editor .edmov{position:absolute;top:10px;right:22px;z-index:20;display:flex;flex-wrap:wrap;align-items:center;gap:6px;max-width:min(520px,calc(100% - 40px));padding:8px 10px;background:#0f1a30f2;border:1px solid #ffd16688;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+#editor .edmov[hidden]{display:none}
+#editor .edmov b{color:#ffd166;font-size:12.5px}
+#editor .edmov button{padding:5px 9px;min-height:30px;font:600 13px Rubik,system-ui,sans-serif;color:#e8effa;background:#1d2a45;border:1px solid #3a4a6a;border-radius:7px;cursor:pointer}
+#editor .edmov button.on{background:#e7b54a;color:#0b1220;border-color:#ffd166}
+#editor .edmov small{flex-basis:100%;color:#9fb2cf;font-size:11.5px;line-height:1.3}
+body.touch #editor .edmov button{min-height:40px}
 #editor .edside{width:250px;display:flex;flex-direction:column;background:#0d1628;border-right:1px solid #22324f;min-height:0}
 #editor #edSearch{margin:8px;padding:7px 9px;border-radius:8px;background:#0a1426;color:#e8effa;border:1px solid #33456a;font:inherit}
 #editor .edpal{flex:1;overflow:auto;padding:0 6px 6px}
@@ -6517,11 +6524,11 @@ const ED=(()=>{
   const TOOLS=[
     ['Основа',[['.','Пусто','#0b1830'],['#','Стена','#5a6b85'],['^','Шипы','#ff6b6b'],['x','Треснувшая','#8a6a40'],['S','Секретная стена','#5a6b85'],['C','Ящик','#b07a42'],['1','Старт Искры','#ff8a3d'],['2','Старт Болта','#62c7c1'],['E','Выход 2×2','#7fe08a']]],
     ['Кнопки и двери',[['p','Кнопка жёлтая','#e7b54a'],['P','Дверь жёлтая','#e7b54a'],['U','Мост жёлтый','#e7b54a'],['q','Кнопка сиреневая','#c79bff'],['Q','Дверь сиреневая','#c79bff'],['V','Мост сиреневый','#c79bff'],['r','Кнопка зелёная','#7fe08a'],['R','Дверь зелёная','#7fe08a'],['W','Мост зелёный','#7fe08a']]],
-    ['Задачки',[['a','Кнопка порядка: красная','#ff6b6b'],['b','Кнопка порядка: зелёная','#7fe08a'],['c','Кнопка порядка: синяя','#6aa8ff'],['G','Решётка (откроет порядок)','#8fa3b8'],['k','Ключ','#ffd166'],['X','Замок','#c8962e'],['h','Рычаг','#cfd8e6'],['[','Красная платформа','#ff6b6b'],[']','Синяя платформа','#6aa8ff'],['g','Решётка ловушки (захлопнется)','#5a6b80'],['@trap','Место срабатывания ловушки','#ff3b4e']]],
-    ['Механики',[['I','Лёд','#9fe4f5'],['K','Ломкий мост','#9a6634'],['O','Портал вход','#c79bff'],['o','Портал выход','#5fe3d9'],['@wind','Ветер вверх','#cfe8ff'],['@mover','Летающая платформа (2 клика)','#cfd8e6'],['@flag','Флажок','#7fe08a'],['~','Вода (плавать, кислород)','#3f8fd6'],['*','Огонь (урон, свет)','#ff8a3d']]],
+    ['Задачки',[['a','Кнопка порядка: красная','#ff6b6b'],['b','Кнопка порядка: зелёная','#7fe08a'],['c','Кнопка порядка: синяя','#6aa8ff'],['k','Ключ','#ffd166'],['X','Замок','#c8962e'],['h','Рычаг','#cfd8e6'],['[','Красная платформа','#ff6b6b'],[']','Синяя платформа','#6aa8ff']]],
+    ['Механики',[['I','Лёд','#9fe4f5'],['K','Ломкий мост','#9a6634'],['O','Портал вход','#c79bff'],['o','Портал выход','#5fe3d9'],['@mover','Летающая платформа','#cfd8e6'],['@flag','Флажок','#7fe08a'],['~','Вода (плавать, кислород)','#3f8fd6'],['*','Огонь (урон, свет)','#ff8a3d']]],
     ['Свет',[['@lamp','Лампа','#ffd166'],['D','Дверь света','#ffd166']]],
     ...['Пол','Стены','Потолок','Эффекты'].map(gn=>['Декор: '+gn.toLowerCase(),Object.keys(DECOR).filter(k=>DECOR[k].g===gn).map(k=>['%'+k,DECOR[k].n,'#6a7d96'])]),
-    ['Враги и бонусы',[['@crawler','Жук','#ff6b6b'],['@big','Большой жук','#d65a5a'],['@flyer','Летун','#c79bff'],['@turret','Турель','#9cc3ff'],['@shield','Жук со щитом','#9cc3ff'],['@gear','Шестерёнка','#e7b54a'],['@heart','Сердце','#ff5fa2'],['@pshield','Щит','#9cc3ff'],['@triple','Тройной выстрел','#ffd166'],['@rapid','Скорострел','#ff8a3d'],['@power','Мощный выстрел','#c79bff']]],
+    ['Враги и бонусы',[['@crawler','Жук','#ff6b6b'],['@big','Большой жук','#d65a5a'],['@flyer','Летун','#c79bff'],['@turret','Турель','#9cc3ff'],['@shield','Жук со щитом','#9cc3ff'],['@gear','Шестерёнка','#e7b54a'],['@heart','Сердце','#ff5fa2'],['@pshield','Щит','#9cc3ff'],['@triple','Тройной выстрел','#ffd166'],['@rapid','Скорострел','#ff8a3d'],['@power','Мощный выстрел','#c79bff'],...Object.keys(BOSS_NAMES).map(k=>['@boss:'+k,'Босс: '+BOSS_NAMES[k],'#ff4d5e'])]],
   ];
   const COLOR={}; TOOLS.forEach(g=>g[1].forEach(t=>COLOR[t[0]]=t[2]));
   // свёрнутость категорий запоминается в браузере; декор по умолчанию свёрнут
@@ -6545,21 +6552,17 @@ const ED=(()=>{
     'r':['Зелёная кнопка.','Для зелёных дверей и мостов.','R, W.'],'R':['Зелёная дверь.','Открывается зелёной кнопкой.','r, «Двери на время».'],'W':['Зелёный мост.','Появляется от зелёной кнопки.','r, шипы.'],
     'a':['Кнопка порядка (красная).','Нажимать по порядку, указанному вверху («Порядок кнопок»). Ошибка — сначала.','Нужны все три (a, b, c) и решётка G.'],
     'b':['Кнопка порядка (зелёная).','Часть задачки «порядок кнопок».','a, c, решётка G.'],'c':['Кнопка порядка (синяя).','Часть задачки «порядок кнопок».','a, b, решётка G.'],
-    'G':['Решётка.','Исчезает, когда кнопки a-b-c нажаты в правильном порядке. Над ней в игре висит табличка с порядком.','Кнопки a, b, c.'],
     'S':['Секретная стена.','Выглядит как обычная стена. Открывается двумя выстрелами или ударом Болта сверху.','Спрячь за ней тайник с бонусами или короткий путь.'],
     'k':['Ключ.','Герой подбирает ключ, касаясь его. Ключ виден над головой.','Замок X. Ключ в сундуке из замков — хорошая задачка.'],
     'X':['Замок.','Исчезает весь (все соседние клетки X), если коснуться его с ключом. Ключ тратится.','Ключ k. Сундук: бонус за замком.'],
     'h':['Рычаг.','Касание переключает красные и синие платформы.','Красные [ и синие ] платформы. Ставьте рычаги и внизу, и наверху.'],
     '[':['Красная платформа.','Твёрдая, пока рычаг в начальном положении.','Рычаг h, синие платформы ].'],
     ']':['Синяя платформа.','Твёрдая после переключения рычага.','Рычаг h, красные платформы [.'],
-    'g':['Решётка ловушки.','Открыта, но захлопывается, когда оба героя пройдут «место срабатывания».','Место срабатывания (красная линия), треснувшая стена x как выход.'],
-    '@trap':['Место срабатывания ловушки.','Красная линия. Когда все герои правее неё — решётки g захлопываются.','Решётка ловушки g.'],
     'I':['Лёд.','Скользкий пол — трудно затормозить.','Шипы после льда, узкие уступы.'],
     'K':['Ломкий мост.','Рассыпается через полсекунды под ногами, потом вырастает.','Над шипами — нельзя стоять на месте.'],
     'O':['Портал (вход).','Войти — выйдешь из ближайшего портала-выхода o справа.','Портал-выход o. Сквозь стену.'],
     'o':['Портал (выход).','Сюда переносит портал-вход O слева. Работает и обратно.','Портал-вход O.'],
-    '@wind':['Ветер вверх.','Столб ветра шириной 3 клетки поднимает героев к высоким уступам.','Высокий уступ, шипы внизу.'],
-    '@mover':['Летающая платформа.','Кликните, где начинается, потом — куда едет. Ездит туда-обратно.','Шипы или пропасть под ней.'],
+    '@mover':['Летающая платформа.','Справа вверху выберите, куда она едет и как далеко, и кликните, где она стоит. Платформы рядом сливаются в одну длинную. Клик по платформе — сменить направление. Ездит туда-обратно.','Шипы или пропасть под ней, жёлтая кнопка.'],
     '@flag':['Флажок.','Контрольная точка: после падения герои появляются у него.','Длинные уровни — ставьте на границе экранов.'],
     '@crawler':['Жук.','Ползает по полу. Давится прыжком сверху или выстрелами.','Возле кнопок — мешает на них встать.'],
     '@big':['Большой жук.','Крепче обычного, ростом с Болта.','Узкие коридоры.'],
@@ -6570,10 +6573,18 @@ const ED=(()=>{
     '@heart':['Сердце.','Восстанавливает здоровье.','Перед трудным местом или в сундуке.'],'@pshield':['Щит.','Гасит один удар.','Перед врагами.'],
     '@triple':['Тройной выстрел.','Три снаряда веером на время.','Много врагов.'],'@rapid':['Скорострел.','Стреляет чаще на время.','Турели, щиты.'],'@power':['Мощный выстрел.','Пробивает насквозь.','Толпа врагов, треснувшие стены.'],
   };
+  for(const k in BOSS_NAMES) DESC['@boss:'+k]=['Босс: '+BOSS_NAMES[k]+'.','Уровень с боссом: арена в 1 экран. Кликните, куда поставить метку — босс один на уровень, новый заменит прежнего. Версию I–III выберите вверху в «Босс».','Сердца и щиты перед боем, шипы и платформы на арене.'];
   for(const k in DECOR) DESC['%'+k]=['Декор: '+DECOR[k].n.toLowerCase()+'.','Только украшение — не мешает героям. Наведите мышь на поставленный: Shift+колесо — размер, R — отразить, F — на передний план (поверх героев).','Любое место уровня. Бочки и ящики — на пол, трубы и щитки — на стены, цепи и лампы — к потолку.'];
+  function bossIco(g,k,X,Y,s){ const m=s*.08; g.lineJoin='round';
+    if(k==='toad'){ g.fillStyle='#4fae5a'; g.beginPath(); g.ellipse(X+s/2,Y+s*.62,s*.42,s*.3,0,0,7); g.fill(); for(const dx of [.34,.66]){ g.fillStyle='#fff'; g.beginPath(); g.arc(X+s*dx,Y+s*.34,s*.12,0,7); g.fill(); g.fillStyle='#1a2a1a'; g.beginPath(); g.arc(X+s*dx,Y+s*.36,s*.05,0,7); g.fill(); } }
+    else if(k==='eye'){ g.fillStyle='#e8effa'; g.beginPath(); g.arc(X+s/2,Y+s/2,s*.38,0,7); g.fill(); g.fillStyle='#ff4d5e'; g.beginPath(); g.arc(X+s/2,Y+s/2,s*.18,0,7); g.fill(); g.fillStyle='#1a0a10'; g.beginPath(); g.arc(X+s/2,Y+s/2,s*.08,0,7); g.fill(); }
+    else if(k==='gear'){ g.fillStyle='#c9892f'; g.beginPath(); for(let i=0;i<20;i++){ const a=i/20*Math.PI*2, r=i%2?s*.32:s*.42; g.lineTo(X+s/2+Math.cos(a)*r,Y+s/2+Math.sin(a)*r); } g.fill(); g.fillStyle='#0b1220'; g.beginPath(); g.arc(X+s/2,Y+s/2,s*.12,0,7); g.fill(); }
+    else if(k==='queen'){ g.fillStyle='#c0443a'; g.beginPath(); g.ellipse(X+s/2,Y+s*.64,s*.4,s*.26,0,0,7); g.fill(); g.fillStyle='#ffd166'; g.beginPath(); g.moveTo(X+s*.28,Y+s*.4); g.lineTo(X+s*.34,Y+s*.16); g.lineTo(X+s*.44,Y+s*.32); g.lineTo(X+s*.5,Y+s*.12); g.lineTo(X+s*.56,Y+s*.32); g.lineTo(X+s*.66,Y+s*.16); g.lineTo(X+s*.72,Y+s*.4); g.fill(); }
+    else { g.fillStyle='#5a6b85'; g.fillRect(X+m,Y+m,s-2*m,s-2*m); g.fillStyle='#ff4d5e'; g.beginPath(); g.arc(X+s/2,Y+s/2,s*.26,0,7); g.fill(); g.fillStyle='#ffd0d0'; g.beginPath(); g.arc(X+s/2,Y+s/2,s*.12,0,7); g.fill(); } }
   function ico(g,id,X,Y,s){ if(id[0]==='%'){ const D=DECOR[id.slice(1)]; if(!D) return; const k=Math.min(s*.9/(D.w*s),s*.9/(D.h*s)); const cs=s*k; g.save(); g.translate(X+s/2-D.w*cs/2-cs/2+cs/2,Y+s/2-D.h*cs/2); const d={t:id.slice(1),tx:0,ty:0}; const W=D.w*cs,H=D.h*cs; try{ D.d(g,W,H,performance.now()/1000); }catch(e){} g.restore(); return; }
     const c=COLOR[id]||'#888', m=s*.1; g.save(); g.lineJoin='round'; g.lineCap='round';
     const box=(col,r=0)=>{ g.fillStyle=col; g.fillRect(X+m,Y+m,s-2*m,s-2*m); };
+    if(id.startsWith('@boss:')){ bossIco(g,id.slice(6),X,Y,s); g.restore(); return; }
     switch(id){
       case '.': g.strokeStyle='#33456a'; g.setLineDash([3,3]); g.strokeRect(X+m,Y+m,s-2*m,s-2*m); break;
       case '#': box('#5a6b85'); g.strokeStyle='rgba(255,255,255,.18)'; g.lineWidth=1; for(let i=-s;i<s;i+=s/4){ g.beginPath(); g.moveTo(X+m+Math.max(0,i),Y+s-m-Math.max(0,-i)); g.lineTo(X+Math.min(s-m,i+s),Y+m+Math.max(0,i+s-s+m)); g.stroke(); } break;
@@ -6617,7 +6628,7 @@ const ED=(()=>{
     }
     g.restore(); }
   let lampOpt={mode:'touch',r:200}, hovDecor=null;
-  let L=null, tool='#', cell=32, zoom=0, touchErase=false, handMode=false, ptrs=new Map(), gest=null, pendT=0, el=null, cv2=null, g2=null, moverA=null, dirty=false, painting=0;
+  let L=null, tool='#', cell=32, zoom=0, touchErase=false, handMode=false, ptrs=new Map(), gest=null, pendT=0, el=null, cv2=null, g2=null, moverA=null, movOpt={dir:'r',len:4}, dirty=false, painting=0;
   const blankLevel=(w=32)=>{ const map=[...Array(ROWS)].map((_,y)=>[...Array(w)].map((_,x)=>(y===0||y===ROWS-1||x===0||x===w-1)?'#':'.'));
     map[16][2]='1'; map[16][3]='2'; for(const [x,y] of [[w-3,15],[w-2,15],[w-3,16],[w-2,16]]) map[y][x]='E';
     return {name:'Мой уровень',motif:NAMES[0],hue:null,dark:false,darkA:.94,hint:'',order:'abc',timed:{P:false,Q:false,R:false},map,enemies:[],pickups:[],movers:[],winds:[],flags:[],trapX:null,decor:[],lamps:[]}; };
@@ -6673,7 +6684,8 @@ const ED=(()=>{
     </div>
     <div class="edmain"><div class="edside"><input id="edSearch" placeholder="🔍 Поиск объекта…" autocomplete="off"><div class="edpal">${TOOLS.map(([gn,ts])=>`<div class="edgrp ${edCollapsed(gn)?'coll':''}" data-g="${gn}"><span class="edgh" data-gh="${gn}" role="button" tabindex="0" aria-expanded="${!edCollapsed(gn)}">${gn}<i>${edCollapsed(gn)?'▸':'▾'}</i></span>${ts.map(([id,n])=>`<button type="button" class="edt ${id===tool?'on':''}" data-tool="${id}" data-name="${(n+' '+(DESC[id]||[]).join(' ')).toLowerCase().replace(/"/g,'')}"><canvas width="28" height="28" data-ico="${id}"></canvas>${n}</button>`).join('')}</div>`).join('')}</div>
       <div class="edinfo" id="edInfo"></div></div>
-      <div class="edwrap"><canvas id="edCv"></canvas></div></div>
+      <div class="edwrap"><canvas id="edCv"></canvas></div>
+      <div class="edmov" id="edMov" hidden><b>Платформа едет:</b><button type="button" data-md="l">← влево</button><button type="button" data-md="r">→ вправо</button><button type="button" data-md="u">↑ вверх</button><button type="button" data-md="d">↓ вниз</button><b>Путь:</b><button type="button" data-ml="-1">−</button><b id="edMLen">4</b><button type="button" data-ml="1">+</button><small>Клик — поставить. Платформы рядом сливаются в одну. Клик по платформе — сменить ей направление.</small></div></div>
     <div class="edbot">
       <label>Подсказка уровня <input id="edHint" value="${(L.hint||'').replace(/"/g,'&quot;')}" placeholder="Что нужно сделать на уровне"></label>
       <button type="button" class="primary" id="edPlay2">▶ Тест вдвоём</button><button type="button" class="secondary" id="edPlayS">▶ Тест Искрой</button><button type="button" class="secondary" id="edPlayB">▶ Тест Болтом</button>
@@ -6701,7 +6713,11 @@ const ED=(()=>{
     q('#edDA').oninput=e=>{ L.darkA=+e.target.value/100; dirty=true; }; q('#edLM').onchange=e=>lampOpt.mode=e.target.value; q('#edLR').onchange=e=>lampOpt.r=+e.target.value;
     q('#edOrder').onchange=e=>{ L.order=e.target.value; dirty=true; paint(); };
     el.querySelectorAll('[data-timed]').forEach(c=>c.onchange=()=>{ L.timed[c.dataset.timed]=c.checked; dirty=true; });
-    el.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>{ tool=b.dataset.tool; moverA=null; el.querySelectorAll('.edt').forEach(x=>x.classList.toggle('on',x===b)); });
+    const syncMov=()=>{ const p=q('#edMov'); p.hidden=tool!=='@mover'; p.querySelectorAll('[data-md]').forEach(b=>b.classList.toggle('on',b.dataset.md===movOpt.dir)); q('#edMLen').textContent=movOpt.len; };
+    el.querySelectorAll('[data-md]').forEach(b=>b.onclick=()=>{ movOpt.dir=b.dataset.md; syncMov(); paint(); });
+    el.querySelectorAll('[data-ml]').forEach(b=>b.onclick=()=>{ movOpt.len=Math.max(1,Math.min(20,movOpt.len+(+b.dataset.ml))); syncMov(); paint(); });
+    el.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>{ tool=b.dataset.tool; moverA=null; el.querySelectorAll('.edt').forEach(x=>x.classList.toggle('on',x===b)); syncMov(); });
+    syncMov();
     q('#edPlay2').onclick=()=>test(false); q('#edPlayS').onclick=()=>test('spark'); q('#edPlayB').onclick=()=>test('bolt');
     q('#edSave').onclick=()=>{ const o=list(); const nm=(L.name||'Мой уровень').trim(); o[nm]=L; saveList(o); dirty=false; toastQ.push({small:'Конструктор',title:'Сохранено: '+nm}); showToast(); build(); };
     q('#edLoad').onclick=()=>{ const k=q('#edList').value; if(!k) return; L=Object.assign(blankLevel(),JSON.parse(JSON.stringify(list()[k]))); build(); };
@@ -6715,7 +6731,7 @@ const ED=(()=>{
     cv2.oncontextmenu=e=>e.preventDefault();
     const pickDecor=e=>{ const r=cv2.getBoundingClientRect(), px=e.clientX-r.left, py=e.clientY-r.top; hovDecor=[...L.decor].reverse().find(d=>{ const b=decorBox(d,cell); return b&&px>=b.x&&px<=b.x+b.w&&py>=b.y&&py<=b.y+b.h; })||null; };
     const mouseMove=e=>{ if(painting&&!tool.startsWith('@')&&tool[0]!=='%'&&tool!=='E'&&tool!=='1'&&tool!=='2') apply(e);
-      { const r=cv2.getBoundingClientRect(), px=e.clientX-r.left, py=e.clientY-r.top; hovDecor=[...L.decor].reverse().find(d=>{ const b=decorBox(d,cell); return b&&px>=b.x&&px<=b.x+b.w&&py>=b.y&&py<=b.y+b.h; })||null; } hover=cellAt(e); paint(); const [hx,hy]=hover; if(e) place(e); const id=hovDecor?'%'+hovDecor.t:L.lamps.find(o=>o.tx===hx&&o.ty===hy)?'@lamp':L.enemies.find(o=>o.tx===hx&&o.ty===hy)?'@'+L.enemies.find(o=>o.tx===hx&&o.ty===hy).t:L.pickups.find(o=>o.tx===hx&&o.ty===hy)?'@'+L.pickups.find(o=>o.tx===hx&&o.ty===hy).t:(L.map[hy]&&L.map[hy][hx]); if(id&&id!=='.'){ if(id!==lastHov){ lastHov=id; showInfo(id); } info.style.display='block'; } else { lastHov=null; hideInfo(); } };
+      { const r=cv2.getBoundingClientRect(), px=e.clientX-r.left, py=e.clientY-r.top; hovDecor=[...L.decor].reverse().find(d=>{ const b=decorBox(d,cell); return b&&px>=b.x&&px<=b.x+b.w&&py>=b.y&&py<=b.y+b.h; })||null; } hover=cellAt(e); paint(); const [hx,hy]=hover; if(e) place(e); const id=hovDecor?'%'+hovDecor.t:(L.boss&&bossHit(hx,hy))?'@boss:'+L.boss:L.lamps.find(o=>o.tx===hx&&o.ty===hy)?'@lamp':L.enemies.find(o=>o.tx===hx&&o.ty===hy)?'@'+L.enemies.find(o=>o.tx===hx&&o.ty===hy).t:L.pickups.find(o=>o.tx===hx&&o.ty===hy)?'@'+L.pickups.find(o=>o.tx===hx&&o.ty===hy).t:(L.map[hy]&&L.map[hy][hx]); if(id&&id!=='.'){ if(id!==lastHov){ lastHov=id; showInfo(id); } info.style.display='block'; } else { lastHov=null; hideInfo(); } };
     const wrap2=q('.edwrap');
     const gdist=()=>{ const a=[...ptrs.values()]; return Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)||1; }, gmid=()=>{ const a=[...ptrs.values()]; return {x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2}; };
     const startGest=()=>{ clearTimeout(pendT); painting=0; const m=gmid(); gest={d:gdist(),c:cell,mx:m.x,my:m.y,sl:wrap2.scrollLeft,st:wrap2.scrollTop}; };
@@ -6754,19 +6770,59 @@ const ED=(()=>{
   let hover=null, lastHov=null;
   function fitCell(){ const wrap=el.querySelector('.edwrap'); cell=zoom||Math.max(14,Math.floor((wrap.clientHeight-14)/ROWS)); cv2.width=L.map[0].length*cell; cv2.height=L.map.length*cell; }
   const cellAt=e=>{ const r=cv2.getBoundingClientRect(); return [Math.floor((e.clientX-r.left)/cell),Math.floor((e.clientY-r.top)/cell)]; };
+  // ---------- составные объекты: выход 2×2, платформы, флажок, метка босса ----------
+  const mvW=m=>m.w||2;
+  function moverBox(m){ const w=mvW(m), x0=Math.min(m.ax,m.bx), x1=Math.max(m.ax,m.bx)+w, y0=Math.min(m.ay,m.by), y1=Math.max(m.ay,m.by)+1; return {x:x0,y:y0,w:x1-x0,h:y1-y0}; }
+  function exitBox(){ let x0=1e9,y0=1e9,x1=-1,y1=-1; L.map.forEach((r,y)=>r.forEach((ch,x)=>{ if(ch==='E'){ x0=Math.min(x0,x); y0=Math.min(y0,y); x1=Math.max(x1,x); y1=Math.max(y1,y); } })); return x1<0?null:{x:x0,y:y0,w:x1-x0+1,h:y1-y0+1}; }
+  const bossBox=()=>{ const bp=L.bossPos||[15,5]; return {x:bp[0],y:bp[1],w:2,h:2}; };
+  function bossHit(x,y){ const b=bossBox(); return x>=b.x&&x<b.x+b.w&&y>=b.y&&y<b.y+b.h; }
+  function syncBossUI(){ if(!el) return; const s=el.querySelector('#edBoss'); if(s) s.value=L.boss||''; }
+  // что лежит под клеткой (x,y): рамка всего объекта + как его убрать целиком
+  function multiAt(x,y){ const inB=b=>x>=b.x&&x<b.x+b.w&&y>=b.y&&y<b.y+b.h;
+    const eb=exitBox(); if(eb&&inB(eb)) return {box:eb,rm:()=>{ L.map.forEach(r=>r.forEach((c,i)=>{ if(c==='E') r[i]='.'; })); }};
+    for(const m of L.movers){ const w=mvW(m); if((y===m.ay&&x>=m.ax&&x<m.ax+w)||(y===m.by&&x>=m.bx&&x<m.bx+w)) return {box:moverBox(m),rm:()=>{ L.movers=L.movers.filter(q=>q!==m); }}; }
+    if(L.boss&&bossHit(x,y)) return {box:bossBox(),rm:()=>{ L.boss=null; L.bossPos=null; syncBossUI(); }};
+    const fl=L.flags.find(f=>f===x); if(fl!==undefined&&y>=14&&y<=16) return {box:{x:fl,y:14,w:1,h:3},rm:()=>{ L.flags=L.flags.filter(f=>f!==x); }};
+    return null; }
+  // платформа: клик ставит её (как раньше 2 клетки), соседние сливаются; путь — по выбранному направлению
+  function moverCalc(x,y){ const W=L.map[0].length, H=L.map.length; if(y<1||y>H-2||x<1||x>W-2) return null;
+    let x0=x, x1=x+2; const near=L.movers.filter(m=>m.ay===y&&x0<=m.ax+mvW(m)&&x1>=m.ax);
+    for(const m of near){ x0=Math.min(x0,m.ax); x1=Math.max(x1,m.ax+mvW(m)); }
+    x0=Math.max(1,x0); x1=Math.min(W-1,x1); if(x1-x0<1) return null;
+    const dir=movOpt.dir, sx=dir==='r'?1:dir==='l'?-1:0, sy=dir==='d'?1:dir==='u'?-1:0; let k=movOpt.len;
+    if(sx>0) k=Math.min(k,W-1-x1); if(sx<0) k=Math.min(k,x0-1); if(sy>0) k=Math.min(k,H-2-y); if(sy<0) k=Math.min(k,y-1);
+    if(k<1) return null;
+    return {near,m:Object.assign(near[0]?Object.assign({},near[0]):{},{ax:x0,ay:y,bx:x0+sx*k,by:y+sy*k,w:x1-x0})}; }
+  function placeMover(x,y){ const r=moverCalc(x,y); if(!r){ toastQ.push({small:'Конструктор',title:'Тут нет места для платформы и её пути'}); showToast(); return; } L.movers=L.movers.filter(m=>!r.near.includes(m)); L.movers.push(r.m); }
+  function placeBoss(k,x,y){ if(L.map[0].length>32){ alert('Босс сражается только на уровне в 1 экран — длина уменьшена.'); resize(32); }
+    L.boss=k; L.bossV=L.bossV||1; L.bossPos=[Math.max(1,Math.min(L.map[0].length-3,x)),Math.max(1,Math.min(L.map.length-3,y))]; syncBossUI(); }
+  // что покажет пунктирная заготовка при наведении
+  function previewBox(x,y){ if(tool==='E') return {x,y:y-1,w:2,h:2};
+    if(tool==='@mover'){ const r=moverCalc(x,y); return r?moverBox(r.m):null; }
+    if(tool.startsWith('@boss:')) return {x,y,w:2,h:2}; return null; }
+  function drawMover(g,c,m,a){ const w=mvW(m), pw=w*c, th=c*.4; g.save(); g.globalAlpha=a;
+    const x0=m.ax*c+pw/2, y0=m.ay*c+c/2, x1=m.bx*c+pw/2, y1=m.by*c+c/2, len=Math.hypot(x1-x0,y1-y0);
+    if(len>1){ g.strokeStyle='rgba(255,209,102,.55)'; g.lineWidth=2; g.setLineDash([5,5]); g.beginPath(); g.moveTo(x0,y0); g.lineTo(x1,y1); g.stroke(); g.setLineDash([]); }
+    g.globalAlpha=a*.4; g.fillStyle='#cfd8e6'; g.fillRect(m.bx*c,m.by*c+c*.3,pw,th);   // куда доедет (бледная)
+    g.globalAlpha=a; g.fillRect(m.ax*c,m.ay*c+c*.3,pw,th); g.strokeStyle='#ffd166'; g.lineWidth=1.5; g.strokeRect(m.ax*c+.5,m.ay*c+c*.3+.5,pw-1,th-1);   // где стоит (яркая)
+    if(len>1){ const ang=Math.atan2(y1-y0,x1-x0), lead=Math.min(.45,(Math.abs(Math.cos(ang))*pw/2+Math.abs(Math.sin(ang))*th/2)/len+.03), n=Math.max(1,Math.round(len*(1-2*lead)/(c*1.1))), s=c*.22;
+      g.strokeStyle='#ffd166'; g.lineWidth=Math.max(2,c*.09); g.lineCap='round'; g.lineJoin='round';
+      for(let i=0;i<n;i++){ const u=lead+(1-2*lead)*(i+.5)/n, px=x0+(x1-x0)*u, py=y0+(y1-y0)*u; g.beginPath(); g.moveTo(px-Math.cos(ang-.6)*s,py-Math.sin(ang-.6)*s); g.lineTo(px,py); g.lineTo(px-Math.cos(ang+.6)*s,py-Math.sin(ang+.6)*s); g.stroke(); } }   // стрелки: куда едет
+    g.fillStyle='#ffd166'; g.beginPath(); g.arc(m.ax*c+pw/2,m.ay*c+c*.5,Math.max(2,c*.09),0,7); g.fill();   // точка — старт
+    g.restore(); }
   function apply(e){ const [x,y]=cellAt(e), W=L.map[0].length; if(x<0||y<0||x>=W||y>=L.map.length) return; const erase=painting===2;
     const inner=true, at=(o)=>o.tx===x&&o.ty===y;
     if(erase){ const px=(e.clientX-cv2.getBoundingClientRect().left), py=(e.clientY-cv2.getBoundingClientRect().top); const hit=[...L.decor].reverse().find(d=>{ const b=decorBox(d,cell); return b&&px>=b.x&&px<=b.x+b.w&&py>=b.y&&py<=b.y+b.h; });
-      if(hit){ L.decor=L.decor.filter(d=>d!==hit); dirty=true; paint(); return; } L.lamps=L.lamps.filter(o=>!at(o)); if(inner) L.map[y][x]='.'; L.enemies=L.enemies.filter(o=>!at(o)); L.pickups=L.pickups.filter(o=>!at(o)); L.flags=L.flags.filter(f=>f!==x); L.winds=L.winds.filter(w=>!(x>=w.tx&&x<w.tx+3)); L.movers=L.movers.filter(m=>!((m.ax===x&&m.ay===y)||(m.bx===x&&m.by===y))); if(L.trapX===x) L.trapX=null; }
+      if(hit){ L.decor=L.decor.filter(d=>d!==hit); dirty=true; paint(); return; } { const mo=multiAt(x,y); if(mo){ mo.rm(); dirty=true; paint(); return; } } L.lamps=L.lamps.filter(o=>!at(o)); if(inner) L.map[y][x]='.'; L.enemies=L.enemies.filter(o=>!at(o)); L.pickups=L.pickups.filter(o=>!at(o)); L.flags=L.flags.filter(f=>f!==x); L.winds=L.winds.filter(w=>!(x>=w.tx&&x<w.tx+3)); L.movers=L.movers.filter(m=>!((m.ax===x&&m.ay===y)||(m.bx===x&&m.by===y))); if(L.trapX===x) L.trapX=null; }
     else if(tool[0]==='%'){ L.decor.push({t:tool.slice(1),tx:x,ty:y,sc:1,fl:0,fr:0}); }
     else if(tool==='@lamp'){ L.lamps=L.lamps.filter(o=>!at(o)); const [m,k]=lampOpt.mode.split(':'); L.lamps.push({tx:x,ty:y,mode:m,key:k||null,r:lampOpt.r}); }
     else if(tool.startsWith('@')){ const t=tool.slice(1);
       if(['crawler','big','flyer','turret','shield'].includes(t)){ L.enemies=L.enemies.filter(o=>!at(o)); L.enemies.push({t,tx:x,ty:y}); }
       else if(['gear','heart','pshield','triple','rapid','power'].includes(t)){ L.pickups=L.pickups.filter(o=>!at(o)); L.pickups.push({t,tx:x,ty:y}); }
       else if(t==='flag'){ if(!L.flags.includes(x)) L.flags.push(x); }
-      else if(t==='wind'){ L.winds=L.winds.filter(w=>Math.abs(w.tx-x)>=3); L.winds.push({tx:x}); }
-      else if(t==='trap') L.trapX=x;
-      else if(t==='mover'){ if(!moverA) moverA=[x,y]; else { L.movers.push({ax:moverA[0],ay:moverA[1],bx:x,by:y}); moverA=null; } } }
+      else if(t==='mover') placeMover(x,y);
+      else if(t.startsWith('boss:')) placeBoss(t.slice(5),x,y); }
+
     else if(inner){ if(tool==='E'){ L.map.forEach(r=>r.forEach((c,i)=>{ if(c==='E') r[i]='.'; })); for(const [dx,dy] of [[0,0],[1,0],[0,-1],[1,-1]]) if(x+dx<W&&y+dy>=0) L.map[y+dy][x+dx]='E'; }
       else { if(tool==='1'||tool==='2') L.map.forEach(r=>r.forEach((c,i)=>{ if(c===tool) r[i]='.'; })); L.map[y][x]=tool; } }
     dirty=true; paint(); }
@@ -6784,19 +6840,23 @@ const ED=(()=>{
     { const ex=[]; L.map.forEach((r,y)=>r.forEach((ch,x)=>{ if(ch==='E') ex.push([x,y]); })); if(ex.length){ const x0=Math.min(...ex.map(e=>e[0])),y0=Math.min(...ex.map(e=>e[1])); g.fillStyle='#0a1222'; g.fillRect(x0*c,y0*c,2*c,2*c); ico(g,'E',x0*c,y0*c,2*c); } }
     for(const e of L.enemies) ico(g,'@'+e.t,e.tx*c,e.ty*c,c);
     for(const p of L.pickups) ico(g,'@'+p.t,p.tx*c,p.ty*c,c);
-    for(const m of L.movers){ g.strokeStyle='#cfd8e6'; g.lineWidth=3; g.beginPath(); g.moveTo(m.ax*c+c,m.ay*c+c/2); g.lineTo(m.bx*c+c,m.by*c+c/2); g.stroke(); g.lineWidth=1; g.fillStyle='#cfd8e6'; g.fillRect(m.ax*c,m.ay*c+c*.3,c*2,c*.4); g.globalAlpha=.4; g.fillRect(m.bx*c,m.by*c+c*.3,c*2,c*.4); g.globalAlpha=1; }
-    if(moverA){ g.strokeStyle='#ffd166'; g.strokeRect(moverA[0]*c,moverA[1]*c,c*2,c); }
+    if(L.boss){ const b=bossBox(); g.fillStyle='rgba(255,77,94,.14)'; g.fillRect(b.x*c,b.y*c,b.w*c,b.h*c); ico(g,'@boss:'+L.boss,b.x*c,b.y*c,2*c); g.font=`700 ${Math.max(9,Math.floor(c*.34))}px system-ui`; g.fillStyle='#ff9aa6'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(BOSS_NAMES[L.boss]||'Босс',(b.x+1)*c,(b.y+2)*c+c*.4); }
+    for(const m of L.movers) drawMover(g,c,m,1);
+
     for(const w of L.winds){ g.fillStyle='rgba(207,232,255,.18)'; g.fillRect(w.tx*c,3*c,3*c,14*c); }
     for(const x of L.flags){ g.strokeStyle='#cfd8e6'; g.lineWidth=2; g.beginPath(); g.moveTo(x*c,17*c); g.lineTo(x*c,14*c); g.stroke(); g.fillStyle='#7fe08a'; g.beginPath(); g.moveTo(x*c,14*c); g.lineTo(x*c+c,14.4*c); g.lineTo(x*c,14.9*c); g.fill(); g.lineWidth=1; }
     if(L.trapX!=null){ g.strokeStyle='#ff3b4e'; g.setLineDash([5,5]); g.lineWidth=2; g.beginPath(); g.moveTo(L.trapX*c,c); g.lineTo(L.trapX*c,17*c); g.stroke(); g.setLineDash([]); g.lineWidth=1; }
     for(const d of L.decor) if(d.fr){ g.globalAlpha=.85; drawDecorItem(g,d,d.tx*c,d.ty*c,tnow,c); g.globalAlpha=1; const b=decorBox(d,c); g.strokeStyle='rgba(127,224,138,.6)'; g.setLineDash([3,3]); g.strokeRect(b.x,b.y,b.w,b.h); g.setLineDash([]); }
     if(hovDecor){ const b=decorBox(hovDecor,c); g.strokeStyle='#ffd166'; g.strokeRect(b.x,b.y,b.w,b.h); }
-    if(hover){ g.strokeStyle='#ffd166'; g.lineWidth=2; g.strokeRect(hover[0]*c+1,hover[1]*c+1,c-2,c-2); g.lineWidth=1; }
+    if(hover){ const mo=multiAt(hover[0],hover[1]); g.strokeStyle='#ffd166'; g.lineWidth=2;
+      if(mo) g.strokeRect(mo.box.x*c+1,mo.box.y*c+1,mo.box.w*c-2,mo.box.h*c-2);   // весь объект целиком
+      else { const pv=previewBox(hover[0],hover[1]); if(pv){ if(tool==='@mover'){ const r=moverCalc(hover[0],hover[1]); if(r) drawMover(g,c,r.m,.55); } g.setLineDash([5,4]); g.strokeRect(pv.x*c+1,pv.y*c+1,pv.w*c-2,pv.h*c-2); g.setLineDash([]); } else g.strokeRect(hover[0]*c+1,hover[1]*c+1,c-2,c-2); }
+      g.lineWidth=1; }
   }
   // ---------- random level from the game's generator ----------
-  const RND_SETS=[['Задачки',['cdrop','detour','tdoor','order','trap','lever','key']],['Классика',['A','B','C','D','E','F','M','N','L']],['Механики',['ice','portal','crumble','wind']]];
+  const RND_SETS=[['Задачки',['cdrop','detour','tdoor','lever','key']],['Классика',['A','B','C','D','E','F','M','N','L']],['Механики',['ice','portal','crumble']]];
   const rndLabel=t=>(PZ_LABEL[t]||CHUNK_LABEL[t]||t);
-  let rndOpt={screens:2,lvl:5,foes:'mid',on:{cdrop:1,detour:1,tdoor:1,order:1,trap:1,lever:1,key:1,A:1,B:1,C:1,D:1,E:1,F:1,M:1,N:1,L:0,ice:0,portal:0,crumble:0,wind:0}};
+  let rndOpt={screens:2,lvl:5,foes:'mid',on:{cdrop:1,detour:1,tdoor:1,lever:1,key:1,A:1,B:1,C:1,D:1,E:1,F:1,M:1,N:1,L:0,ice:0,portal:0,crumble:0}};
   function randomize(){ const o=rndOpt, allowed=Object.keys(o.on).filter(k=>o.on[k]); if(!allowed.length){ alert('Отметьте хотя бы одну задачку.'); return; }
     const seed=Math.floor(Math.random()*1e6), Rr=rng(seed), pick=a=>a[Math.floor(Rr()*a.length)], n=o.lvl, once={order:0,trap:0};
     const parts=[]; for(let k=0;k<o.screens;k++){ const f=[]; for(let i=0;i<3;i++){ let t, g=0; do{ t=pick(allowed); g++; } while(g<30&&((once[t]!=null&&once[t]>0)||(f.includes(t)&&allowed.length>2))); if(once[t]!=null) once[t]++; f.push(t); } parts.push(genLevel(n,seed%997+k+1,f)); }
@@ -8149,7 +8209,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.07e';
+const GAME_VER='1.66.08e';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
