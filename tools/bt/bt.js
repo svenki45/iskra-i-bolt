@@ -52,8 +52,8 @@ const DEFS=[
    hint:'Лифт поднимается по шахте. Низкие пилы — прыгай, высокие — не прыгай, красные шипы на полу и стенах — отойди заранее. Болт: способность на земле сбивает пилы и прикрывает Искру.'},
   {kind:'boss',name:'Кузнец',desc:'босс-робот · три фазы, смэш и огонь',motif:'Литейная',hue:8,par:100,
    hint:'Огромный робот-Кузнец. Топот — волны по полу (перепрыгни), ракеты — уходи с красных полос, в ярости летят пилы. Болт: способность вблизи — смэш. Искра: стреляй и рывком жги. Три фазы!'},
-  {kind:'cart',name:'Ритм',desc:'гонка по бит · прыжок, пригибание, выстрел',motif:'Ржавый цех',hue:300,par:55,base:400,top:400,boost:0,lead:15,rhythm:true,beats:84,
-   hint:'Сверху едут ноты. Нота дошла до кружка — жми: ↑ прыжок, ↓ пригнись (держи), ✦ стреляй. Точно в бит — «ИДЕАЛЬНО!» и комбо. Ноты «вместе» — жмут оба.'},
+  {kind:'cart',name:'Ритм',desc:'ритм · жми в такт музыке',motif:'Ржавый цех',hue:300,par:55,base:400,top:400,boost:0,lead:15,rhythm:true,beats:84,
+   hint:'Препятствий нет — только музыка. Сверху едут ноты: дошла до кружка — жми ↑ прыжок, ↓ пригнись, ✦ выстрел. Точно в бит — «ИДЕАЛЬНО!» и комбо. Ноты «вместе» — жмут оба.'},
   {kind:'mag',name:'Магнит',desc:'гравитация вверх-вниз · потолок и пол',motif:'Масляный подвал',hue:190,par:65,
    hint:'Способность — перевернуть гравитацию: падаешь вверх и бежишь по потолку. Шипы на полу — беги по потолку, на потолке — по полу. Стены с щелью: проходи с той стороны, где щель. Прыжок — оттолкнуться.'},
   {kind:'relay',name:'Эстафета',desc:'вдвоём · несите друг друга · общий таймер',motif:'Литейная',hue:30,par:90,time:90,
@@ -98,9 +98,11 @@ function cartLevel(D){
   cols.push(Array(rows).fill('#'));
   const run=n=>{ for(let i=0;i<n;i++) cols.push(col()); };
   run(D.lead);
+  const GH=!!D.rhythm;   // «Ритм»: только ноты — препятствий на трассе нет, важно попадать в такт
   for(const tok of D.track.trim().split(/\s+/)){
     const k=tok[0], n=+tok.slice(1)||0;
     if(k==='r') run(n);
+    else if(GH&&(k==='w'||k==='g'||k==='p'||k==='T')){ const m=k==='p'?(n||2):1; obs.push({t:k==='g'?'duck':k==='T'?'shoot':'jump',x0:cols.length,x1:cols.length+m-1,ghost:true}); run(m); }
     else if(k==='w'){ const m=n||1; obs.push({t:'jump',x0:cols.length,x1:cols.length+m-1}); for(let i=0;i<m;i++){ const c=col(); c[16]='#'; cols.push(c); } }
     else if(k==='g'){ obs.push({t:'duck',x0:cols.length,x1:cols.length}); const c=col(); for(let y=TOP+1;y<=15;y++) c[y]='#'; strips.push(cols.length); cols.push(c); }
     else if(k==='p'){ const m=n||2; obs.push({t:'jump',x0:cols.length,x1:cols.length+m-1,pit:true}); for(let i=0;i<m;i++){ const c=col(); c[FL]='.'; cols.push(c); } }
@@ -1839,7 +1841,7 @@ function hud(){
     label(kmh+' км/ч',VW-T*1.2,VH-28,20,S.boost>0?'#c79bff':'#e8effa','right');
     if(S.boost>0) label('ТУРБО',VW-T*1.2,VH-54,13,'#ffb347','right');
     // знак «что впереди»
-    if(S.freeze<=0&&L.length){ const front=Math.max(...L.map(p=>p.x+p.w)), v=Math.max(S.v,180), wt=warnTime();
+    if(S.freeze<=0&&L.length&&!B.rhythm){ const front=Math.max(...L.map(p=>p.x+p.w)), v=Math.max(S.v,180), wt=warnTime();
       const o=B.obs.concat(S.dyn||[]).filter(o=>(o.x1+1)*T>front-8).sort((a,b)=>a.x0-b.x0)[0];
       if(o){ const tt=(o.x0*T-front)/v; if(tt<wt){
         const up=o.t==='jump', sh=o.t==='shoot', cue=sh?'fire':up?'jump':'ability';
