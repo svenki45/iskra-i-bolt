@@ -1476,14 +1476,19 @@ control=function(p,inp,dt){
     const dn=inp.ab||padDn(pi);
     if(p.down||p.dead) return _control(p,inp,dt);
     if(S.L.bt.rhythm) rhInput(p,inp,dn);
+    if(!S.L.bt.water&&!S.L.bt.surf){   // звук приземления капсулы
+      if(p.onGround){ if(p._cAir){ capLandSfx(p._cvy||0); } p._cAir=false; p._cvy=0; } else { p._cAir=true; p._cvy=Math.max(p._cvy||0,p.vy||0); } }
+    const dk0=p.duck;
     setDuck(p,dn&&p.wasGround&&!inp.jp);
+    if(!S.L.bt.water&&!S.L.bt.surf&&p.duck!==dk0) capDuckSfx(!!p.duck);
     const q=Object.assign({},inp,{dir:0,ab:false,ap:false,use:inp.use,nx:inp.nx});
     if(p.duck){ q.jump=false; q.jp=false; }
     if(!p.wasGround&&p.vy<0) q.jump=true;          // прыжок на доске всегда полный (без «короткого»)
     const wg=p.wasGround, vy0=p.vy;
     _control(p,q,dt);
     if(p.vy<vy0-300&&p.vy<=-600){   // одинаковая дуга прыжка у обоих героев
-      if(wg){ const cx=p.x+p.w/2, R=(S.L.bt.ramps||[]).find(r=>cx>=r.x*T&&cx<=(r.x+4)*T); if(R){ p.vy=-RJ; rampFx(p); } else p.vy=-JV; } else p.vy=-JV2; }
+      if(wg){ const cx=p.x+p.w/2, R=(S.L.bt.ramps||[]).find(r=>cx>=r.x*T&&cx<=(r.x+4)*T); if(R){ p.vy=-RJ; rampFx(p); } else p.vy=-JV; } else p.vy=-JV2; 
+      if(!S.L.bt.water&&!S.L.bt.surf) capJumpSfx(!wg); }
     p.face=1;
     if(dn&&!p.wasGround&&!p.onGround&&p.y+p.h<FL*T-4){   // ↓ в воздухе — резко вниз (успеть под ворота после прыжка)
       if(p.vy<900){ p.vy=900; p.cut=true; p.sx=.8; p.sy=1.25; }
@@ -1750,6 +1755,27 @@ function drawSurf(p){
   ctx.fillStyle='#1d2a40'; ctx.beginPath(); ctx.moveTo(-L/2+6,7); ctx.lineTo(-L/2+2,13); ctx.lineTo(-L/2+14,7); ctx.closePath(); ctx.fill();
   ctx.restore();
 }
+// ---- звуки капсулы: гул двигателя (зависит от скорости), прыжок-«пшшш», приземление, присед ----
+const capJumpSfx=second=>{ noise(second?2600:1600,.16,.05,'bandpass'); tone(second?520:300,second?1500:900,.16,'sawtooth',.03); if(second) tone(1200,1900,.08,'triangle',.025,.03); };
+const capLandSfx=vy=>{ if(vy<250) return; const k=clamp((vy-200)/700,0,1); tone(180,60,.11+.05*k,'sine',.05+.04*k); noise(900,.08,.04+.04*k,'lowpass'); tone(2400,1800,.03,'triangle',.015); };
+const capDuckSfx=dn=>{ if(dn){ noise(3200,.14,.045,'highpass'); tone(500,250,.1,'sawtooth',.02); } else tone(250,500,.08,'sawtooth',.015); };
+const CH={o1:null,o2:null,f:null,g:null,on:false};
+function capHumStart(){
+  if(CH.on||!actx||!sfxG) return; try{
+    CH.o1=actx.createOscillator(); CH.o2=actx.createOscillator(); CH.f=actx.createBiquadFilter(); CH.g=actx.createGain();
+    CH.o1.type='sawtooth'; CH.o2.type='triangle'; CH.f.type='lowpass'; CH.f.frequency.value=320; CH.g.gain.value=0;
+    CH.o1.connect(CH.f); CH.o2.connect(CH.f); CH.f.connect(CH.g); CH.g.connect(sfxG); CH.o1.start(); CH.o2.start(); CH.on=true; }catch(e){}
+}
+function capHumStop(){ if(!CH.on) return; try{ const t=actx.currentTime; CH.g.gain.cancelScheduledValues(t); CH.g.gain.setTargetAtTime(0,t,.05); const o1=CH.o1,o2=CH.o2; setTimeout(()=>{ try{ o1.stop(); o2.stop(); }catch(e){} },400); }catch(e){} CH.on=false; }
+setInterval(()=>{
+  const want=!!(S.on&&S.kind==='cart'&&state==='play'&&!intro&&!document.hidden&&S.L&&S.L.bt&&!S.L.bt.water&&!S.L.bt.surf&&S.v>20);
+  if(!want){ capHumStop(); return; }
+  capHumStart(); if(!CH.on) return;
+  try{ const t=actx.currentTime, v=clamp(S.v,0,520), f=62+v*.17+(S.boost>0?26:0);
+    CH.o1.frequency.setTargetAtTime(f,t,.08); CH.o2.frequency.setTargetAtTime(f*1.5,t,.08); CH.f.frequency.setTargetAtTime(260+v*1.1,t,.1);
+    CH.g.gain.setTargetAtTime(.024+v*.00006+(S.boost>0?.012:0),t,.1); }catch(e){}
+},90);
+
 // ---- латунная ховер-капсула: герой сидит внутри, под низкой преградой прячется ----
 const CAP_SC=[1.4,1.2];
 function capGeom(p){ const SC=CAP_SC, dk=p._dk||0, sy=SC[1], lift=3-11*sy, y0=p.y+p.h-5, top=y0+lift-13*sy; return {sy,lift,top,y0}; }
