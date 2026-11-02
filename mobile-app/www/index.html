@@ -5964,8 +5964,9 @@ const R3D=(()=>{
     // тёмная обводка у ЗАДНЕГО края блоков: там, где блок «врастает» в стену-фон (кажется, что блок прикреплён к фону) + мягкая тень вокруг
     { const SOL='#SxZYKXD', tk=3, tw=14, dk=[], sf=[];
       const q=(arr,x0,y0,x1,y1)=>{ arr.push(x0,-y0,0, x1,-y0,0, x1,-y1,0, x0,-y0,0, x1,-y1,0, x0,-y1,0); };
-      for(let y=0;y<grid.length;y++) for(let x=0;x<COLS;x++){ const ch=grid[y][x]; if(!ch||!SOL.includes(ch)) continue;
-        const sd=(dx,dy)=>{ const g=grid[y+dy]&&grid[y+dy][x+dx]; return !!g&&SOL.includes(g); }, px=x*T, py=y*T;
+      const nearWater=(x0,y0)=>{ for(let j=-1;j<=1;j++) for(let i=-1;i<=1;i++) if(wch(x0+i,y0+j)==='~') return true; return false; };   // у воды обводки нет совсем
+      for(let y=0;y<grid.length;y++) for(let x=0;x<COLS;x++){ const ch=grid[y][x]; if(!ch||!SOL.includes(ch)||nearWater(x,y)) continue;
+        const sd=(dx,dy)=>{ const g=grid[y+dy]&&grid[y+dy][x+dx]; return !!g&&(SOL.includes(g)||g==='~'); }, px=x*T, py=y*T;
         for(const [arr,w] of [[dk,tk],[sf,tw]]){
           const l=sd(-1,0)?0:w, r=sd(1,0)?0:w, u=sd(0,-1)?0:w, d=sd(0,1)?0:w;
           if(u) q(arr,px-l,py-u,px+T+r,py);
@@ -8209,7 +8210,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.08e';
+const GAME_VER='1.66.09e';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
