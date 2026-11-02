@@ -1159,9 +1159,9 @@ function landSounds(dt){
       const k=Math.min(1,Math.abs(p._pvy2||p.vy||0)/600); noise(1200,.2+.12*k,.04+.05*k,'lowpass'); tone(big?420:560,big?170:240,.1+.08*k,'sine',.025+.03*k); if(w&&k>.4) noise(3000,.1,.03,'highpass',.04); }
     p._wasW=w; p._pvy2=p.vy||0;
     if(!g){ p._air=true; p._pvy=Math.max(p._pvy||0,p.vy||0); }
-    else { if(p._air&&!w&&!noSt){ const vy=p._pvy||0; if(vy>240){ const k=Math.min(1,(vy-200)/700);
+    else { if(p._air&&!w&&!noSt){ const vy=p._pvy||0; if(vy>300&&performance.now()-(p._landT||0)>140){ p._landT=performance.now(); const k=Math.min(1,(vy-250)/700);
         if(big){ noise(900,.07+.05*k,.035+.04*k,'lowpass'); tone(130,60,.09+.05*k,'triangle',.04+.04*k); tone(1700,1300,.03,'square',.008+.01*k); }
-        else { noise(2200,.04+.03*k,.02+.025*k,'bandpass'); tone(300,170,.05+.03*k,'triangle',.022+.025*k); } } }
+        else { noise(2200,.05+.03*k,.03+.025*k,'bandpass'); tone(300,170,.06+.03*k,'triangle',.03+.025*k); } } }
       p._air=false; p._pvy=0; }
   }
 }
@@ -8284,7 +8284,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.19e';
+const GAME_VER='1.66.20e';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
