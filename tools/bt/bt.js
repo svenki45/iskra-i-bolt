@@ -770,7 +770,8 @@ function rhInput(p,inp,dn){ const R=S.rh; if(!R||S.freeze>0||p.dead||p.down) ret
     const perf=bd<=RH_PERF; best.st[k]=perf?'p':'g'; R.combo++; R.best=Math.max(R.best,R.combo);
     R.score+=Math.round((perf?100:50)*(1+Math.min(R.combo,50)/10)); R.flash[k]=.35;
     R.pops.push({k,t:perf?'ИДЕАЛЬНО!':'ХОРОШО',c:perf?'#ffe27a':'#9cc3ff',life:.7});
-    if(perf) tone(1320,1760,.07,'triangle',.03); }
+    if(perf) tone(1320,1760,.07,'triangle',.03);
+    if(a==='f'&&!best.boom){ best.boom=.01; const bx=best.x+RH_PRE+20, by=FL*T-46; burst(bx,by,22,['#ffd166','#ff8a3d','#fff'],320,.5); sfx('kill'); shake=Math.max(shake,3); } }
 }
 function rhMiss(L){ const R=S.rh; if(!R) return; const v=Math.max(S.v,1);
   for(const p of L){ if(p.absent) continue; const k=p.kind, e=p.x+p.w;
@@ -778,15 +779,39 @@ function rhMiss(L){ const R=S.rh; if(!R) return; const v=Math.max(S.v,1);
       if(n.st[k]&&n.x-e>300) n.st[k]=null;          // откатились к флажку — ноты снова впереди
       else if(!n.st[k]&&S.freeze<=0&&(e-n.x)/v>RH_GOOD+.05&&e-n.x<400){ n.st[k]='m';
         if(n.a==='f'&&B_shotDead(n)) continue;          // мишень уже сбита напарником — не промах
-        R.combo=0; R.pops.push({k,t:'МИМО',c:'#ff7a8a',life:.6}); } } }
+        R.combo=0; R.pops.push({k,t:'МИМО',c:'#ff7a8a',life:.6});
+        if(n.a!=='f'){ p.sx=1.25; p.sy=.75; burst(p.x+p.w/2,p.y+p.h*.4,12,['#ff7a8a','#fff'],200,.35); tone(220,110,.12,'square',.04); shake=Math.max(shake,4); n.bonk=.5; } } } }
 }
 function B_shotDead(n){ const B=S.L.bt; return (B.shoots||[]).some(c=>c.dead&&Math.abs(c.x*T-RH_PRE-n.x)<2); }
+
+/* реквизит «Ритма»: только картинка (без столкновений) и строго на месте ноты —
+   ↑ низкий барьер, который перепрыгивают; ↓ луч-пила над головой, под которым пригибаются; ✦ дрон, которого сбивают выстрелом */
+function drawRhProps(){
+  const R=S.rh; if(!R||!players) return; const fy=FL*T, P=players.filter(p=>!p.absent), lead=P.length?Math.max(...P.map(p=>p.x)):0;
+  for(const n of R.notes){ const x=n.x+RH_PRE; if(n.bonk) n.bonk=Math.max(0,n.bonk-1/60);
+    if(x<lead-VW||x>lead+VW*1.5) continue;
+    ctx.save();
+    if(n.a==='j'){ // барьер: шипастый валик на подставках
+      ctx.fillStyle='#3a2a44'; ctx.fillRect(x+2,fy-30,6,30); ctx.fillRect(x+T-8,fy-30,6,30);
+      ctx.fillStyle=n.bonk>0?'#ff7a8a':'#c79bff'; rr(ctx,x-2,fy-40,T+4,16,8); ctx.fill(); ctx.fillStyle='#ffd166'; for(let i=0;i<4;i++){ ctx.beginPath(); ctx.moveTo(x+i*11,fy-40); ctx.lineTo(x+i*11+5,fy-50); ctx.lineTo(x+i*11+10,fy-40); ctx.fill(); } }
+    else if(n.a==='d'){ // луч над головой: стойки и пульсирующий лазер
+      const y=fy-74, a=.6+.4*Math.sin(clock*24); ctx.fillStyle='#2a3648'; ctx.fillRect(x-4,y-120,10,124); ctx.fillRect(x+T-6,y-120,10,124);
+      ctx.globalAlpha=a; ctx.fillStyle=n.bonk>0?'#ffffff':'#ff4d6d'; ctx.shadowColor='#ff4d6d'; ctx.shadowBlur=14*GLOW; ctx.fillRect(x-60,y,T+120,8); ctx.shadowBlur=0; ctx.globalAlpha=1; }
+    else if(n.a==='f'){ // дрон: висит на высоте выстрела; сбит — разлетается
+      const who=n.who==='bolt'?'#62c7c1':'#ff8a3d';
+      if(n.boom){ n.boom+=1/60; if(n.boom<.6){ ctx.globalAlpha=1-n.boom/.6; ctx.fillStyle='#ffd166'; for(let i=0;i<6;i++){ const a=i/6*Math.PI*2; ctx.fillRect(x+20+Math.cos(a)*n.boom*90-4,fy-46+Math.sin(a)*n.boom*90-4,8,8); } } }
+      else { const y=fy-46+Math.sin(clock*6+x)*4; ctx.fillStyle='#4a5672'; rr(ctx,x+2,y-14,36,26,9); ctx.fill(); ctx.strokeStyle=who; ctx.lineWidth=3; ctx.stroke();
+        ctx.fillStyle='#ff4d5e'; ctx.beginPath(); ctx.arc(x+12,y-1,4,0,7); ctx.fill(); ctx.strokeStyle='#9aa7b4'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x+6,y-16); ctx.lineTo(x+34,y-16); ctx.stroke();
+        ctx.save(); ctx.translate(x+20,y-18); ctx.rotate(clock*30); ctx.fillStyle='#c7d3dd'; ctx.fillRect(-14,-1.5,28,3); ctx.restore(); } }
+    ctx.restore(); }
+}
 function rhSync(lead){   // музыка «Ритма» идёт строго по ударам трассы
   const k=(lead+RH_PRE)/T/5-16/5, b=Math.floor(k); if(S.beatN!==b){ S.beatN=b; S.beatT=0; } S.beatT=(S.beatT||0);
   if(!actx||!music.song||SONGS[music.song]!==SONGS.rhythm||S.freeze>0||S.v<50) return;
   const s16=60/SONGS.rhythm.bpm/4, want=(k+14)*4, now=actx.currentTime, virt=music.step-(music.next-now)/s16;
   if(Math.abs(virt-want)*s16>.06){ const st=Math.ceil(want); music.step=st; music.next=now+(st-want)*s16; } }
 function rhHud(L){ const R=S.rh; if(!R) return; const dt=1/60;
+  { const V=draw.view; if(V){ ctx.save(); ctx.translate(V.ox,V.oy); ctx.scale(V.z||1,V.z||1); try{ drawRhProps(); }catch(e){ if(!window.__rpe){ window.__rpe=1; console.warn("rhprops",String(e)); } } ctx.restore(); } }   // реквизит в мире (и в 3D, и в 2D)
   const two=L.filter(p=>!p.absent).length>1, lanes=two?['spark','bolt']:[L.find(p=>!p.absent).kind];
   const x0=170, x1=VW-170, hx=x0+120, pxs=230, v=Math.max(S.v,1), lead=Math.max(...L.map(q=>q.x+q.w)), kb=(lead+RH_PRE)/T/5-16/5, pu=Math.pow(1-(kb-Math.floor(kb)),2);
   ctx.save();
