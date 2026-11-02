@@ -1851,8 +1851,7 @@ function drawCue(cue,txt,k,col){
   if(cue==='jump'){ ctx.moveTo(ax,-22); ctx.lineTo(ax+22,10); ctx.lineTo(ax-22,10); } else if(cue==='ability'){ ctx.moveTo(ax,22); ctx.lineTo(ax+22,-10); ctx.lineTo(ax-22,-10); } else { ctx.arc(ax,0,18,0,7); }
   ctx.closePath(); ctx.fill();
   ctx.restore();
-  label(txt,cx+34,cy-8,txt.length>9?19:24,col); 
-  const hint=touchUI&&touchUI.on?(cue==='jump'?'жми ▲':cue==='ability'?'жми ➤':'жми ✦'):('кнопка '+(keyName(cue)||'')); label(hint,cx+34,cy+22,15,'#e8effa');
+  label(txt,cx+34,cy+1,txt.length>9?19:24,col);   // только знак направления и что впереди — без «жми …» / «кнопка …»
 }
 
 // единая плашка-подсказка: стеклянные «чипсы» внизу, плавно появляются и тают; на сенсоре клавиши заменяются значками кнопок
