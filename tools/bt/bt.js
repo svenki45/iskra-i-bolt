@@ -626,7 +626,21 @@ function drawWire(B){
   const V=viewRect(), t=clock; ctx.save();
   const x0=Math.max(T,Math.floor(V.x/T)*T-T), x1=Math.min(B.finishX*T,V.x+V.w+T);
   for(let l=0;l<3;l++){ const y=LYW[l]; ctx.strokeStyle='#2b3448'; ctx.lineWidth=5; ctx.beginPath(); ctx.moveTo(x0,y); ctx.lineTo(x1,y); ctx.stroke(); ctx.strokeStyle='#8fa3b8'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x0,y-1); ctx.lineTo(x1,y-1); ctx.stroke(); }
-  for(let c=Math.floor(x0/T/12)*12;c*T<x1;c+=12){ const x=c*T; ctx.fillStyle='#46525f'; ctx.fillRect(x-4,LYW[0]-30,8,LYW[2]-LYW[0]+60); ctx.fillStyle='#6b7886'; for(let l=0;l<3;l++) ctx.fillRect(x-14,LYW[l]-4,28,8); }
+  for(let c=Math.floor(x0/T/12)*12;c*T<x1;c+=12){ const x=c*T, top=LYW[0]-52, bot=LYW[2]+34;
+    // опора ЛЭП: решётчатая башня
+    ctx.strokeStyle='#4b5866'; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(x-9,bot); ctx.lineTo(x-4,top); ctx.moveTo(x+9,bot); ctx.lineTo(x+4,top); ctx.stroke();
+    ctx.lineWidth=2; ctx.strokeStyle='#5d6b7a'; ctx.beginPath(); const n=Math.round((bot-top)/34);
+    for(let k=0;k<n;k++){ const ya=top+(bot-top)*k/n, yb=top+(bot-top)*(k+1)/n, wa=4+5*k/n, wb=4+5*(k+1)/n; ctx.moveTo(x-wa,ya); ctx.lineTo(x+wb,yb); ctx.moveTo(x+wa,ya); ctx.lineTo(x-wb,yb); ctx.moveTo(x-wb,yb); ctx.lineTo(x+wb,yb); }
+    ctx.stroke();
+    ctx.fillStyle='#4b5866'; ctx.beginPath(); ctx.moveTo(x,top-16); ctx.lineTo(x+5,top); ctx.lineTo(x-5,top); ctx.closePath(); ctx.fill();
+    for(let l=0;l<3;l++){ const ay=LYW[l]-36;
+      ctx.fillStyle='#5d6b7a'; ctx.fillRect(x-34,ay-3,68,6);   // траверса
+      for(const sx of [-28,28]){ const ix=x+sx;
+        ctx.fillStyle='#3a4553'; ctx.fillRect(ix-3,ay+3,6,5);   // подвес
+        for(let d=0;d<5;d++){ const dy=ay+9+d*5.4;              // тарелки изолятора
+          ctx.fillStyle='#cdd7e0'; ctx.beginPath(); ctx.ellipse(ix,dy,10,3.4,0,0,7); ctx.fill();
+          ctx.fillStyle='#8c9aa8'; ctx.beginPath(); ctx.ellipse(ix,dy+1.6,10,2,0,0,Math.PI); ctx.fill(); }
+        ctx.fillStyle='#3a4553'; ctx.fillRect(ix-3,LYW[l]-6,6,8); } } }
   for(const f of B.flags){ const x=f.x*T, y=LYW[0]-60; if(x<V.x-60||x>V.x+V.w+60) continue; ctx.strokeStyle='#c7d3dd'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x,y+30); ctx.stroke(); ctx.fillStyle=f.on?'#7fe08a':'#6f8191'; ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+30,y+8); ctx.lineTo(x,y+18); ctx.closePath(); ctx.fill(); }
   for(const o of B.obs){ if(o.dead||o.x*T<V.x-60||o.x*T>V.x+V.w+60) continue; for(const ln of o.lanes){ const cx=o.x*T+21, cy=LYW[ln]-30, a=t*14+o.x;
       ctx.save(); const gr=ctx.createRadialGradient(cx,cy,2,cx,cy,26); gr.addColorStop(0,'rgba(255,255,255,.95)'); gr.addColorStop(.5,'rgba(120,220,255,.6)'); gr.addColorStop(1,'rgba(60,140,255,0)'); ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(cx,cy,26,0,7); ctx.fill();
