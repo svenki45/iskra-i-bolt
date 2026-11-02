@@ -1764,7 +1764,10 @@ function capHero(f,p){
   const vis=ov?Math.min(allowed, heroH*.55):heroH*.6;
   const feet=G.top+hv+(heroH-vis);
   ctx.save(); ctx.beginPath(); ctx.rect(p.x-80,p.y-300,p.w+160,(G.top+hv+3)-(p.y-300)); ctx.clip();
-  p._capGap=ov?Math.max(0,(feet-heroH)-gapTop):null; ctx.translate(0,feet-(p.y+p.h)); f(p); ctx.restore(); p._capGap=null;
+  p._capGap=ov?Math.max(0,(feet-heroH)-gapTop):null;
+  const LK=looks[p.kind], lk0=LK.limbs; LK.limbs='off';   // свои руки: герой держится за штурвал, а не машет
+  ctx.translate(0,feet-(p.y+p.h)-(p.kind==='bolt'?8:6)); f(p); ctx.restore(); LK.limbs=lk0; p._capGap=null;
+  p._arm={sy:feet-(p.kind==='bolt'?8:6)-heroH*(p.kind==='bolt'?.34:.4), top:G.top+hv};
   p.h=h; p.y=y; p.sx=sx; p.sy=sy;
 }
 function drawCapsule(p){
@@ -1789,9 +1792,22 @@ function drawCapsule(p){
   ctx.restore();
 }
 
+// штурвал на носу капсулы и руки героя на нём (руки не машут — держатся)
+function drawWheelArms(p){
+  const G=capGeom(p), hv=Math.sin(clock*6)*1.2, bolt=p.kind==='bolt', L=bolt?56:46, cx=p.x+p.w/2, y0=p.y+p.h-5;
+  const wx=cx+(L/2-11)*CAP_SC[0], wy=y0+hv+G.lift-15*G.sy, col=mixHex(skinOf(p.kind).body,'#000000',.32), tilt=-.25+Math.sin(clock*3)*.03;
+  ctx.save(); ctx.lineCap='round';
+  ctx.strokeStyle='#6b3b1f'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(wx-1,y0+hv+G.lift-12*G.sy); ctx.lineTo(wx,wy+3); ctx.stroke();   // колонка
+  const A=p._arm, show=A&&A.sy<A.top-3;
+  if(show){ for(const k of [1]){ const hx=wx+1.2, hy=wy+3.2, sx=cx+p.w*.36, sy=A.sy;
+      ctx.strokeStyle=col; ctx.lineWidth=bolt?5:3.4; ctx.beginPath(); ctx.moveTo(sx,sy); ctx.quadraticCurveTo(sx+(hx-sx)*.5,sy+(hy-sy)*.2+3,hx,hy); ctx.stroke(); } }
+  ctx.save(); ctx.translate(wx,wy); ctx.rotate(tilt); ctx.strokeStyle='#e7c46a'; ctx.lineWidth=2; ctx.beginPath(); ctx.ellipse(0,0,2.4,6.6,0,0,7); ctx.stroke(); ctx.strokeStyle='#8a5530'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(0,-6); ctx.lineTo(0,6); ctx.stroke(); ctx.restore();
+  if(show){ for(const k of [0,1]){ const hx=wx+(k?1.2:-1.2), hy=wy+(k?3.2:-3.2); ctx.fillStyle=bolt?'#c7d3dd':col; ctx.beginPath(); ctx.arc(hx,hy,bolt?3.4:2.6,0,7); ctx.fill(); } }
+  ctx.restore();
+}
 function drawBoard(p){
   if(S.L.bt.surf) return drawSurf(p);
-  return drawCapsule(p);
+  drawCapsule(p); drawWheelArms(p);
 }
 function drawBoardOld(p){
   const x=p.x+p.w/2, y=p.y+p.h-5, L=p.kind==='bolt'?56:46, c=p.kind==='bolt'?'#62c7c1':'#ff8a3d', sp=S.v;
