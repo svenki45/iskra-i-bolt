@@ -2182,7 +2182,7 @@ function lvInfo(i){
   return {name,desc,tag,par};
 }
 (()=>{
-  if(window.matchMedia&&matchMedia('(hover: none)').matches) return;   // на телефоне нажатие сразу запускает уровень — плашка не нужна
+  const TOUCH=!!(window.matchMedia&&matchMedia('(hover: none)').matches);   // телефон: короткое нажатие запускает уровень, а если ЗАЖАТЬ кнопку — показывается описание
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   let tip=null, cur=null;
   const hide=()=>{ cur=null; if(tip) tip.classList.remove('on'); };
@@ -2202,11 +2202,26 @@ function lvInfo(i){
     tip.style.left=x+'px'; tip.style.top=y+'px'; tip.style.setProperty('--ax',(r.left+r.width/2-x)+'px'); tip.classList.toggle('below',below);
   };
   const lvb=t=>t&&t.closest?t.closest('.lvb'):null;
+  if(TOUCH){
+    let timer=0, held=false, hideT=0;
+    const st=document.createElement('style'); st.textContent='.lvb{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}'; document.head.appendChild(st);
+    document.addEventListener('touchstart',e=>{ clearTimeout(timer); const b=lvb(e.target);
+      if(!b){ if(cur) hide(); return; }
+      held=false; clearTimeout(hideT);
+      timer=setTimeout(()=>{ held=true; show(b); if(navigator.vibrate) try{ navigator.vibrate(15); }catch(_){ } },420); },{passive:true,capture:true});
+    const end=()=>{ clearTimeout(timer); if(held){ clearTimeout(hideT); hideT=setTimeout(hide,2500); } };
+    document.addEventListener('touchend',end,true); document.addEventListener('touchcancel',()=>{ clearTimeout(timer); hide(); held=false; },true);
+    document.addEventListener('touchmove',e=>{ if(!held){ clearTimeout(timer); } },{passive:true,capture:true});
+    // после долгого нажатия «клик» не должен запускать уровень
+    document.addEventListener('click',e=>{ if(held&&lvb(e.target)){ e.stopImmediatePropagation(); e.preventDefault(); held=false; } },true);
+    document.addEventListener('contextmenu',e=>{ if(lvb(e.target)) e.preventDefault(); },true);
+  } else {
   document.addEventListener('mouseover',e=>{ const b=lvb(e.target); if(b&&b!==cur) show(b); });
   document.addEventListener('mouseout',e=>{ const b=lvb(e.target); if(b&&b===cur&&!b.contains(e.relatedTarget)) hide(); });
   document.addEventListener('focusin',e=>{ const b=lvb(e.target); if(b) show(b); });
   document.addEventListener('focusout',e=>{ if(lvb(e.target)) hide(); });
   document.addEventListener('mousedown',hide,true);
+  }
   setInterval(()=>{ if(cur&&!document.body.contains(cur)) hide(); },250);   // экран сменился, а кнопки уже нет
 })();
 
