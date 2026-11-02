@@ -2782,16 +2782,16 @@ function envTick(p,dt){
     if(p.air<=0){ p.drownT=(p.drownT||0)-dt; if(p.drownT<=0){ p.drownT=1.2; if(p.inv<=0){ hurt(p); texts.push({x:p.x+p.w/2,y:p.y-20,t:'НЕТ ВОЗДУХА!',life:.9,c:'#9fe4f5'}); } } }
   } else { p.air=Math.min(OXY_MAX,p.air+dt*4); p.drownT=0; }
 }
-function drawWaterTint(){ if(!g3) return; ctx.save(); ctx.fillStyle='rgba(40,120,210,.12)'; ctx.beginPath(); for(let y=0;y<grid.length;y++) for(let x=0;x<COLS;x++) if(grid[y][x]==='~') ctx.rect(x*T,y*T,T,T); ctx.fill(); ctx.restore(); }   // герои, плавающие в воде, чуть подкрашены (герои рисуются поверх 3D)
+function drawWaterTint(){ if(!g3) return; ctx.save(); ctx.fillStyle='rgba(40,120,210,.12)'; ctx.beginPath(); for(let y=0;y<grid.length;y++) for(let x=0;x<COLS;x++) if(isWat(x,y)) ctx.rect(x*T,y*T,T,T); ctx.fill(); ctx.restore(); }   // герои, плавающие в воде, чуть подкрашены (герои рисуются поверх 3D)
 function drawWaterFire(){
   if(g3) return;
   const t=clock;
   { ctx.save(); ctx.fillStyle='rgba(40,120,210,.38)'; ctx.beginPath(); let any=false;
-    for(let y=0;y<grid.length;y++){ for(let x=0;x<COLS;x++){ if(grid[y][x]!=='~') continue; let x2=x; while(x2+1<COLS&&grid[y][x2+1]==='~') x2++; ctx.rect(x*T-.5,y*T-.5,(x2-x+1)*T+1,T+1); any=true; x=x2; } }
+    for(let y=0;y<grid.length;y++){ for(let x=0;x<COLS;x++){ if(!isWat(x,y)) continue; let x2=x; while(x2+1<COLS&&isWat(x2+1,y)) x2++; ctx.rect(x*T-.5,y*T-.5,(x2-x+1)*T+1,T+1); any=true; x=x2; } }
     if(any) ctx.fill(); ctx.restore(); }   // вода одной заливкой (раньше по клеткам: между ними были видны швы)
   for(let y=0;y<grid.length;y++) for(let x=0;x<COLS;x++){ const c=grid[y][x];
-    if(c==='~'){ const X=x*T, Y=y*T;
-      if(!grid[y-1]||grid[y-1][x]!=='~'){ ctx.strokeStyle='rgba(180,230,255,.7)'; ctx.lineWidth=2; ctx.beginPath(); for(let i=0;i<=T;i+=4){ ctx.lineTo(X+i,Y+3+Math.sin(t*3+(X+i)*.2)*1.5); } ctx.stroke(); } }
+    if(isWat(x,y)){ const X=x*T, Y=y*T;
+      if(!isWat(x,y-1)){ ctx.strokeStyle='rgba(180,230,255,.7)'; ctx.lineWidth=2; ctx.beginPath(); for(let i=0;i<=T;i+=4){ ctx.lineTo(X+i,Y+3+Math.sin(t*3+(X+i)*.2)*1.5); } ctx.stroke(); } }
   }
 }
 function drawAirBars(){
@@ -4789,7 +4789,7 @@ function draw(){
     z=1+(O.mk?.45:.3)*ease(O.t/(O.boomAt*.8))*(1-ease((O.t-O.boomAt-.2)/.8));
     ox=Math.min(0,Math.max(VW-VW*z,VW/2-O.cx*z)); oy=Math.min(0,Math.max(VH-WH*z,VH*0.5-O.cy*z));
   }
-  if(r3&&!intro&&!outro&&players&&(state==='play'||state==='dying')){ const live=players.filter(p=>!p.absent&&!p.dead); if(live.length){
+  if(!intro&&!outro&&players&&(state==='play'||state==='dying')){ const live=players.filter(p=>!p.absent&&!p.dead); if(live.length){   // камера одна и та же в 3D и 2D
       let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9; for(const p of live){ x0=Math.min(x0,p.x); x1=Math.max(x1,p.x+p.w); y0=Math.min(y0,p.y); y1=Math.max(y1,p.y+p.h); }
       const want=Math.max(1,Math.min(1.45,VW/(x1-x0+620),VH/(y1-y0+380)));
       const C=draw.c3||(draw.c3={x:(x0+x1)/2,y:(y0+y1)/2,z:want}); const kf=Math.max(.5,Math.min(3,(clock-(draw.lc||clock))*60)); draw.lc=clock; C.x+=((x0+x1)/2-C.x)*(1-Math.pow(1-.08,kf)); C.y+=((y0+y1)/2-C.y)*(1-Math.pow(1-.08,kf)); C.z+=(want-C.z)*(1-Math.pow(1-.05,kf));
@@ -8267,7 +8267,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.13e';
+const GAME_VER='1.66.14e';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
