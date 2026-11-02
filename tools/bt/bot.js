@@ -104,12 +104,22 @@ window.BOT=(function(){
     const home=640+(p.kind==='bolt'?50:-50); if(tt>.3){ const lo=Math.min(cx,home)-50, hi=Math.max(cx,home)+50; const blk=E.SP.some((g,i)=>{ if(S.arm[i]<1) return false; const x=E.X(g.s,S.off); return x<hi&&x+g.n*T>lo; }); if(!blk) inp.dir=Math.abs(home-cx)<20?0:Math.sign(home-cx); }
     return inp;
   }
+  function magIn(p,pi){
+    const S=BT.S, B=S.L.bt, inp=Object.assign({},N); if(S.freeze>0||p.absent||p.dead||p.down||!p.mag) return inp; inp.dir=1;
+    const M=p.mag, cx=p.x+p.w/2; let tg=null; for(const sg of B.segs){ if(sg.need===0) continue; if(sg.x1*T+T>p.x&&sg.x0*T-cx<(window.MAGLA||110)){ tg=sg.need; break; } }
+    if(p.x>B.finishX*T-T) tg=1;
+    if(tg!=null&&M.g!==tg&&M.cd<=0) inp.ap=true;
+    for(const q of B.saws){ const dx=q.x-cx; if(dx<-30||dx>110) continue; const py=p.y+p.h/2; let danger=false;
+      for(let k=0;k<=8;k++){ const tt=S.lt+k*0.06, y=q.mid+q.A*Math.sin(tt*6.2832/q.per+q.ph), xx=cx+235*k*0.06; if(Math.abs(xx-q.x)<16+p.w/2+6&&Math.abs(y-py)<16+p.h/2+8){ danger=true; break; } }
+      if(danger&&dx>12) inp.dir=0; }
+    return inp;
+  }
   function play(kind,maxSec,tr){
     BT.S.log=[]; const P=players, log=[]; let f=0, hp0=P.map(p=>p.hp), t0=levelTime;
     const B=BT.S.L.bt, maxF=Math.round((maxSec||150)*60);
     for(;f<maxF;f++){
       if(state!=='play') break;
-      for(let i=0;i<2;i++) cur[i]=(kind==='cart')?cartIn(P[i],i):(kind==='wire')?wireIn(P[i],i):(kind==='maze')?mazeIn(P[i],i):(kind==='ice')?iceIn(P[i],i):(kind==='rot')?rotIn(P[i],i):Object.assign({},N);
+      for(let i=0;i<2;i++) cur[i]=(kind==='cart')?cartIn(P[i],i):(kind==='wire')?wireIn(P[i],i):(kind==='maze')?mazeIn(P[i],i):(kind==='ice')?iceIn(P[i],i):(kind==='rot')?rotIn(P[i],i):(kind==='mag')?magIn(P[i],i):Object.assign({},N);
       __T.step(1/60);
       if(tr){ const q=P[tr.pi], x=q.x/T; if(x>tr.lo&&x<tr.hi) (BOT.tr=BOT.tr||[]).push([f,+x.toFixed(2),Math.round(q.y),Math.round(q.vy),Math.round(BT.S.v),q.onGround?1:0,cur[tr.pi].jump?1:0]); }
       P.forEach((p,i)=>{ if(p.hp<hp0[i]){ log.push(p.kind+'@'+(p.x/T).toFixed(1)+' t='+(f/60).toFixed(1)); } hp0[i]=p.hp; });

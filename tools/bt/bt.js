@@ -55,7 +55,7 @@ const DEFS=[
   {kind:'cart',name:'Ритм',desc:'ритм · жми в такт музыке',motif:'Ржавый цех',hue:300,par:55,base:400,top:400,boost:0,lead:15,rhythm:true,beats:84,
    hint:'Препятствий нет — только музыка. Сверху едут ноты: дошла до кружка — жми ↑ прыжок, ↓ пригнись, ✦ выстрел. Точно в бит — «ИДЕАЛЬНО!» и комбо. Ноты «вместе» — жмут оба.'},
   {kind:'mag',name:'Магнит',desc:'гравитация вверх-вниз · потолок и пол',motif:'Масляный подвал',hue:190,par:65,
-   hint:'Способность — перевернуть гравитацию: падаешь вверх и бежишь по потолку. Шипы на полу — беги по потолку, на потолке — по полу. Стены с щелью: проходи с той стороны, где щель. Прыжок — оттолкнуться.'},
+   hint:'Способность — перевернуть гравитацию: падаешь вверх и бежишь по потолку. Шипы и дыры на полу — беги по потолку, на потолке — по полу. Сзади едет стена шипов — не останавливайся! Прыжок — оттолкнуться.'},
   {kind:'relay',name:'Эстафета',desc:'вдвоём · несите друг друга · общий таймер',motif:'Литейная',hue:30,par:90,time:90,
    hint:'Способность рядом с напарником — ВЗЯТЬ его на плечи; ещё раз — БРОСИТЬ вперёд. Бросьте напарника через пропасть или на стену: он нажмёт кнопку и откроет мост или лифт. Время общее!'},
   {kind:'cart',name:'Погоня за Механиком',desc:'гонка на доске · сбей Механика до финиша',motif:'Ржавый цех',hue:20,par:50,base:330,top:420,boost:130,lead:16,rival:12,
@@ -426,31 +426,35 @@ function drawBoss(){
 // ---------- магнитный уровень: гравитация переключается способностью ----------
 const MC=5*T, MF=13*T;     // потолок (низ плиток) и пол (верх плиток)
 function magLevel(D){
-  const H=20, types=['F','C','P','Q','M','F','C','P','Q','M','S','F','Q','S','M','P','C','S','F','Q','M','S'], R=rng(555);
+  const H=20, types=['F','C','A','h','Q','S','H','P','M','F','h','C','A','S','H','Q','F','h','C','P','M','H','A','S','h','C','Q','H','F','A'], R=rng(555);
   const segs=[], saws=[], flags=[]; let x=14; const rects=[];
   const place=[];
-  for(const t of types){ const gap=10+Math.floor(R()*3); 
+  for(const t of types){ const gap=5+Math.floor(R()*3); 
     if(t==='F'){ segs.push({k:'f',x0:x,x1:x+5,need:-1}); x+=6; }
     else if(t==='C'){ segs.push({k:'c',x0:x,x1:x+5,need:1}); x+=6; }
     else if(t==='P'){ segs.push({k:'p',x0:x,x1:x+1,need:-1}); x+=2; }
     else if(t==='Q'){ segs.push({k:'q',x0:x,x1:x+1,need:1}); x+=2; }
-    else if(t==='M'){ segs.push({k:'f',x0:x,x1:x+3,need:-1}); segs.push({k:'c',x0:x+9,x1:x+12,need:1}); x+=13; }
+    else if(t==='M'){ segs.push({k:'f',x0:x,x1:x+3,need:-1}); segs.push({k:'c',x0:x+8,x1:x+11,need:1}); x+=12; }
+    else if(t==='A'){ segs.push({k:'f',x0:x,x1:x+2,need:-1}); segs.push({k:'c',x0:x+6,x1:x+8,need:1}); segs.push({k:'f',x0:x+12,x1:x+14,need:-1}); x+=15; }
+    else if(t==='h'){ segs.push({k:'hf',x0:x,x1:x+3,need:-1}); x+=4; }
+    else if(t==='H'){ segs.push({k:'hc',x0:x,x1:x+3,need:1}); x+=4; }
     else { saws.push({x:(x+1)*T+20,mid:9*T,A:2.9*T,per:2.1+R()*0.5,ph:R()*6}); segs.push({k:'s',x0:x,x1:x+2,need:0}); x+=3; }
-    x+=gap; if(segs.length%4===0) flags.push({x:x-5,on:false}); }
+    x+=gap; if(segs.length%5===0) flags.push({x:x-3,on:false}); }
   const finishX=x+4, W=finishX+16, g=[...Array(H)].map(()=>Array(W).fill('.'));
   for(let xx=0;xx<W;xx++){ for(let y=0;y<=4;y++) g[y][xx]='#'; for(let y=13;y<H;y++) g[y][xx]='#'; }
   for(let y=0;y<H;y++){ g[y][0]='#'; g[y][W-1]='#'; }
-  for(const sg of segs){ if(sg.k==='p') for(let xx=sg.x0;xx<=sg.x1;xx++) for(let y=8;y<=12;y++) g[y][xx]='#'; if(sg.k==='q') for(let xx=sg.x0;xx<=sg.x1;xx++) for(let y=5;y<=9;y++) g[y][xx]='#'; }
+  for(const sg of segs){ if(sg.k==='hf') for(let xx=sg.x0;xx<=sg.x1;xx++) for(let y=13;y<H-1;y++) g[y][xx]='.'; if(sg.k==='hc') for(let xx=sg.x0;xx<=sg.x1;xx++) for(let y=1;y<=4;y++) g[y][xx]='.';
+    if(sg.k==='p') for(let xx=sg.x0;xx<=sg.x1;xx++) for(let y=8;y<=12;y++) g[y][xx]='#'; if(sg.k==='q') for(let xx=sg.x0;xx<=sg.x1;xx++) for(let y=5;y<=9;y++) g[y][xx]='#'; }
   for(let xx=finishX+4;xx<=finishX+6;xx++){ g[11][xx]='E'; g[12][xx]='E'; }
   g[12][3]='1'; g[12][5]='2';
-  const spots=[]; for(let xx=3;xx<finishX-2;xx++){ if(segs.some(sg=>sg.x1>=xx-2&&sg.x0<=xx+11)) continue; spots.push(xx); }
+  const spots=[]; for(let xx=3;xx<finishX-2;xx++){ if(segs.some(sg=>sg.x1>=xx-2&&sg.x0<=xx+4)) continue; spots.push(xx); }
   for(const f of flags) f.spot=spots.filter(q=>q<=f.x).pop()||3;
   return {name:D.name,motif:D.motif,hue:D.hue,dark:false,hint:D.hint,map:g.map(r=>r.join('')),enemies:[],pickups:[],movers:[],winds:[],checkpoints:[],pz:[],tier:2,hand:true,decor:[],darkA:.94,openBottom:false,par:D.par,
     bt:{kind:'mag',segs,saws,flags,spots,finishX,len:W}};
 }
 function placeMag(sp){ for(const p of players){ if(p.absent) continue; p.mag={g:1,vx:0,vy:0,on:false,cd:0,dir:0,jp:false,flip:false,jwas:false,abwas:false}; p.x=(sp+(p.kind==='bolt'&&!solo?1.6:0))*T+4; p.y=MF-p.h-1; p.vx=p.vy=0; p.onGround=true; p.wasGround=true; } }
 function setupMag(L){ const B=L.bt; BTX.z=1.7; BTX.lx=VW*0.2/1.7; BTX.fy=9*T; S.lt=0; S.freeze=S.cp?0.8:1.4; S.hintT=S.cp?0:8;
-  for(const f of B.flags) f.on=!!(S.cp&&S.cp.x>=f.x); placeMag(S.cp?(B.flags.filter(f=>f.on).pop()||{spot:3}).spot:3); banner(S.cp?'С ФЛАЖКА':'ГОТОВЬСЯ…','#9cc3ff',S.freeze); }
+  for(const f of B.flags) f.on=!!(S.cp&&S.cp.x>=f.x); const sp0=S.cp?(B.flags.filter(f=>f.on).pop()||{spot:3}).spot:3; placeMag(sp0); S.wallX=(sp0-9)*T; banner(S.cp?'С ФЛАЖКА':'ГОТОВЬСЯ…','#9cc3ff',S.freeze); }
 function magPhys(p,h){
   const M=p.mag; M.cd=Math.max(0,M.cd-h);
   if(S.freeze>0){ p.vx=p.vy=0; return; }
@@ -468,24 +472,31 @@ function sawY(q,t){ return q.mid+q.A*Math.sin(t*6.2832/q.per+q.ph); }
 function magPost(dt){
   const B=S.L.bt, L=live(); if(!L.length) return; S.hintT=Math.max(0,S.hintT-dt);
   if(S.freeze>0){ S.freeze-=dt; if(S.freeze<=0){ banner('ВПЕРЁД!','#ffd166',.9); sfx('boost'); } return; }
-  S.lt+=dt;
+  S.lt+=dt; if(!L.some(p=>p.x>B.finishX*T)) S.wallX+=(150+Math.min(30,S.lt*0.4))*dt;
   for(const f of B.flags) if(!f.on&&L.some(p=>p.x>f.x*T)){ f.on=true; S.cp={lvl:levelIdx,x:f.x}; sfx('pk_shield'); const p=L[0]; texts.push({x:p.x,y:p.y-50,t:'ФЛАЖОК!',life:1.4,c:'#7fe08a',pop:true}); }
   const bad=[];
   for(const p of L){ if(p.down||p.inv>0) continue; let why=null;
     for(const sg of B.segs){ const x=sg.x0*T, w=(sg.x1-sg.x0+1)*T; if(sg.k==='f'&&overlap(p,{x,y:MF-24,w,h:24})) why='ШИПЫ!'; else if(sg.k==='c'&&overlap(p,{x,y:MC,w,h:24})) why='ШИПЫ!'; }
     for(const q of B.saws){ const y=sawY(q,S.lt); if(overlap(p,{x:q.x-16,y:y-16,w:32,h:32})) why='ПИЛА!'; }
+    if(p.y>MF+T*1.2||p.y+p.h<MC-T*1.2) why='ПРОВАЛ!'; if(p.x<S.wallX+14) why='СТЕНА!';
     if(why){ bad.push(p); texts.push({x:p.x+p.w/2,y:p.y-30,t:why,life:1,c:'#ff6b6b',pop:true}); } }
   if(!bad.length) return;
   for(const p of bad){ burst(p.x+p.w/2,p.y+p.h/2,22,['#ff6b6b','#fff','#ffd166'],360,.55); p.inv=0; _hurt(p); if(p.down||p.hp<=0){ p.down=false; die(p,'down'); return; } }
   sfx('hit'); shake=Math.max(shake,8); flash('#ff3b4e',.3); hitstop=Math.max(hitstop,.1);
   const minX=Math.min(...bad.map(p=>p.x))/T, sp=B.spots.filter(q=>q+3<=minX).pop()||3;
-  placeMag(sp); for(const p of players) if(!p.absent) p.inv=Math.max(p.inv,1.5); S.freeze=0.8; banner('ЕЩЁ РАЗ!','#ff9a8a',.8);
+  placeMag(sp); S.wallX=(sp-9)*T; for(const p of players) if(!p.absent) p.inv=Math.max(p.inv,1.5); S.freeze=0.8; banner('ЕЩЁ РАЗ!','#ff9a8a',.8);
 }
 function drawMag(){
   const B=S.L.bt, V=viewRect(), t=clock; ctx.save();
   for(const sg of B.segs){ const x=sg.x0*T, w=(sg.x1-sg.x0+1)*T; if(x+w<V.x-40||x>V.x+V.w+40) continue;
     if(sg.k==='f'||sg.k==='c'){ const fl=sg.k==='f', y0=fl?MF:MC, dir=fl?-1:1, n=Math.round(w/20); ctx.fillStyle='#e6edf3'; for(let k=0;k<n;k++){ const xx=x+k*w/n; ctx.beginPath(); ctx.moveTo(xx,y0); ctx.lineTo(xx+w/n/2,y0+dir*26); ctx.lineTo(xx+w/n,y0); ctx.closePath(); ctx.fill(); }
-      ctx.globalAlpha=.18+.1*Math.sin(t*6); ctx.fillStyle='#ff4d5e'; ctx.fillRect(x,fl?MF-70:MC,w,70); ctx.globalAlpha=1; } }
+      ctx.globalAlpha=.18+.1*Math.sin(t*6); ctx.fillStyle='#ff4d5e'; ctx.fillRect(x,fl?MF-70:MC,w,70); ctx.globalAlpha=1; }
+    if(sg.k==='hf'||sg.k==='hc'){ const fl=sg.k==='hf', y0=fl?MF:MC-4*T; ctx.fillStyle='#05080d'; ctx.fillRect(x,y0,w,4*T); ctx.fillStyle='#ff9a3c'; ctx.fillRect(x-4,fl?MF-3:MC-3,6,6); ctx.fillRect(x+w-2,fl?MF-3:MC-3,6,6);
+      ctx.globalAlpha=.16+.08*Math.sin(t*6); ctx.fillStyle='#ff9a3c'; ctx.fillRect(x,fl?MF-50:MC,w,50); ctx.globalAlpha=1; } }
+  if(S.wallX!=null&&S.wallX>V.x-80){ const wx=S.wallX; ctx.fillStyle='#1a0d12'; ctx.fillRect(V.x-10,MC,wx-V.x+10,MF-MC);
+    const gr=ctx.createLinearGradient(wx,0,wx+120,0); gr.addColorStop(0,'rgba(255,60,80,.35)'); gr.addColorStop(1,'rgba(255,60,80,0)'); ctx.fillStyle=gr; ctx.fillRect(wx,MC,120,MF-MC);
+    ctx.fillStyle='#e6edf3'; const n=Math.round((MF-MC)/24); for(let k=0;k<n;k++){ const yy=MC+k*(MF-MC)/n, hh=(MF-MC)/n; ctx.beginPath(); ctx.moveTo(wx,yy); ctx.lineTo(wx+22+Math.sin(t*10+k)*3,yy+hh/2); ctx.lineTo(wx,yy+hh); ctx.closePath(); ctx.fill(); }
+    ctx.fillStyle='#5b2a33'; ctx.fillRect(wx-8,MC,8,MF-MC); }
   for(const q of B.saws){ if(q.x<V.x-60||q.x>V.x+V.w+60) continue; const y=sawY(q,S.lt||0); ctx.strokeStyle='rgba(207,216,224,.25)'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(q.x,MC); ctx.lineTo(q.x,MF); ctx.stroke();
     ctx.save(); ctx.translate(q.x,y); ctx.rotate(t*12); ctx.fillStyle='#cfd8e0'; ctx.beginPath(); for(let k=0;k<16;k++){ const a=k/16*Math.PI*2, r=k%2?13:21; ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r); } ctx.closePath(); ctx.fill(); ctx.fillStyle='#5b6b7a'; ctx.beginPath(); ctx.arc(0,0,6,0,7); ctx.fill(); ctx.restore(); }
   ctx.restore();
