@@ -1900,7 +1900,7 @@ const LIMBS=[{id:'on',n:'Ручки и ножки'},{id:'off',n:'Без них'}
 const BODIES={spark:[{id:'native',n:'Родное'},{id:'tall',n:'Высокое'},{id:'wide',n:'Круглое'}],bolt:[{id:'native',n:'Родное'},{id:'round',n:'Круглое'},{id:'tank',n:'Танк'}]};
 const TRAILS=[{id:'none',n:'Нет'},{id:'sparkle',n:'Блёстки'},{id:'hearts',n:'Сердечки'},{id:'stars',n:'Звёзды'},{id:'rainbow',n:'Радуга'},{id:'notes',n:'Ноты'},{id:'smoke',n:'Дымок'}];
 const EYES=[{id:'normal',n:'Обычные'},{id:'happy',n:'Довольные'},{id:'angry',n:'Сердитые'},{id:'sleepy',n:'Сонные'},{id:'stars',n:'Звёздочки'}];
-const DEF_SETTINGS={res:'auto',win:'full',r3d:true,padStyle:'auto',master:0.8,music:0.6,sfx:0.8,mute:false,quality:'high',particles:1,shake:true,glow:true,ambient:true,vignette:true,trails:true,flash:true,perf:false,hints:true,adaptive:true};
+const DEF_SETTINGS={res:'auto',win:'full',r3d:true,padStyle:'auto',master:0.8,music:0.6,sfx:0.8,mute:false,quality:'high',particles:1,shake:true,glow:true,ambient:true,vignette:true,trails:true,flash:true,perf:false,hints:true,adaptive:true,mode2d:false};
 const PRESETS={low:{particles:0.35,glow:false,ambient:false,vignette:false,trails:false},medium:{particles:0.7,glow:true,ambient:true,vignette:true,trails:false},high:{particles:1,glow:true,ambient:true,vignette:true,trails:true}};
 let demo=false;
 const store={get(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:JSON.parse(v); }catch(e){ return d; } }, set(k,v){ if(demo) return; try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }};
@@ -3276,7 +3276,7 @@ function setState(s){
           <div class="srow2"><span class="lab">Разрешение</span><select class="optsel" id="selRes" aria-label="Разрешение">${RES_LIST.map(([k,n])=>`<option value="${k}" ${(settings.res||'auto')===k?'selected':''}>${n}</option>`).join('')}</select></div>
           ${window.desk?`<div class="srow2"><span class="lab">Режим экрана</span><select class="optsel" id="selWin" aria-label="Режим экрана">${SCREEN_MODES.map(([k,n])=>`<option value="${k}" ${(settings.win||'full')===k?'selected':''}>${n}</option>`).join('')}</select></div><p class="optnote">«Окно без рамки» растягивает игру на весь экран без рамки окна. При переходе в этот режим и обратно окно игры открывается заново.</p>`:''}
           ${sl('particles','Частицы',settings.particles)}
-          <div class="tgrid">${tg('glow','Свечение','Свет от Искры, кнопок, выхода')}${tg('ambient','Фон мастерской','Шестерни и пыль на заднем плане')}${(navigator.hid?tg('adaptive','Адаптивные триггеры','DualSense (PS5) на ПК: сопротивление на спуске, если на него назначен огонь'):'')}${tg('trails','Следы','Хвосты за пулями и пыль из-под ног')}${tg('vignette','Виньетка','Затемнение по краям экрана')}${tg('shake','Тряска экрана','При ударах и взрывах')}${tg('flash','Вспышки экрана','При уроне и победе над боссом')}${tg('perf','Счётчик FPS и сети','FPS, фризы, нагрузка, пинг и потери пакетов (F3)')}</div></div>
+          <div class="tgrid">${tg('mode2d','2D-режим','Плоская графика вместо 3D — больше FPS на слабых устройствах')}${tg('glow','Свечение','Свет от Искры, кнопок, выхода')}${tg('ambient','Фон мастерской','Шестерни и пыль на заднем плане')}${(navigator.hid?tg('adaptive','Адаптивные триггеры','DualSense (PS5) на ПК: сопротивление на спуске, если на него назначен огонь'):'')}${tg('trails','Следы','Хвосты за пулями и пыль из-под ног')}${tg('vignette','Виньетка','Затемнение по краям экрана')}${tg('shake','Тряска экрана','При ударах и взрывах')}${tg('flash','Вспышки экрана','При уроне и победе над боссом')}${tg('perf','Счётчик FPS и сети','FPS, фризы, нагрузка, пинг и потери пакетов (F3)')}</div></div>
       <div class="btns"><button class="primary" id="bCatBack" type="button">Назад · Esc</button></div>`;
     } else if(setCat==='lang'){
       body=`<div class="mgrid lgrid">${LANGS.map(([k,n])=>`<button type="button" class="${LANG===k?'primary':'secondary'}" data-lang="${k}">${n}</button>`).join('')}</div>
@@ -3295,7 +3295,7 @@ function setState(s){
     overlay.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{ sfx('nav'); setCat=b.dataset.cat; reSet(); });
     if($('bCatBack')) $('bCatBack').onclick=()=>{ setCat=null; reSet(); };
     for(const id of ['master','music','sfx','particles']){ const el=$(id); if(!el) continue; el.oninput=()=>{ settings[id]=el.value/100; $(id+'O').textContent=el.value+'%'; if(id==='particles') settings.quality='custom'; saveSettings(); applyVolumes(); if(id==='sfx'||id==='master') sfx('gear'); }; }
-    for(const id of ['mute','glow','ambient','trails','vignette','shake','flash','perf','hints','adaptive']){ const el=$(id); if(!el) continue; el.onchange=()=>{ settings[id]=el.checked; if(!['mute','shake','flash','perf','hints','adaptive'].includes(id)) settings.quality='custom'; saveSettings(); applyVolumes(); perfShow(); reSet(); }; }
+    for(const id of ['mute','glow','ambient','trails','vignette','shake','flash','perf','hints','adaptive','mode2d']){ const el=$(id); if(!el) continue; el.onchange=()=>{ settings[id]=el.checked; if(id==='mode2d') apply2D(); if(!['mute','shake','flash','perf','hints','adaptive','mode2d'].includes(id)) settings.quality='custom'; saveSettings(); applyVolumes(); perfShow(); reSet(); }; }
     overlay.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{ settings.quality=b.dataset.q; Object.assign(settings,PRESETS[b.dataset.q]); saveSettings(); fit(); reSet(); });
     if($('selRes')) $('selRes').onchange=e=>{ settings.res=e.target.value; saveSettings(); applyScreen(); fit(); sfx('nav'); };
     if($('selWin')) $('selWin').onchange=e=>{ settings.win=e.target.value; saveSettings(); applyScreen(); setTimeout(fit,400); sfx('nav'); };
@@ -3304,7 +3304,7 @@ function setState(s){
     if($('bReport')) $('bReport').onclick=()=>setState('report');
     if($('bTedit3')) $('bTedit3').onclick=()=>{ if(setBack==='arena'){ editBack='arena'; editRet='settings'; } else { editBack='settings'; editRet=null; } setState('touchedit'); };
     if($('bCtlPad')) $('bCtlPad').onclick=()=>{ if(setBack==='arena'){ ctlBack='arena'; ctlRet='settings'; } else { ctlBack='settings'; ctlRet=null; } setState('controls'); };
-    if($('bDef')) $('bDef').onclick=()=>{ settings=Object.assign({},DEF_SETTINGS); saveSettings(); applyVolumes(); applyScreen(); fit(); sfx('off'); reSet(); };
+    if($('bDef')) $('bDef').onclick=()=>{ settings=Object.assign({},DEF_SETTINGS); saveSettings(); apply2D(); applyVolumes(); applyScreen(); fit(); sfx('off'); reSet(); };
     if($('bBack')) $('bBack').onclick=()=>{ setCat=null; setState(setBack); };
   } else if(s==='controls'){
     const ACT_C={jump:'#ffd166',ability:'#5fe3d9',fire:'#ff6b6b',use:'#c792ff',next:'#8fa6c8'};
@@ -5794,9 +5794,15 @@ function perfShow(){ if(!PERF.el){ const d=document.createElement('div'); d.id='
     document.body.appendChild(d); PERF.el=d; }
   PERF.el.style.display=settings.perf?'block':'none'; }
 function perfSeq(q){ if(typeof q!=='number') return; if(PERF.rq!=null&&q>PERF.rq+1) PERF.lost+=q-PERF.rq-1; if(PERF.rq==null||q>PERF.rq) PERF.rq=q; PERF.got++; }
+const LOWF={t0:0,n:0,bad:0,shown:false};
+function lowFpsCheck(now,ms){ if(LOWF.shown) return;
+  if(settings.mode2d||!R3D.on||state!=='play'||document.hidden||ms>400){ LOWF.t0=now; LOWF.n=0; if(state!=='play'||settings.mode2d) LOWF.bad=0; return; }   // пауза, меню, свёрнутое окно — не считаем
+  LOWF.n++; if(now-LOWF.t0<4000) return; const fps=LOWF.n*1000/(now-LOWF.t0); LOWF.t0=now; LOWF.n=0;
+  LOWF.bad=fps<33?LOWF.bad+1:0;
+  if(LOWF.bad>=2){ LOWF.shown=true; toastQ.push({small:'Игра идёт медленно · ~'+Math.round(fps)+' FPS',title:'Включите 2D-режим: Настройки → Графика',medal:'⚡',ms:7000}); showToast(); } }
 function perfFrame(now){
   if(PERF.last){ const ms=now-PERF.last; PERF.n++; PERF.sum+=ms; if(ms>PERF.max) PERF.max=ms; if(ms>50) PERF.frz.push(now); }
-  PERF.last=now; if(!settings.perf) return;
+  lowFpsCheck(now,PERF.last?now-PERF.last:0); PERF.last=now; if(!settings.perf) return;
   if(now-PERF.t0<500) return;
   const el=now-PERF.t0; PERF.t0=now; if(PERF.n){ PERF.fps=Math.round(PERF.n*1000/el); PERF.avg=PERF.sum/PERF.n; PERF.mx=PERF.max; } PERF.n=0; PERF.sum=0; PERF.max=0;
   PERF.frz=PERF.frz.filter(t=>now-t<10000);
@@ -7192,6 +7198,8 @@ const CINE3D=(()=>{
 })();
 settings.r3d=true; R3D.on=true; // 3D всегда включён (2D только если видеокарта не умеет WebGL)
  document.body.classList.toggle('b3d',R3D.on);
+if(settings.mode2d) R3D.on=false;   // игрок сам выбрал 2D-режим (Настройки → Графика)
+function apply2D(){ const want=!settings.mode2d; if(R3D.on===want) return; R3D.on=want; if(!want){ try{ R3D.hide(); }catch(e){} } staticDirty=true; }
 function paintRanges(root){ (root||document).querySelectorAll('.overlay input[type=range]').forEach(el=>{ const p=(el.value-el.min)/((el.max-el.min)||1)*100; el.style.setProperty('--p',p+'%'); }); }
 addEventListener('input',e=>{ if(e.target&&e.target.type==='range') paintRanges(); },true);
 new MutationObserver(()=>paintRanges(overlay)).observe(overlay,{childList:true,subtree:true});
@@ -8259,7 +8267,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.12e';
+const GAME_VER='1.66.13e';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
