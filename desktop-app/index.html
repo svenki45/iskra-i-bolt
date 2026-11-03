@@ -5926,7 +5926,7 @@ function lowFpsCheck(now,ms){ if(LOWF.shown) return;
   if(LOWF.bad>=2){ LOWF.shown=true; toastQ.push({small:'Игра идёт медленно · ~'+Math.round(fps)+' FPS',title:'Включите 2D-режим: Настройки → Графика',medal:'⚡',ms:7000}); showToast(); } }
 
 /* ===== журнал лагов: сам пишет провалы плавности и ошибки, кнопка в Настройках → Графика копирует его для разработчика ===== */
-const LAGLOG={key:'iskra-bolt-laglog',ev:[],frames:0,lags:0,start:Date.now()};
+const LAGLOG={key:'iskra-bolt-laglog',ev:[],frames:0,lags:0,by:{},start:Date.now()};
 try{ LAGLOG.ev=JSON.parse(localStorage.getItem(LAGLOG.key)||'[]').slice(-200); }catch(e){}
 function lagSave(){ try{ localStorage.setItem(LAGLOG.key,JSON.stringify(LAGLOG.ev.slice(-200))); }catch(e){} }
 function lagAdd(o){ o.t=Math.round(performance.now()/100)/10; LAGLOG.ev.push(o); if(LAGLOG.ev.length>200) LAGLOG.ev.shift(); LAGLOG._dirty=true; }
@@ -5934,23 +5934,25 @@ setInterval(()=>{ if(LAGLOG._dirty){ LAGLOG._dirty=false; lagSave(); } },4000);
 addEventListener('pagehide',lagSave);
 addEventListener('error',e=>{ try{ lagAdd({err:String(e.message||'').slice(0,160),at:String(e.filename||'').split('/').pop()+':'+(e.lineno||0),lvl:levelIdx,st:state}); }catch(x){} });
 addEventListener('unhandledrejection',e=>{ try{ lagAdd({err:'promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160),lvl:levelIdx,st:state}); }catch(x){} });
-let _lagPrevSt='', _lagCool=0;
-function lagFrame(ms){   // ms — сколько прошло между этим и прошлым кадром; PERF.lu/ld/lr — расчёт/рисование/3D прошлого кадра
-  if(state!=='play'||document.hidden){ _lagPrevSt=state; _lagCool=30; return; }
-  if(_lagCool>0){ _lagCool--; return; }   // первые кадры после загрузки/паузы не считаем
-  LAGLOG.frames++;
+let _lagSt='', _lagStT=0, _lagVis=0;
+document.addEventListener('visibilitychange',()=>{ _lagVis=3; });   // после возврата в игру первые кадры не считаем
+function lagFrame(ms){   // ms — время между этим и прошлым кадром; PERF.lu/ld/lr — расчёт/рисование/3D прошлого кадра (-1: в том кадре не считались)
+  const now=performance.now(); if(state!==_lagSt){ _lagSt=state; _lagStT=now; }
+  if(document.hidden){ _lagVis=3; return; } if(_lagVis>0){ _lagVis--; return; }
+  LAGLOG.frames++; const S=LAGLOG.by[state]||(LAGLOG.by[state]={f:0,l:0}); S.f++;
   if(ms<=50||ms>3000) return;
-  LAGLOG.lags++;
-  const L=(players||[]).filter(p=>!p.absent&&!p.dead), p=L[0]; const mem=performance.memory;
-  lagAdd({ms:Math.round(ms),logic:+PERF.lu.toFixed(1),draw:+PERF.ld.toFixed(1),r3d:+PERF.lr.toFixed(1),lvl:levelIdx,x:p?Math.round(p.x/T):null,y:p?Math.round(p.y/T):null,
+  LAGLOG.lags++; S.l++;
+  const L=(players||[]).filter(p=>!p.absent&&!p.dead), p=(state==='play'||state==='pause'||state==='dying')?L[0]:null; const mem=performance.memory, v=x=>x<0?null:+x.toFixed(1);
+  lagAdd({ms:Math.round(ms),st:state,sinceSt:Math.round((now-_lagStT)/100)/10,logic:v(PERF.lu),draw:v(PERF.ld),r3d:v(PERF.lr),lvl:levelIdx,x:p?Math.round(p.x/T):null,y:p?Math.round(p.y/T):null,
     mode:(R3D&&R3D.on)?'3D':'2D',en:(enemies||[]).length,bul:(bullets||[]).length+(ebullets||[]).length,prt:particles.length,fx:rings.length,boss:!!boss,heap:mem?Math.round(mem.usedJSHeapSize/1048576):null});
 }
 function lagText(){
   const s=settings||{}; const mem=performance.memory;
   const head=['Журнал лагов · игра v'+GAME_VER,'устройство: '+navigator.userAgent,'экран: '+innerWidth+'x'+innerHeight+' dpr '+(window.devicePixelRatio||1)+' · холст '+cv.width+'x'+cv.height,
     'настройки: '+((R3D&&R3D.on)?'3D':'2D')+', качество '+s.quality+', fps '+(s.fps||'без лимита')+', свечение '+s.glow+', фон '+s.ambient+', виньетка '+s.vignette+', следы '+s.trails+', частицы '+s.particles,
-    'за сессию: кадров в игре '+LAGLOG.frames+', лагов (>50 мс) '+LAGLOG.lags+(LAGLOG.frames?' ('+(LAGLOG.lags*1000/LAGLOG.frames).toFixed(1)+' на 1000 кадров)':'')+(mem?', память JS '+Math.round(mem.usedJSHeapSize/1048576)+' МБ':''),
-    'в записи: t — секунды с запуска, lvl — номер уровня, x/y — клетка героя, logic/draw/r3d — мс расчёта/рисования/3D, en — враги, bul — пули, prt — частицы',''];
+    'за сессию: кадров '+LAGLOG.frames+', лагов (>50 мс) '+LAGLOG.lags+(LAGLOG.frames?' ('+(LAGLOG.lags*1000/LAGLOG.frames).toFixed(1)+' на 1000 кадров)':'')+(mem?', память JS '+Math.round(mem.usedJSHeapSize/1048576)+' МБ':''),
+    'по экранам (кадров/лагов): '+Object.entries(LAGLOG.by).map(([k,v])=>k+' '+v.f+'/'+v.l).join(', '),
+    'в записи: t — секунды с запуска, st — экран (play игра, menu меню, pause пауза…), sinceSt — секунд на этом экране, lvl — номер уровня, x/y — клетка героя, logic/draw/r3d — мс расчёта/рисования/3D, en — враги, bul — пули, prt — частицы',''];
   return head.concat(LAGLOG.ev.map(o=>JSON.stringify(o))).join('\n');
 }
 function copyLagLog(){
@@ -5960,7 +5962,7 @@ function copyLagLog(){
   try{ if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(()=>done(true),fallback); else fallback(); }catch(e){ fallback(); }
 }
 function perfFrame(now){
-  if(PERF.last){ const ms=now-PERF.last; PERF.n++; PERF.sum+=ms; if(ms>PERF.max) PERF.max=ms; if(ms>50) PERF.frz.push(now); try{ lagFrame(ms); }catch(e){} }
+  if(PERF.last){ const ms=now-PERF.last; PERF.n++; PERF.sum+=ms; if(ms>PERF.max) PERF.max=ms; if(ms>50) PERF.frz.push(now); try{ lagFrame(ms); }catch(e){} PERF.lu=PERF.ld=PERF.lr=-1; }
   lowFpsCheck(now,PERF.last?now-PERF.last:0); PERF.last=now; if(!settings.perf) return;
   if(now-PERF.t0<500) return;
   const el=now-PERF.t0; PERF.t0=now; if(PERF.n){ PERF.fps=Math.round(PERF.n*1000/el); PERF.avg=PERF.sum/PERF.n; PERF.mx=PERF.max; PERF.aup=PERF.up/PERF.n; PERF.adr=PERF.dr/PERF.n; PERF.ar3=PERF.r3/PERF.n; } PERF.up=PERF.dr=PERF.r3=0; PERF.n=0; PERF.sum=0; PERF.max=0;
@@ -8426,7 +8428,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.31i';
+const GAME_VER='1.66.31j';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
