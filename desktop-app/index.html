@@ -876,8 +876,10 @@ function audioInit(){
   try{
     actx=new (window.AudioContext||window.webkitAudioContext)();
     masterG=actx.createGain(); musicG=actx.createGain(); sfxG=actx.createGain();
-    const comp=actx.createDynamicsCompressor(); comp.threshold.value=-14; comp.ratio.value=4;
-    musicG.connect(masterG); sfxG.connect(masterG); masterG.connect(comp).connect(actx.destination);
+    // сведение: громкость каждого звука подогнана по замеру (см. SFX_MUL, HSCALE), поэтому эффекты идут напрямую — без компрессора, который «качал» бы музыку;
+    // в конце — только ограничитель от хрипа на редких совпадениях громких звуков
+    const lim=actx.createDynamicsCompressor(); lim.threshold.value=-3; lim.knee.value=2; lim.ratio.value=12; lim.attack.value=.002; lim.release.value=.1;
+    musicG.connect(masterG); sfxG.connect(masterG); masterG.connect(lim).connect(actx.destination);
     noiseBuf=actx.createBuffer(1,actx.sampleRate*0.5,actx.sampleRate); const d=noiseBuf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
     applyVolumes(true);
   }catch(e){ actx=null; }
@@ -890,7 +892,7 @@ document.addEventListener('visibilitychange',()=>{ if(!document.hidden) audioIni
 function applyVolumes(now){
   if(!actx) return;
   const t=actx.currentTime, m=settings.mute?0:settings.master;
-  const mus=settings.music*(state==='pause'?0.35:1)*0.55;
+  const mus=settings.music*(state==='pause'?0.35:1)*1.5;   // музыка громче: раньше тонула под эффектами
   masterG.gain.setTargetAtTime(m,t,now?0.001:0.05); musicG.gain.setTargetAtTime(mus,t,now?0.001:0.15); sfxG.gain.setTargetAtTime(settings.sfx,t,now?0.001:0.05);
 }
 /* ---- chiptune engine ---- */
@@ -1132,7 +1134,7 @@ function noise(freq,dur,vol,type='bandpass',delay=0){
     s.connect(f).connect(g).connect(sfxG); s.start(t); s.stop(t+dur+0.02); }catch(e){}
 }
 // --- made-up "Simlish"-style voice: formant-filtered syllables ---
-const VOICES={narr:{f:120,rng:30,type:'sawtooth',rate:7.5,vol:.13},spark:{f:330,rng:90,type:'triangle',rate:10,vol:.12},bolt:{f:95,rng:20,type:'square',rate:6.5,vol:.07,robo:true},boss:{f:70,rng:15,type:'sawtooth',rate:5,vol:.14,growl:true}};
+const VOICES={narr:{f:120,rng:30,type:'sawtooth',rate:7.5,vol:.36},spark:{f:330,rng:90,type:'triangle',rate:10,vol:.15},bolt:{f:95,rng:20,type:'square',rate:6.5,vol:.22,robo:true},boss:{f:70,rng:15,type:'sawtooth',rate:5,vol:.35,growl:true}};   // голоса чуть громче музыки
 const VOWELS=[[730,1090],[270,2290],[530,1840],[570,840],[300,870],[660,1700]];
 function babble(text,v='narr'){
   if(!actx||settings.mute) return 0; const V=VOICES[v]; const n=Math.max(3,Math.round(text.replace(/[^А-Яа-яЁёA-Za-z]/g,'').length/3.2));
@@ -1175,7 +1177,7 @@ function stepSounds(dt){
     HSND[p.kind]&&HSND[p.kind].step(p.inWater?'w':c==='I'?'I':'.',p.stepN);
   }
 }
-let SFXM=1;   // множитель громкости для старых эффектов (задаётся в sfx())
+let SFXM=3;   // множитель громкости старых эффектов: 3 — для прямых вызовов tone/noise, у каждого sfx() свой (SFX_MUL)
 function tone(f1,f2,dur,type='square',vol=0.05,delay=0){
   if(!actx) return; vol*=SFXM;
   try{
@@ -1193,6 +1195,8 @@ function crumbleSnd(big){ const k=big?.72:.55;
   for(let i=0;i<(big?14:9);i++){ const d=.05+Math.random()*.55; hNz(900+Math.random()*2800,600,.02+Math.random()*.03,.05+Math.random()*.05,'bandpass',2.2,d,.001); } }   // камушки падают
 function knockSnd(){ hOsc('sine',260,180,.06,.09); hNz(1600,800,.04,.06,'bandpass',2); hOsc('sine',260,180,.06,.07,.13); hNz(1600,800,.04,.05,'bandpass',2,.13); }   // «тук-тук» по пустой стене
 function metalBreakSnd(){ hOsc('sine',140,60,.2,.1); hMetal(700,.35,.08); hMetal(1150,.25,.05,.06); for(let i=0;i<5;i++) hMetal(1500+Math.random()*1500,.08,.025,.05+Math.random()*.3); hNz(2500,900,.15,.07,'bandpass',1.2); }
+// подгонка громкости по замеру
+{ const W=(f,m)=>(...a)=>{ const o=HVM; HVM=m; try{ f(...a); }finally{ HVM=o; } }; crumbleSnd=W(crumbleSnd,0.92); knockSnd=W(knockSnd,1.20); metalBreakSnd=W(metalBreakSnd,0.51); }
 const SFX={
   jump:()=>tone(380,720,.11,'square',.035), jump2:()=>tone(620,1150,.12,'triangle',.05),
   dash:()=>tone(900,260,.13,'sawtooth',.03), boost:()=>tone(180,950,.28,'square',.06),
@@ -1220,7 +1224,8 @@ const SFX={
 };
 /* ===== звуки героев: у Искры — огонь (фух, треск, шипение пара), у Болта — металл и сервоприводы (лязг, жужжание, пневматика) ===== */
 const HV=5.5;   // общая громкость звуков героев: громче музыки на слух, но короткие и мягкие по тембру
-function _env(g,t,vol,att,dur){ g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(Math.max(.0002,vol*HV),t+att); g.gain.exponentialRampToValueAtTime(0.0001,t+att+dur); }
+let HVM=1;
+function _env(g,t,vol,att,dur){ g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(Math.max(.0002,vol*HV*HVM),t+att); g.gain.exponentialRampToValueAtTime(0.0001,t+att+dur); }
 function hOsc(type,f1,f2,dur,vol,delay=0,att=.004){ if(!actx) return; try{ const t=actx.currentTime+delay, o=actx.createOscillator(), g=actx.createGain();
   o.type=type; o.frequency.setValueAtTime(f1,t); o.frequency.exponentialRampToValueAtTime(Math.max(30,f2),t+att+dur); _env(g,t,vol,att,dur); o.connect(g).connect(sfxG); o.start(t); o.stop(t+att+dur+.03); }catch(e){} }
 function hNz(f1,f2,dur,vol,type='bandpass',q=1.2,delay=0,att=.004){ if(!actx||!noiseBuf) return; try{ const t=actx.currentTime+delay, s=actx.createBufferSource(), f=actx.createBiquadFilter(), g=actx.createGain();
@@ -1270,11 +1275,14 @@ const HSND={
     shot:()=>{}
   }
 };
+// подгонка громкости отдельных звуков под общее сведение (замерено: шаги и плавание звучат часто — тише, удары — громче)
+const HSCALE={spark: {step: 0.89, jump: 0.87, jump2: 0.68, land: 1.05, waterIn: 0.83, waterOut: 1.29, swim: 1.18, dash: 0.94, hurt: 1.02, down: 0.76, duck: 1.48}, bolt: {step: 0.64, jump: 0.82, jump2: 0.5, land: 0.44, waterIn: 0.94, waterOut: 0.83, swim: 0.46, dash: 0.57, hurt: 0.45, down: 0.54, duck: 1.07, slamStart: 0.68}};
+for(const k in HSCALE) for(const e in HSCALE[k]){ const f0=HSND[k][e], m=HSCALE[k][e]; HSND[k][e]=(...a)=>{ const o=HVM; HVM=m; try{ f0(...a); }finally{ HVM=o; } }; }
 function heroJumpSnd(p,ev){ if(window.btCapsule&&window.btCapsule(p)) return; const now=performance.now(); if(now-(p._jsT||0)<40) return; p._jsT=now; if(HSND[p.kind]) HSND[p.kind][ev](); else sfx(ev); }   // в капсуле прыжок звучит иначе
 function heroSnd(p,ev,a){ const K=HSND[p&&p.kind]; if(K&&K[ev]) K[ev](a); }
 let sfxGate={};
-const SFX_MUL={nav:1.4,on:2,off:2,pick:5.5,gear:7,pk_heart:4.5,pk_shield:4.5,pk_triple:4.5,pk_rapid:4,pk_power:3.6,crack:2.6,boom:2.4,boomS:2.4,slam:2.2,kill:2.4,hit:2.4};   // старые звуки были тихими рядом с музыкой
-const sfx=n=>{ const now=performance.now(); if(sfxGate[n]&&now-sfxGate[n]<35) return; sfxGate[n]=now; if(SFX[n]){ SFXM=SFX_MUL[n]||2; try{ SFX[n](); }finally{ SFXM=1; } if(n==='pick'||n==='gear') pickSparkle(); } };
+const SFX_MUL={jump:9.47,jump2:9.24,dash:18.03,boost:4.13,slam:8.75,crack:4.95,on:11.38,off:16.25,die:9.35,shotS:12.05,shotSP:4.69,shotB:7.96,shotBP:6.11,boomS:7.67,pk_heart:4.93,pk_shield:4.01,pk_triple:7.91,pk_rapid:8.76,pk_power:6.94,hit:17.79,hurt:11.91,pick:10.13,gear:17.18,crit:7.52,nav:20.47,kill:8.14,boss:5.64,revive:7.96,win:5.77};   // старые звуки были тихими рядом с музыкой
+const sfx=n=>{ const now=performance.now(); if(sfxGate[n]&&now-sfxGate[n]<35) return; sfxGate[n]=now; if(SFX[n]){ SFXM=SFX_MUL[n]||3; try{ SFX[n](); }finally{ SFXM=3; } if(n==='pick'||n==='gear') pickSparkle(); } };
 function pickSparkle(){ hOsc('sine',2600,2900,.12,.012,.05,.002); hOsc('sine',3500,3900,.1,.008,.1,.002); }   // искорка при подборе — слышно поверх музыки
 
 /* ================= input ================= */
@@ -8351,7 +8359,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.24e';
+const GAME_VER='1.66.25e';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;

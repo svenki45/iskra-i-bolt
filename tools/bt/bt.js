@@ -1758,14 +1758,16 @@ function drawSurf(p){
 // ---- звуки капсулы: гул двигателя (зависит от скорости), прыжок-«пшшш», приземление, присед ----
 window.btCapsule=p=>!!(S.on&&S.kind==='cart'&&S.L&&S.L.bt&&!S.L.bt.water&&!S.L.bt.surf&&p&&(p.kind==='spark'||p.kind==='bolt'));
 // прыжок капсулы: паровой выхлоп «пшух» + свой оттенок героя (у Искры — треск огня, у Болта — сервопривод)
-const capJumpSfx=(second,kind)=>{ hNz(second?900:600,second?3600:2400,.18,.16,'bandpass',1.4,0,.012); hOsc('triangle',second?420:260,second?1100:700,.14,.06); hMetal(second?950:620,.2,.045,.02);
+const capJumpSfx0=(second,kind)=>{ hNz(second?900:600,second?3600:2400,.18,.16,'bandpass',1.4,0,.012); hOsc('triangle',second?420:260,second?1100:700,.14,.06); hMetal(second?950:620,.2,.045,.02);
   if(kind==='spark') hCrackle(second?4:2,.06,.15,.02); else hServo(second?300:180,second?800:450,.12,.05,.01); };
 let capLandT=0;
-const capLandSfx=(vy,kind)=>{ const now=performance.now(); if(vy<320||now-capLandT<140) return; capLandT=now; const k=clamp((vy-300)/700,0,1);
+const capLandSfx0=(vy,kind)=>{ const now=performance.now(); if(vy<320||now-capLandT<140) return; capLandT=now; const k=clamp((vy-300)/700,0,1);
   hOsc('sine',150,60,.13+.05*k,.14+.08*k); hNz(800,220,.1,.1+.06*k,'lowpass'); hMetal(300,.25+.1*k,.07+.04*k,.005); hNz(3000,1800,.12,.05,'bandpass',1.2,.05,.01);   // глухой «бум» латуни + выдох пара
   if(kind==='spark') hCrackle(2,.04); };
-const capDuckSfx=(dn,kind)=>{ if(dn){ hNz(3800,1400,.16,.16,'bandpass',1.1,0,.008); hOsc('triangle',460,220,.11,.08); hMetal(420,.1,.04,.05); if(kind==='bolt') hServo(300,140,.12,.06); else hCrackle(3,.06,.12); }   // «пшш-клац»: прячется в капсулу
+const capDuckSfx0=(dn,kind)=>{ if(dn){ hNz(3800,1400,.16,.16,'bandpass',1.1,0,.008); hOsc('triangle',460,220,.11,.08); hMetal(420,.1,.04,.05); if(kind==='bolt') hServo(300,140,.12,.06); else hCrackle(3,.06,.12); }   // «пшш-клац»: прячется в капсулу
   else { hNz(1600,3600,.12,.09,'bandpass',1.1); hOsc('triangle',240,440,.09,.06); if(kind==='bolt') hServo(150,300,.1,.04); } };
+const _capW=(f,m)=>(...a)=>{ const o=HVM; HVM=m; try{ f(...a); }finally{ HVM=o; } };   // громкость по замеру сведения
+const capJumpSfx=(sec,k)=>_capW(capJumpSfx0,sec?0.52:0.70)(sec,k), capLandSfx=_capW(capLandSfx0,0.47), capDuckSfx=_capW(capDuckSfx0,0.54);
 window.btCapSfx={jump:capJumpSfx,land:capLandSfx,duck:capDuckSfx};
 const CH={o1:null,o2:null,f:null,g:null,on:false};
 function capHumStart(){
@@ -1781,7 +1783,7 @@ setInterval(()=>{
   capHumStart(); if(!CH.on) return;
   try{ const t=actx.currentTime, v=clamp(S.v,0,520), f=95+v*.2+(S.boost>0?30:0);
     CH.o1.frequency.setTargetAtTime(f,t,.08); CH.o2.frequency.setTargetAtTime(f*2.01,t,.08); CH.f.frequency.setTargetAtTime(650+v*1.3,t,.1);
-    CH.g.gain.setTargetAtTime(.09+v*.00012+(S.boost>0?.04:0),t,.12);
+    CH.g.gain.setTargetAtTime((.09+v*.00012+(S.boost>0?.04:0))*.21,t,.12);   // гул — фоном, на уровне музыки
     CH.ch=(CH.ch||0)+90; const per=Math.max(110,320-v*.45); if(CH.ch>=per){ CH.ch=0; hNz(1900+Math.random()*500,1300,.05,.035+v*.00004,'bandpass',1.6); } }catch(e){}   // паровой «чух-чух» — чаще на скорости
 },90);
 
