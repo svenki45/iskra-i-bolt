@@ -85,6 +85,7 @@ sub("\nconst GAME_VER=",'\n' + intro + '\nconst GAME_VER=')
 sub("storyNext=()=>startGame(0); proT=0; setState('prologue');","storyNext=()=>startGame(0); proT=0; if(window.playIntro&&!(navigator.webdriver&&!window.__forceEnding)) window.playIntro(true,{onEnd:()=>{ const f=storyNext; storyNext=null; f&&f(); }}); else setState('prologue');")
 import shutil
 shutil.copy(ROOT / 'tools/intro.mp4', ROOT / 'desktop-bt/intro.mp4')
+for _l in ('uk', 'en'): shutil.copy(ROOT / f'tools/intro_{_l}.mp4', ROOT / f'desktop-bt/intro_{_l}.mp4')   # ролик с названием на языке игрока
 out = ROOT / 'desktop-bt/index.html'
 out.write_text(src, encoding='utf-8')
 print(f'desktop-bt/index.html готов: {len(src)//1024} КБ, испытаний: {n}')
@@ -101,6 +102,7 @@ BANNER = BANNER.replace('Понятно</button>', 'Понятно</button><div 
 web = web.replace('</body>', BANNER + '</body>', 1)
 wd = ROOT / 'bt'; wd.mkdir(exist_ok=True)
 shutil.copy(ROOT / 'tools/intro.mp4', wd / 'intro.mp4')
+for _l in ('uk', 'en'): shutil.copy(ROOT / f'tools/intro_{_l}.mp4', wd / f'intro_{_l}.mp4')
 (wd / 'index.html').write_text(web, encoding='utf-8')
 (wd / 'manifest.webmanifest').write_text('{"name": "Искра и Болт", "short_name": "Искра и Болт", "start_url": "./", "scope": "./", "display": "standalone", "orientation": "landscape", "background_color": "#0b1830", "theme_color": "#0b1830", "icons": [{"src": "icon-192.png", "sizes": "192x192", "type": "image/png"}, {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}]}', encoding='utf-8')
 (wd / 'sw.js').write_text("const C='ib-bt-v1';self.addEventListener('install',e=>{self.skipWaiting();});self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x)))).then(()=>self.clients.claim()));});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(fetch(e.request,{cache:'no-store'}).then(r=>{const cp=r.clone();caches.open(C).then(c=>c.put(e.request,cp));return r;}).catch(()=>caches.match(e.request)));});", encoding='utf-8')
