@@ -5926,10 +5926,12 @@ function lowFpsCheck(now,ms){ if(LOWF.shown) return;
   if(LOWF.bad>=2){ LOWF.shown=true; toastQ.push({small:'Игра идёт медленно · ~'+Math.round(fps)+' FPS',title:'Включите 2D-режим: Настройки → Графика',medal:'⚡',ms:7000}); showToast(); } }
 
 /* ===== журнал лагов: сам пишет провалы плавности и ошибки, кнопка в Настройках → Графика копирует его для разработчика ===== */
-const LAGLOG={key:'iskra-bolt-laglog',ev:[],frames:0,lags:0,by:{},start:Date.now()};
-try{ LAGLOG.ev=JSON.parse(localStorage.getItem(LAGLOG.key)||'[]').slice(-200); }catch(e){}
-function lagSave(){ try{ localStorage.setItem(LAGLOG.key,JSON.stringify(LAGLOG.ev.slice(-200))); }catch(e){} }
-function lagAdd(o){ o.t=Math.round(performance.now()/100)/10; LAGLOG.ev.push(o); if(LAGLOG.ev.length>200) LAGLOG.ev.shift(); LAGLOG._dirty=true; }
+const LAGLOG={key:'iskra-bolt-laglog',ev:[],sum:{},frames:0,lags:0,start:Date.now()};
+try{ LAGLOG.ev=JSON.parse(localStorage.getItem(LAGLOG.key)||'[]').slice(-120); LAGLOG.sum=JSON.parse(localStorage.getItem(LAGLOG.key+'-sum')||'{}')||{}; }catch(e){}
+function lagSave(){ try{ localStorage.setItem(LAGLOG.key,JSON.stringify(LAGLOG.ev)); localStorage.setItem(LAGLOG.key+'-sum',JSON.stringify(LAGLOG.sum)); }catch(e){} }
+function lagAdd(o){ o.t=Math.round(performance.now()/100)/10; LAGLOG.ev.push(o);
+  if(LAGLOG.ev.length>120){ let k=-1, m=1e9; const lim=LAGLOG.ev.length-30; for(let i=0;i<lim;i++){ const q=LAGLOG.ev[i]; if(q.err) continue; if(q.ms<m){ m=q.ms; k=i; } } LAGLOG.ev.splice(k>=0?k:0,1); }   // выкидываем самый лёгкий из старых — тяжёлые лаги остаются
+  LAGLOG._dirty=true; }
 setInterval(()=>{ if(LAGLOG._dirty){ LAGLOG._dirty=false; lagSave(); } },4000);
 addEventListener('pagehide',lagSave);
 addEventListener('error',e=>{ try{ lagAdd({err:String(e.message||'').slice(0,160),at:String(e.filename||'').split('/').pop()+':'+(e.lineno||0),lvl:levelIdx,st:state}); }catch(x){} });
@@ -5939,9 +5941,9 @@ document.addEventListener('visibilitychange',()=>{ _lagVis=3; });   // посл�
 function lagFrame(ms){   // ms — время между этим и прошлым кадром; PERF.lu/ld/lr — расчёт/рисование/3D прошлого кадра (-1: в том кадре не считались)
   const now=performance.now(); if(state!==_lagSt){ _lagSt=state; _lagStT=now; }
   if(document.hidden){ _lagVis=3; return; } if(_lagVis>0){ _lagVis--; return; }
-  LAGLOG.frames++; const S=LAGLOG.by[state]||(LAGLOG.by[state]={f:0,l:0}); S.f++;
+  LAGLOG.frames++; const key=((R3D&&R3D.on)?'3D':'2D')+' '+state+(state==='play'||state==='pause'?' ур.'+levelIdx:''); const S=LAGLOG.sum[key]||(LAGLOG.sum[key]={f:0,l:0,mx:0,sm:0}); S.f++; LAGLOG._dirty=true;
   if(ms<=50||ms>3000) return;
-  LAGLOG.lags++; S.l++;
+  LAGLOG.lags++; S.l++; S.sm+=ms; if(ms>S.mx) S.mx=Math.round(ms);
   const L=(players||[]).filter(p=>!p.absent&&!p.dead), p=(state==='play'||state==='pause'||state==='dying')?L[0]:null; const mem=performance.memory, v=x=>x<0?null:+x.toFixed(1);
   lagAdd({ms:Math.round(ms),st:state,sinceSt:Math.round((now-_lagStT)/100)/10,logic:v(PERF.lu),draw:v(PERF.ld),r3d:v(PERF.lr),lvl:levelIdx,x:p?Math.round(p.x/T):null,y:p?Math.round(p.y/T):null,
     mode:(R3D&&R3D.on)?'3D':'2D',en:(enemies||[]).length,bul:(bullets||[]).length+(ebullets||[]).length,prt:particles.length,fx:rings.length,boss:!!boss,heap:mem?Math.round(mem.usedJSHeapSize/1048576):null});
@@ -5950,9 +5952,8 @@ function lagText(){
   const s=settings||{}; const mem=performance.memory;
   const head=['Журнал лагов · игра v'+GAME_VER,'устройство: '+navigator.userAgent,'экран: '+innerWidth+'x'+innerHeight+' dpr '+(window.devicePixelRatio||1)+' · холст '+cv.width+'x'+cv.height,
     'настройки: '+((R3D&&R3D.on)?'3D':'2D')+', качество '+s.quality+', fps '+(s.fps||'без лимита')+', свечение '+s.glow+', фон '+s.ambient+', виньетка '+s.vignette+', следы '+s.trails+', частицы '+s.particles,
-    'за сессию: кадров '+LAGLOG.frames+', лагов (>50 мс) '+LAGLOG.lags+(LAGLOG.frames?' ('+(LAGLOG.lags*1000/LAGLOG.frames).toFixed(1)+' на 1000 кадров)':'')+(mem?', память JS '+Math.round(mem.usedJSHeapSize/1048576)+' МБ':''),
-    'по экранам (кадров/лагов): '+Object.entries(LAGLOG.by).map(([k,v])=>k+' '+v.f+'/'+v.l).join(', '),
-    'в записи: t — секунды с запуска, st — экран (play игра, menu меню, pause пауза…), sinceSt — секунд на этом экране, lvl — номер уровня, x/y — клетка героя, logic/draw/r3d — мс расчёта/рисования/3D, en — враги, bul — пули, prt — частицы',''];
+    'с запуска страницы: кадров '+LAGLOG.frames+', лагов (>50 мс) '+LAGLOG.lags+(LAGLOG.frames?' ('+(LAGLOG.lags*1000/LAGLOG.frames).toFixed(1)+' на 1000 кадров)':'')+(mem?', память JS '+Math.round(mem.usedJSHeapSize/1048576)+' МБ':''),
+    'сводка за ВСЁ время (режим, экран, уровень: кадров / лагов >50 мс / худший мс / средний лаг мс):'].concat(Object.entries(LAGLOG.sum).sort((a,b)=>b[1].l-a[1].l).slice(0,80).map(([k,v])=>'  '+k+': '+v.f+' / '+v.l+' / '+v.mx+' / '+(v.l?Math.round(v.sm/v.l):0)),['','в записи: t — секунды с запуска, st — экран (play игра, menu меню, pause пауза…), sinceSt — секунд на этом экране, lvl — номер уровня, x/y — клетка героя, logic/draw/r3d — мс расчёта/рисования/3D, en — враги, bul — пули, prt — частицы','']);
   return head.concat(LAGLOG.ev.map(o=>JSON.stringify(o))).join('\n');
 }
 function copyLagLog(){
@@ -8428,7 +8429,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.31j';
+const GAME_VER='1.66.31k';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
