@@ -520,7 +520,7 @@ function relayLevel(D){
 function relayActivate(e,quiet){ e.on=true; const m=movers[e.mi]; if(!m) return; if(e.type==='pit'){ m.ay=m.by=RFR*T; m.y=RFR*T; } else { m.sp=170; } if(!quiet){ sfx('win'); banner(e.type==='pit'?'МОСТ ВЫДВИНУТ!':'ЛИФТ ЕДЕТ!','#7fe08a',1.2); shake=Math.max(shake,4); } }
 function setupRelay(L){ const B=L.bt; BTX.z=1.45; BTX.lx=VW*0.12/1.45; S.rt=B.time*(diffLv()<0?1.3:diffLv()>1?0.85:1); S.hintT=10; S.freeze=1.3; banner('ЭСТАФЕТА!','#ffb347',1.2);
   for(const e of B.st){ e.on=false; e.done=false; const m=movers[e.mi]; if(m){ if(e.type==='pit'){ m.ay=m.by=-4000; m.y=-4000; } else { m.sp=0; m.u=0; m.dir=1; m.hold=0; } } }
-  if(solo) for(const e of B.st) relayActivate(e,true); }
+  for(const e of B.st){ if(!e.plate0) e.plate0=e.plate; e.plate=solo?{x:(e.type==='pit'?e.gs-3:e.ex-3)*T,y:RFR*T}:e.plate0; } }   // одному: кнопка перед препятствием, мост/лифт включается, когда встанешь на неё
 function relayPost(dt){
   const B=S.L.bt, L=live(); if(!L.length) return; S.hintT=Math.max(0,S.hintT-dt);
   if(S.freeze>0){ S.freeze-=dt; return; }
@@ -1969,7 +1969,7 @@ function hintCard(txt,yo){
 function hud(){
   const B=S.L.bt, L=live();
   if(S.kind==='relay'){ const m=Math.floor(S.rt/60), sc=Math.floor(S.rt%60), low=S.rt<20; ctx.fillStyle='rgba(6,10,22,.85)'; rr(ctx,VW/2-70,70,140,32,12); ctx.fill(); label((m+':'+String(sc).padStart(2,'0')),VW/2,87,20,low&&Math.floor(clock*4)%2?'#ff6b6b':'#ffd166'); label('ОБЩЕЕ ВРЕМЯ',VW/2,64,10,'#e8effa');
-    if(S.hintT>0){ hintCard('способность рядом с напарником — взять на плечи · ещё раз — бросить вперёд (с прыжком — подбросить вверх)',44); } }
+    if(S.hintT>0){ hintCard(solo?'встань на кнопку — выдвинется мост или поедет лифт':'способность рядом с напарником — взять на плечи · ещё раз — бросить вперёд (с прыжком — подбросить вверх)',44); } }
   if(S.kind==='cart'&&B.rhythm&&L.length) rhHud(L);
   if(S.kind==='boss'&&S.bo){ const b=S.bo, bw=420, bx=VW/2-bw/2, by=78; ctx.fillStyle='rgba(6,10,22,.88)'; rr(ctx,bx-10,by-14,bw+20,30,12); ctx.fill(); label('КУЗНЕЦ',bx,by-26,12,'#ff9a8a','left'); ctx.fillStyle='rgba(255,77,94,.2)'; rr(ctx,bx,by-6,bw,12,5); ctx.fill(); ctx.fillStyle=b.ph===3?'#ff4d5e':b.ph===2?'#ff9a3d':'#ffd166'; rr(ctx,bx,by-6,Math.max(0,bw*b.hp/b.max),12,5); ctx.fill(); ctx.fillStyle='#0b1220'; for(const k of [0.34,0.67]) ctx.fillRect(bx+bw*k-1,by-8,3,16);
     if(S.hintT>0){ hintCard('Болт: способность вблизи — смэш · Искра: огонь и рывок',40); } }
