@@ -5932,8 +5932,8 @@ function lagSave(){ try{ localStorage.setItem(LAGLOG.key,JSON.stringify(LAGLOG.e
 function lagAdd(o){ o.t=Math.round(performance.now()/100)/10; LAGLOG.ev.push(o);
   if(LAGLOG.ev.length>120){ let k=-1, m=1e9; const lim=LAGLOG.ev.length-30; for(let i=0;i<lim;i++){ const q=LAGLOG.ev[i]; if(q.err) continue; if(q.ms<m){ m=q.ms; k=i; } } LAGLOG.ev.splice(k>=0?k:0,1); }   // выкидываем самый лёгкий из старых — тяжёлые лаги остаются
   LAGLOG._dirty=true; }
-setInterval(()=>{ if(LAGLOG._dirty){ LAGLOG._dirty=false; lagSave(); } },4000);
-addEventListener('pagehide',lagSave);
+setInterval(()=>{ if(LAGLOG._dirty&&state!=='play'){ LAGLOG._dirty=false; lagSave(); } },10000);   // во время игры не пишем (чтобы журнал сам не давал лагов)
+addEventListener('pagehide',lagSave); document.addEventListener('visibilitychange',()=>{ if(document.hidden) lagSave(); });
 addEventListener('error',e=>{ try{ lagAdd({err:String(e.message||'').slice(0,160),at:String(e.filename||'').split('/').pop()+':'+(e.lineno||0),lvl:levelIdx,st:state}); }catch(x){} });
 addEventListener('unhandledrejection',e=>{ try{ lagAdd({err:'promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160),lvl:levelIdx,st:state}); }catch(x){} });
 let _lagSt='', _lagStT=0, _lagVis=0;
@@ -5941,7 +5941,7 @@ document.addEventListener('visibilitychange',()=>{ _lagVis=3; });   // посл�
 function lagFrame(ms){   // ms — время между этим и прошлым кадром; PERF.lu/ld/lr — расчёт/рисование/3D прошлого кадра (-1: в том кадре не считались)
   const now=performance.now(); if(state!==_lagSt){ _lagSt=state; _lagStT=now; }
   if(document.hidden){ _lagVis=3; return; } if(_lagVis>0){ _lagVis--; return; }
-  LAGLOG.frames++; const key=((R3D&&R3D.on)?'3D':'2D')+' '+state+(state==='play'||state==='pause'?' ур.'+levelIdx:''); const S=LAGLOG.sum[key]||(LAGLOG.sum[key]={f:0,l:0,mx:0,sm:0}); S.f++; const thr=Math.max(25,(settings&&settings.fps)?1500/settings.fps:25); if(ms>thr&&ms<=3000) S.s=(S.s||0)+1; LAGLOG._dirty=true;
+  LAGLOG.frames++; const key=((R3D&&R3D.on)?'3D':'2D')+' '+state+(state==='play'||state==='pause'?' ур.'+levelIdx:'')+((settings.mute||!(settings.master>0))?' [без звука]':'')+((!settings.glow&&!settings.ambient&&!settings.vignette&&!settings.trails)?' [без эффектов]':'')+(settings.fps&&settings.fps<60?' [fps '+settings.fps+']':''); const S=LAGLOG.sum[key]||(LAGLOG.sum[key]={f:0,l:0,mx:0,sm:0}); S.f++; const thr=Math.max(25,(settings&&settings.fps)?1500/settings.fps:25); if(ms>thr&&ms<=3000) S.s=(S.s||0)+1; LAGLOG._dirty=true;
   if(ms<=thr||ms>3000) return;
   LAGLOG.lags++; S.l++; S.sm+=ms; if(ms>S.mx) S.mx=Math.round(ms);
   const L=(players||[]).filter(p=>!p.absent&&!p.dead), p=(state==='play'||state==='pause'||state==='dying')?L[0]:null; const mem=performance.memory, v=x=>x<0?null:+x.toFixed(1);
@@ -8429,7 +8429,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.31m';
+const GAME_VER='1.66.31n';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
