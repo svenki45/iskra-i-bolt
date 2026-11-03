@@ -116,11 +116,11 @@ window.BOT=(function(){
   }
   function play(kind,maxSec,tr){
     BT.S.log=[]; const P=players, log=[]; let f=0, hp0=P.map(p=>p.hp), t0=levelTime;
-    const B=BT.S.L.bt, maxF=Math.round((maxSec||150)*60);
+    const B=BT.S.L.bt, DT=window.__DT||1/60, maxF=Math.round((maxSec||150)/DT);   // __DT — шаг кадра (проверка на высоком FPS)
     for(;f<maxF;f++){
       if(state!=='play') break;
       for(let i=0;i<2;i++) cur[i]=(kind==='cart')?cartIn(P[i],i):(kind==='wire')?wireIn(P[i],i):(kind==='maze')?mazeIn(P[i],i):(kind==='ice')?iceIn(P[i],i):(kind==='rot')?rotIn(P[i],i):(kind==='mag')?magIn(P[i],i):Object.assign({},N);
-      __T.step(1/60);
+      __T.step(DT);
       if(tr){ const q=P[tr.pi], x=q.x/T; if(x>tr.lo&&x<tr.hi) (BOT.tr=BOT.tr||[]).push([f,+x.toFixed(2),Math.round(q.y),Math.round(q.vy),Math.round(BT.S.v),q.onGround?1:0,cur[tr.pi].jump?1:0]); }
       P.forEach((p,i)=>{ if(p.hp<hp0[i]){ log.push(p.kind+'@'+(p.x/T).toFixed(1)+' t='+(f/60).toFixed(1)); } hp0[i]=p.hp; });
     }

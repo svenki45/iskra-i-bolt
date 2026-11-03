@@ -10,6 +10,9 @@ CAMP_RAW = any(a=='camp' for a in args[1:])
 modes = [a for a in args[1:] if a in ('duo', 'spark', 'bolt')] or ['duo', 'spark', 'bolt']
 diffs = [a for a in args[1:] if a in ('easy', 'normal', 'hard', 'nightmare')] or ['normal']
 kind = 'cart'
+FPS = 60
+for a in args[1:]:
+    if a.startswith('fps='): FPS = int(a[4:])
 for a in args[1:]:
     if a.startswith('kind='): kind = a[5:]
 subprocess.run([sys.executable, str(HERE / 'mktest.py'), '/tmp/claude-0/bt/test.html'], check=True, stdout=subprocess.DEVNULL)
@@ -30,6 +33,7 @@ with sync_playwright() as p:
                 time.sleep(0.4)
                 if pg.evaluate("__T.go('state')") == 'play': break
             pg.evaluate("src=>__T.go(src)", bot)
+            pg.evaluate(f"window.__DT=1/{FPS}")
             r = pg.evaluate(f"__T.go(\"BOT.play('{kind}',170)\")")
             ok = r['state'] != 'play' and not r['hits'] and r['x'] >= (r['fin'] or 0) - 1
             print(f"{'OK ' if ok else 'BAD'} {m:5s} {d:9s} {json.dumps(r, ensure_ascii=False)} {errs[:2] if errs else ''}")
