@@ -1158,6 +1158,7 @@ function landSounds(dt){
     if(p._wasW!==undefined&&w!==p._wasW&&Math.abs(p._pvy2||p.vy||0)>110&&!(noSt&&window.btNoWater&&window.btNoWater())){   // вошёл / вышел из воды
       const k=Math.min(1,Math.abs(p._pvy2||p.vy||0)/600); heroSnd(p,w?'waterIn':'waterOut',k); }
     p._wasW=w; p._pvy2=p.vy||0;
+    if(w){ p._swT=(p._swT||0)-dt; if(p._swT<=0){ const m=Math.min(1,(Math.abs(p.vx||0)+Math.abs(p.vy||0))/300); p._swT=p.kind==='spark'?(.42-.15*m):(.5-.2*m); heroSnd(p,'swim',m); } } else p._swT=.15;
     if(!g){ p._air=true; p._pvy=Math.max(p._pvy||0,p.vy||0); }
     else { if(p._air&&!w&&!noSt){ const vy=p._pvy||0; if(vy>300&&performance.now()-(p._landT||0)>140){ p._landT=performance.now(); const k=Math.min(1,(vy-250)/700);
         heroSnd(p,'land',k); } }
@@ -1183,6 +1184,10 @@ function tone(f1,f2,dur,type='square',vol=0.05,delay=0){
     o.connect(g).connect(sfxG); o.start(t); o.stop(t+dur+0.03);
   }catch(e){}
 }
+// разрушение: камень/кирпич крошится (гул + осыпь камушков), металл — лязг и дребезг
+function crumbleSnd(big){ const k=big?1:.6; hNz(700,180,.35*k+.1,.12*k+.04,'lowpass',1,0,.005); hOsc('sine',110,45,.3,.1*k+.03); for(let i=0;i<(big?10:6);i++){ const d=.03+Math.random()*.4; hNz(1200+Math.random()*2500,800,.02+Math.random()*.03,.03+Math.random()*.04,'bandpass',2,d,.001); } }
+function knockSnd(){ hOsc('sine',260,180,.06,.09); hNz(1600,800,.04,.06,'bandpass',2); hOsc('sine',260,180,.06,.07,.13); hNz(1600,800,.04,.05,'bandpass',2,.13); }   // «тук-тук» по пустой стене
+function metalBreakSnd(){ hMetal(700,.35,.09); hMetal(1150,.25,.05,.06); for(let i=0;i<5;i++) hMetal(1500+Math.random()*1500,.08,.025,.05+Math.random()*.3); hNz(2500,900,.15,.07,'bandpass',1.2); }
 const SFX={
   jump:()=>tone(380,720,.11,'square',.035), jump2:()=>tone(620,1150,.12,'triangle',.05),
   dash:()=>tone(900,260,.13,'sawtooth',.03), boost:()=>tone(180,950,.28,'square',.06),
@@ -1209,7 +1214,7 @@ const SFX={
   win:()=>{tone(523,523,.12,'triangle',.06);tone(659,659,.12,'triangle',.06,.11);tone(784,1046,.3,'triangle',.06,.22)}
 };
 /* ===== звуки героев: у Искры — огонь (фух, треск, шипение пара), у Болта — металл и сервоприводы (лязг, жужжание, пневматика) ===== */
-const HV=3.4;   // общая громкость звуков героев: громче музыки на слух, но короткие и мягкие по тембру
+const HV=5.5;   // общая громкость звуков героев: громче музыки на слух, но короткие и мягкие по тембру
 function _env(g,t,vol,att,dur){ g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(Math.max(.0002,vol*HV),t+att); g.gain.exponentialRampToValueAtTime(0.0001,t+att+dur); }
 function hOsc(type,f1,f2,dur,vol,delay=0,att=.004){ if(!actx) return; try{ const t=actx.currentTime+delay, o=actx.createOscillator(), g=actx.createGain();
   o.type=type; o.frequency.setValueAtTime(f1,t); o.frequency.exponentialRampToValueAtTime(Math.max(30,f2),t+att+dur); _env(g,t,vol,att,dur); o.connect(g).connect(sfxG); o.start(t); o.stop(t+att+dur+.03); }catch(e){} }
@@ -1234,6 +1239,11 @@ const HSND={
     land:k=>{ hNz(1300,350,.09+.05*k,.09+.08*k,'lowpass',1); hOsc('sine',230,120,.08,.06+.05*k); hCrackle(1+Math.round(k*3),.05); },
     waterIn:k=>{ hNz(1000,300,.18+.1*k,.1+.07*k,'lowpass',1); hNz(7000,3500,.35+.2*k,.08+.04*k,'highpass',.7,.03,.02); hCrackle(3,.04,.2,.02); },   // огонь в воде — пар шипит
     waterOut:k=>{ hNz(900,400,.12,.06+.04*k,'lowpass'); hNz(5500,3800,.14,.04,'highpass',.7,.02); },
+    swim:m=>{ hNz(7000,4800,.22,.05+.03*m,'highpass',.7,0,.03); hCrackle(2,.04,.2); if(m>.3) hNz(900,500,.12,.04*m,'lowpass',1,.05); },   // плывёт — огонёк шипит в воде
+    dash:()=>{ hNz(400,3200,.22,.24,'bandpass',1.3,0,.01); hNz(3000,7000,.18,.07,'highpass',.7,.03); hOsc('sawtooth',160,520,.16,.04); hCrackle(5,.07,.2,.02); },
+    hurt:()=>{ hNz(6500,2500,.22,.12,'highpass',.8,0,.005); hOsc('triangle',950,300,.18,.09); hCrackle(4,.07,.15); },   // «пшш-ай»: огонёк обожгло
+    down:()=>{ hNz(6000,1500,.7,.12,'highpass',.7,0,.01); hOsc('triangle',600,120,.6,.08); hCrackle(6,.05,.5); },   // огонёк гаснет
+    duck:()=>{ hNz(2600,900,.1,.1,'bandpass',1.2); hOsc('triangle',320,200,.07,.05); },
     shot:()=>{}
   },
   bolt:{
@@ -1246,6 +1256,12 @@ const HSND={
     land:k=>{ hOsc('sine',135,55,.13+.06*k,.13+.08*k); hNz(900,250,.1,.1+.06*k,'lowpass'); hMetal(360,.22+.1*k,.06+.05*k,.005); },
     waterIn:k=>{ hNz(1000,280,.22+.1*k,.12+.07*k,'lowpass',1); hOsc('sawtooth',62,58,.25,.035,.05); hCrackle(4,.05,.25,.05); },   // плюх + электрическое «бзз»
     waterOut:k=>{ hNz(900,350,.12,.07+.04*k,'lowpass'); hServo(200,320,.1,.03,.02); },
+    swim:m=>{ for(let i=0;i<2+Math.round(m*2);i++){ const f=280+Math.random()*350; hOsc('sine',f,f*2.4,.05,.06,Math.random()*.2,.003); } if(Math.random()<.35) hOsc('sawtooth',58,56,.15,.03,.05); },   // буль-буль пузыри + лёгкое «бзз»
+    dash:()=>{ hServo(220,700,.16,.07); hNz(3500,1200,.14,.14,'bandpass',1.5); hMetal(900,.15,.04,.03); },
+    hurt:()=>{ hMetal(520,.3,.12); hOsc('square',700,180,.12,.05,.02); hOsc('square',300,900,.06,.035,.12); hNz(2200,900,.1,.09,'bandpass',1.2); },   // лязг + электрический сбой
+    down:()=>{ hServo(420,55,.8,.08); hMetal(280,.4,.1,.6); hNz(800,200,.25,.1,'lowpass',1,.6); },   // робот выключается и падает
+    duck:()=>{ hServo(260,140,.1,.05); hMetal(600,.08,.03,.06); },
+    slamStart:()=>{ hServo(500,180,.18,.06); hNz(1500,500,.2,.08,'bandpass',1.2); },
     shot:()=>{}
   }
 };
@@ -2235,7 +2251,7 @@ function updHint(){ let rh='';
   $('hint').textContent=boss?(rh.replace(/^\s*✦\s*/,'✦ ')):levelHint+rh+(secretsTotal?'  ✦ Секреты: '+secretsFound+'/'+secretsTotal:''); }
 let secretHits={};
 function hitSecret(tx,ty){ const k=tx+','+ty; secretHits[k]=(secretHits[k]||0)+1; if(secretHits[k]>=2) return openSecret(tx,ty);
-  sfx('crack'); shake=Math.max(shake,2); for(let i=0;i<5;i++) addP({x:tx*T+Math.random()*T,y:ty*T+Math.random()*T,vx:(Math.random()-.5)*200,vy:-Math.random()*200,life:.5,max:.5,c:'#bcd4ff',s:2.5,g:1});
+  knockSnd(); shake=Math.max(shake,2); for(let i=0;i<5;i++) addP({x:tx*T+Math.random()*T,y:ty*T+Math.random()*T,vx:(Math.random()-.5)*200,vy:-Math.random()*200,life:.5,max:.5,c:'#bcd4ff',s:2.5,g:1});
   texts.push({x:tx*T+T/2,y:ty*T-10,t:'тук… пусто?',life:1,c:'#bcd4ff'}); }
 function openSecret(tx,ty){
   const st=[[tx,ty]], cells=[];
@@ -2244,7 +2260,7 @@ function openSecret(tx,ty){
   if(!(typeof R3D!=='undefined'&&R3D.active&&R3D.active())) staticDirty=true; let got=false;
   for(const pk of pickups) if(pk.hidden&&cells.some(([x,y])=>Math.abs(pk.x/T-x)<=1&&Math.abs(pk.y/T-y)<=1)){ pk.hidden=false; got=true;
     rings.push({x:pk.x+T/2,y:pk.y+T/2,r:6,max:130,life:.6,c:'#ffd166',w:5}); burst(pk.x+T/2,pk.y+T/2,26,['#ffd166','#ffffff'],300,.8); }
-  shake=Math.max(shake,6); sfx('crack');
+  shake=Math.max(shake,6); crumbleSnd(true);
   if(got){ secretsFound++; addScore(100); sfx('boost'); flash('#ffd166',.2); hitstop=Math.max(hitstop,.08);
     const c=cells[0]; texts.push({x:c[0]*T+T/2,y:c[1]*T-30,t:'СЕКРЕТ! '+secretsFound+'/'+secretsTotal,life:1.8,c:'#ffd166',pop:true}); updHint(); }
 }
@@ -2311,10 +2327,10 @@ function breakCrack(tx,ty,flood){
     for(let i=0;i<8;i++) addP({x:x*T+Math.random()*T,y:y*T+Math.random()*T,vx:(Math.random()-.5)*380,vy:-Math.random()*420,life:.9,max:.9,c:Math.random()<.5?'#e7b54a':'#5a4026',s:3+Math.random()*4,g:1});
     if(flood) st.push([x+1,y],[x-1,y],[x,y+1],[x,y-1]);
   }
-  shake=Math.max(shake,flood?10:4); sfx('crack'); if(flood) unlock('slam');
+  shake=Math.max(shake,flood?10:4); crumbleSnd(!!flood); if(flood) unlock('slam');
 }
 function onSlamLand(e){
-  e.slam=false; shake=Math.max(shake,7); sfx('slam'); e.sx=1.35; e.sy=0.7;
+  e.slam=false; shake=Math.max(shake,7); sfx('slam'); if(e.kind==='bolt'){ hMetal(240,.45,.12); hOsc('sine',90,40,.3,.16); } e.sx=1.35; e.sy=0.7;
   for(let i=0;i<14;i++){ const d=i<7?-1:1; addP({x:e.x+e.w/2,y:e.y+e.h,vx:d*(150+Math.random()*260),vy:-Math.random()*160,life:.45,max:.45,c:'#9cc3ff',s:3,g:1}); }
   const zone={x:e.x-50,y:e.y+e.h-30,w:e.w+100,h:34};
   for(const en of enemies) if(overlap(en,zone)) damageEnemy(en,4);
@@ -2366,7 +2382,7 @@ function control(p,inp,dt){
   }
   if(!inp.jump&&p.vy<-260&&!p.boosted&&!p.cut){ p.vy*=0.5; p.cut=true; }
   if(inp.ap){
-    if(sp){ if(p.dashesLeft>0&&p.dash<=0){ p.dash=0.16*(U('dash')?1.4:1); p.dashHit=null; p.dashesLeft--; p.cut=true; sfx('dash'); } }
+    if(sp){ if(p.dashesLeft>0&&p.dash<=0){ p.dash=0.16*(U('dash')?1.4:1); p.dashHit=null; p.dashesLeft--; p.cut=true; heroSnd(p,'dash'); } }
     else {
       const s=players[0];
       if(!s.down&&s.wasGround&&s.ground===p){
@@ -2375,7 +2391,7 @@ function control(p,inp,dt){
         burst(p.x+p.w/2,p.y,16,['#ffd166','#62c7c1'],260,.5);
         texts.push({x:p.x+p.w/2,y:p.y-40,t:'ОП!',life:.7,c:'#ffd166'}); unlock('boost');
         if(solo&&active===1){ active=0; prevPad[0]={j:true,a:true}; }
-      } else if(!p.wasGround&&!p.slam){ p.slam=true; p.vx=0; p.vy=1300; p.sx=.8; p.sy=1.2; }
+      } else if(!p.wasGround&&!p.slam){ p.slam=true; p.vx=0; p.vy=1300; p.sx=.8; p.sy=1.2; heroSnd(p,'slamStart'); }
     }
   }
   if(inp.fire&&p.shootCd<=0) shoot(p);
@@ -2419,7 +2435,7 @@ function swapHero(auto){
 function hurt(p){
   if(p.inv>0||p.down||state!=='play'||cheatGod||demo) return;
   if(p.shield){ p.shield=false; p.inv=1; burst(p.x+p.w/2,p.y+p.h/2,14,'#9cc3ff',200,.4); sfx('hit'); return; }
-  p.hp--; p.inv=1.3; levelHurt=true;
+  p.hp--; p.inv=1.3; levelHurt=true; heroSnd(p,p.hp<=0&&!p.secondWind?'down':'hurt');
   if(p.hp<=0&&p.secondWind){ p.secondWind=false; p.hp=1; p.inv=2; sfx('revive'); burst(p.x+p.w/2,p.y+p.h/2,22,'#7fe08a',260,.6); texts.push({x:p.x+p.w/2,y:p.y-26,t:'ВТОРОЕ ДЫХАНИЕ!',life:1.4,c:'#7fe08a',pop:true}); return; } p.vy=-380; p.vx=-p.face*260; shake=Math.max(shake,5); sfx('hurt'); flash('#ff3b4e',.28);
   burst(p.x+p.w/2,p.y+p.h/2,12,p.kind==='spark'?'#ff8a3d':'#62c7c1',220,.5);
   if(p.hp<=0){
@@ -8323,7 +8339,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.21e';
+const GAME_VER='1.66.22e';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;

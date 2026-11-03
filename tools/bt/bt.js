@@ -758,7 +758,7 @@ function smash(p){
   const cx=p.x+p.w/2+p.face*48, cy=p.y+p.h*0.55, zone={x:cx-62,y:p.y-24,w:124,h:p.h+34};
   rings.push({x:cx,y:cy,r:8,max:80,life:.3,c:'#62c7c1',w:5}); burst(cx,cy,16,['#9cc3ff','#62c7c1','#fff'],320,.4);
   if(S.bo&&S.bo.hp>0&&overlap({x:S.bo.x,y:S.bo.y,w:S.bo.w,h:S.bo.h},{x:zone.x-8,y:zone.y,w:zone.w+16,h:zone.h})) damageBoss(3,'slam');
-  if(S.haz) for(const h of S.haz){ if(h.k==='saw'&&!h.dead&&S.lt>=h.t1&&overlap({x:h.x-16,y:h.y-16,w:32,h:32},zone)){ h.dead=true; burst(h.x,h.y,18,['#ffd166','#fff','#ff8a3d'],340,.5); texts.push({x:h.x,y:h.y-30,t:'СБИТА!',life:.8,c:'#62c7c1',pop:true}); sfx('kill'); } }
+  if(S.haz) for(const h of S.haz){ if(h.k==='saw'&&!h.dead&&S.lt>=h.t1&&overlap({x:h.x-16,y:h.y-16,w:32,h:32},zone)){ h.dead=true; burst(h.x,h.y,18,['#ffd166','#fff','#ff8a3d'],340,.5); metalBreakSnd(); texts.push({x:h.x,y:h.y-30,t:'СБИТА!',life:.8,c:'#62c7c1',pop:true}); sfx('kill'); } }
   let n=0; for(const en of enemies){ if(en.hp<=0||!overlap(en,zone)) continue; n++; damageEnemy(en,4,false,'slam'); knock(en,p.face*760,-420); }
   if(n) texts.push({x:cx,y:p.y-30,t:n>1?'СМЭШ ×'+n+'!':'СМЭШ!',life:.8,c:'#62c7c1',pop:true});
 }
@@ -863,7 +863,7 @@ function cartExtraSetup(L){
 }
 function cartExtraPost(dt,L){
   const B=S.L.bt, lead=Math.max(...L.map(p=>p.x+p.w));
-  for(const c of B.shoots||[]){ if(c.dead) continue; const r={x:c.x*T,y:FL*T-80,w:40,h:80}; for(const bl of bullets){ if(bl.life<=0||!overlap(bl,r)) continue; c.dead=true; bl.life=0; burst(c.x*T+20,FL*T-40,16,['#ffd166','#ff8a3d','#fff'],300,.45); sfx('kill'); texts.push({x:c.x*T+20,y:FL*T-90,t:'ТАК!',life:.6,c:'#7fe08a',pop:true}); break; } }
+  for(const c of B.shoots||[]){ if(c.dead) continue; const r={x:c.x*T,y:FL*T-80,w:40,h:80}; for(const bl of bullets){ if(bl.life<=0||!overlap(bl,r)) continue; c.dead=true; bl.life=0; burst(c.x*T+20,FL*T-40,16,['#ffd166','#ff8a3d','#fff'],300,.45); crumbleSnd(false); sfx('kill'); texts.push({x:c.x*T+20,y:FL*T-90,t:'ТАК!',life:.6,c:'#7fe08a',pop:true}); break; } }
   if(B.rhythm&&L.length){ rhSync(lead); rhMiss(L); }
   for(const f of B.fish){ if(f.t<0){ if(lead>f.x*T-Math.max(S.v,200)*0.55&&lead<f.x*T) { f.t=0; burst(f.x*T+20,FL*T-4,14,['#9cf','#fff'],220,.4); sfx('jump'); } } else f.t+=dt; }
   const R=S.R;
@@ -1764,8 +1764,8 @@ let capLandT=0;
 const capLandSfx=(vy,kind)=>{ const now=performance.now(); if(vy<320||now-capLandT<140) return; capLandT=now; const k=clamp((vy-300)/700,0,1);
   hOsc('sine',150,60,.13+.05*k,.14+.08*k); hNz(800,220,.1,.1+.06*k,'lowpass'); hMetal(300,.25+.1*k,.07+.04*k,.005); hNz(3000,1800,.12,.05,'bandpass',1.2,.05,.01);   // глухой «бум» латуни + выдох пара
   if(kind==='spark') hCrackle(2,.04); };
-const capDuckSfx=(dn,kind)=>{ if(dn){ hNz(4500,2200,.16,.09,'bandpass',1.1,0,.01); hOsc('triangle',420,240,.1,.05); if(kind==='bolt') hServo(260,150,.1,.04); }
-  else { hNz(2200,4000,.1,.05,'bandpass',1.1); hOsc('triangle',240,420,.08,.04); } };
+const capDuckSfx=(dn,kind)=>{ if(dn){ hNz(3800,1400,.16,.16,'bandpass',1.1,0,.008); hOsc('triangle',460,220,.11,.08); hMetal(420,.1,.04,.05); if(kind==='bolt') hServo(300,140,.12,.06); else hCrackle(3,.06,.12); }   // «пшш-клац»: прячется в капсулу
+  else { hNz(1600,3600,.12,.09,'bandpass',1.1); hOsc('triangle',240,440,.09,.06); if(kind==='bolt') hServo(150,300,.1,.04); } };
 window.btCapSfx={jump:capJumpSfx,land:capLandSfx,duck:capDuckSfx};
 const CH={o1:null,o2:null,f:null,g:null,on:false};
 function capHumStart(){
