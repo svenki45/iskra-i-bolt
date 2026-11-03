@@ -881,11 +881,14 @@ addEventListener('dragstart',e=>e.preventDefault());
 addEventListener('keydown',e=>{ if((e.ctrlKey||e.metaKey)&&e.code==='KeyA'&&!(e.target&&/INPUT|TEXTAREA/.test(e.target.tagName))) e.preventDefault(); });
 /* ================= audio ================= */
 let actx=null;
+{ const wake=()=>{ if(actx&&actx.state!=='running'){ try{ actx.resume().catch(()=>{}); }catch(e){} } };   // вернули приложение из фона / тапнули — будим звук
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) wake(); }); addEventListener('pageshow',wake); addEventListener('pointerdown',wake,true); addEventListener('touchstart',wake,{capture:true,passive:true}); }
 let masterG=null, musicG=null, sfxG=null, noiseBuf=null;
 function audioInit(){
-  if(actx){ if(actx.state==='suspended') actx.resume().catch(()=>{}); return; }
+  if(actx){ if(actx.state!=='running') actx.resume().catch(()=>{}); return; }   // на iPhone после блокировки экрана состояние «interrupted», а не «suspended» — возвращаем звук в обоих случаях
   try{
     actx=new (window.AudioContext||window.webkitAudioContext)();
+    try{ actx.onstatechange=()=>{ try{ lagAdd({note:'audio '+actx.state,st:state}); }catch(e){} }; }catch(e){}
     masterG=actx.createGain(); musicG=actx.createGain(); sfxG=actx.createGain();
     // сведение: громкость каждого звука подогнана по замеру (см. SFX_MUL, HSCALE), поэтому эффекты идут напрямую — без компрессора, который «качал» бы музыку;
     // в конце — только ограничитель от хрипа на редких совпадениях громких звуков
@@ -8439,7 +8442,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.31p';
+const GAME_VER='1.66.31q';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
