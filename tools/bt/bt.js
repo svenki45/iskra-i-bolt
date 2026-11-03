@@ -1778,7 +1778,7 @@ function capHumStart(){
 }
 function capHumStop(){ if(!CH.on) return; try{ const t=actx.currentTime; CH.g.gain.cancelScheduledValues(t); CH.g.gain.setTargetAtTime(0,t,.05); const o1=CH.o1,o2=CH.o2; setTimeout(()=>{ try{ o1.stop(); o2.stop(); }catch(e){} },400); }catch(e){} CH.on=false; }
 setInterval(()=>{
-  const want=!!(S.on&&S.kind==='cart'&&state==='play'&&!intro&&!document.hidden&&S.L&&S.L.bt&&!S.L.bt.water&&!S.L.bt.surf&&S.v>20);
+  const want=!!(S.on&&S.kind==='cart'&&state==='play'&&!intro&&!document.hidden&&S.L&&S.L.bt&&!S.L.bt.water&&!S.L.bt.surf&&S.v>20&&!settings.mute);
   if(!want){ capHumStop(); return; }
   capHumStart(); if(!CH.on) return;
   try{ const t=actx.currentTime, v=clamp(S.v,0,520), f=95+v*.2+(S.boost>0?30:0);
