@@ -4123,8 +4123,11 @@ let last=performance.now(), hudT=0, padCheckT=0;
 const PC_GFX=!!(window.ibSys&&window.ibSys.gfxSet);   // ПК-версия: можно выключить вертикальную синхронизацию
 const FPS_STEPS=PC_GFX?[30,45,60,90,120,144,165,240,360,0]:[30,45,60,90,120,144,0], fpsName=v=>v?v+' FPS':'Без ограничения';
 if(PC_GFX) try{ window.ibSys.gfxGet().then(g=>{ settings.vsync=!(g&&g.vsync===false); }); }catch(e){}
+const FPSL={due:0,skip:0};
 function frame(now){
-  { const cap=(settings&&settings.fps!=null)?settings.fps:60, minMs=cap?1000/cap-1.2:0; if(last&&now-last<minMs){ requestAnimationFrame(frame); return; } }   // ограничение FPS из настроек (по умолчанию 60)
+  { const cap=(settings&&settings.fps!=null)?settings.fps:60;   // ограничение FPS из настроек (по умолчанию 60)
+    // раньше кадр пропускался, если пришёл хоть чуть раньше 1/60 с — на iPhone кадры приходят с разбросом ±1–2 мс, и игра сама выбрасывала кадр (рывок 33 мс). Теперь держим «расписание» с запасом 30%
+    if(cap&&last){ const iv=1000/cap; if(now<FPSL.due-iv*.3){ FPSL.skip++; requestAnimationFrame(frame); return; } FPSL.due=(now-FPSL.due>iv)?now+iv:FPSL.due+iv; } else FPSL.due=now; }
   const dt=Math.min(0.05,Math.max(0,(now-last)/1000)); last=now;
   PERF.cb=performance.now()-now;   // насколько позже браузер вызвал кадр, чем планировал (для журнала лагов)
   perfFrame(now); PERF._u0=performance.now();
@@ -5973,7 +5976,7 @@ function lagFrame(ms){ const TM=window.__TM||{sum:0,max:0,maxN:''};   // ms — 
 }
 function lagText(){
   const s=settings||{}; const mem=performance.memory;
-  const head=['Журнал лагов · игра v'+GAME_VER,'устройство: '+navigator.userAgent,'экран: '+innerWidth+'x'+innerHeight+' dpr '+(window.devicePixelRatio||1)+' · холст '+cv.width+'x'+cv.height+' · чёткость '+(settings.sharp||'high'),'видеочип (ожидание кадра): '+(GPU.n?'в среднем '+(GPU.sum/GPU.n).toFixed(1)+' мс, макс '+GPU.mx.toFixed(1)+' мс, замеров '+GPU.n:'нет замеров'),
+  const head=['Журнал лагов · игра v'+GAME_VER,'устройство: '+navigator.userAgent,'экран: '+innerWidth+'x'+innerHeight+' dpr '+(window.devicePixelRatio||1)+' · холст '+cv.width+'x'+cv.height+' · чёткость '+(settings.sharp||'high')+' · пропущено кадров ограничителем '+FPSL.skip,'видеочип (ожидание кадра): '+(GPU.n?'в среднем '+(GPU.sum/GPU.n).toFixed(1)+' мс, макс '+GPU.mx.toFixed(1)+' мс, замеров '+GPU.n:'нет замеров'),
     'настройки: '+((R3D&&R3D.on)?'3D':'2D')+', качество '+s.quality+', fps '+(s.fps||'без лимита')+', свечение '+s.glow+', фон '+s.ambient+', виньетка '+s.vignette+', следы '+s.trails+', частицы '+s.particles,
     'с запуска страницы: кадров '+LAGLOG.frames+', медленных кадров (>25 мс) '+LAGLOG.lags+(LAGLOG.frames?' ('+(LAGLOG.lags*1000/LAGLOG.frames).toFixed(1)+' на 1000 кадров)':'')+(mem?', память JS '+Math.round(mem.usedJSHeapSize/1048576)+' МБ':''),
     'сводка за ВСЁ время (режим, экран, уровень: кадров / медленных кадров (>25 мс, т.е. ниже 40 FPS) / худший мс / средний медленный кадр мс):'].concat(Object.entries(LAGLOG.sum).sort((a,b)=>b[1].l-a[1].l).slice(0,80).map(([k,v])=>'  '+k+': '+v.f+' / '+(v.l||0)+' / '+v.mx+' / '+(v.l?Math.round(v.sm/v.l):0)),['','в записи: t — секунды с запуска, st — экран (play игра, menu меню, pause пауза…), sinceSt — секунд на этом экране, lvl — номер уровня, x/y — клетка героя, logic/draw/r3d — мс расчёта/рисования/3D, tmr — мс на таймеры и обработчики событий между кадрами, tmx — самый тяжёлый из них, cb — задержка вызова кадра браузером (мс), en — враги, bul — пули, prt — частицы','']);
@@ -8452,7 +8455,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.31r';
+const GAME_VER='1.66.31s';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
