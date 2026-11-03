@@ -821,14 +821,15 @@ let titleWide=0, TVW=VW, custBack='menu';
    заполняется размытой копией картинки (как у видеоплеера) — без чёрных полей и без растяжения игры */
 const ambC=document.createElement('canvas'); ambC.id='amb'; ambC.width=24; ambC.height=14;
 { const st=document.getElementById('stage'); if(st) st.insertBefore(ambC,st.firstChild); }
-let ambLast=0; const ambT=document.createElement('canvas'); ambT.width=96; ambT.height=54;
+let ambLast=0, ambAgain=0; const ambT=document.createElement('canvas'); ambT.width=96; ambT.height=54;
 function ambTick(now){
   const on=document.body.classList.contains('touch')&&document.body.classList.contains('playing')&&!document.body.classList.contains('padmode')&&(typeof touchLayout==='undefined'||touchLayout.win!=='custom');
   if(document.body.classList.contains('ambon')!==on) document.body.classList.toggle('ambon',on);
-  if(!on||now-ambLast<330) return; ambLast=now;
+  // раньше это делалось каждые 0,33 с: огромная картинка уровня и сам экран сжимались в маленькую — видеочип спотыкался, и картинка дёргалась 3 раза в секунду.
+  // Теперь размытый фон по краям считается один раз на уровень (и при смене размера картинки уровня)
+  if(!on) return; const key=levelIdx+':'+staticLayer.width+'x'+staticLayer.height+':'+(typeof drawStatic!=='undefined'?1:0); if(ambLast===key){ if(!ambAgain||now<ambAgain) return; ambAgain=0; } else { ambLast=key; ambAgain=now+1500; }   // и ещё раз через 1,5 с — на случай, если картинка уровня дорисовывалась
   const h=ambT.getContext('2d'); h.imageSmoothingEnabled=true; h.imageSmoothingQuality='high'; h.fillStyle='#0a1020'; h.fillRect(0,0,96,54);
-  try{ h.drawImage(staticLayer,0,0,96,54); }catch(e){}   // цвета фона уровня (дёшево, без чтения 3D-слоя)
-  try{ h.drawImage(cv,0,0,96,54); }catch(e){}
+  try{ h.drawImage(staticLayer,0,0,96,54); }catch(e){}   // цвета фона уровня
   const g=ambC.getContext('2d'); g.imageSmoothingEnabled=true; g.imageSmoothingQuality='high'; g.drawImage(ambT,0,0,24,14);   // второй шаг сжатия — получается мягкое размытие
 }
 
@@ -8455,7 +8456,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.31s';
+const GAME_VER='1.66.31t';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
