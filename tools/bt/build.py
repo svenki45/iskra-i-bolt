@@ -69,11 +69,11 @@ sub('const cx=live.reduce((a,p)=>a+p.x+p.w/2,0)/live.length;',
 sub('const cy=live.reduce((a,p)=>a+p.y+p.h/2,0)/live.length;',
     'const cy=(BTX.fy!=null?BTX.fy:live.reduce((a,p)=>a+p.y+p.h/2,0)/live.length)+BTX.ly;')
 sub('const starPar=L=>L.boss?150:(solo?35:40);', 'const starPar=L=>L.par||(L.boss?150:(solo?35:40));')
-# длинные трассы (300–400 клеток): слои фона в 1×, иначе холст ~32000 px и сотни МБ памяти
+# длинные трассы (300–400 клеток): слои фона в 1×, иначе холст ~32000 px и сотни МБ памяти; высокие уровни — не больше ~15 млн точек на слой (лимит холста на iPhone ~16,7 млн)
 sub("staticLayer.width=WW*2; staticLayer.height=WH*2;\n  let g=staticLayer.getContext('2d'); g.setTransform(2,0,0,2,0,0);",
-    "const SS=WW>8200?1:2; staticLayer.width=WW*SS; staticLayer.height=WH*SS;\n  let g=staticLayer.getContext('2d'); g.setTransform(SS,0,0,SS,0,0);")
+    "const SS=WW>8200?1:Math.min(2,Math.sqrt(15e6/(WW*WH))); staticLayer.width=Math.floor(WW*SS); staticLayer.height=Math.floor(WH*SS);\n  let g=staticLayer.getContext('2d'); g.setTransform(SS,0,0,SS,0,0);")
 sub("wallLayer.width=WW*2; wallLayer.height=WH*2; g=wallLayer.getContext('2d'); g.setTransform(2,0,0,2,0,0);",
-    "wallLayer.width=WW*SS; wallLayer.height=WH*SS; g=wallLayer.getContext('2d'); g.setTransform(SS,0,0,SS,0,0);")
+    "wallLayer.width=Math.floor(WW*SS); wallLayer.height=Math.floor(WH*SS); g=wallLayer.getContext('2d'); g.setTransform(SS,0,0,SS,0,0);")
 sub("\nconst GAME_VER=",'\n' + bt + '\nconst GAME_VER=')
 
 # вступительный ролик, концовка и кнопка «Смотреть вступление» — в ПК и в телефонной версии (одна версия игры)

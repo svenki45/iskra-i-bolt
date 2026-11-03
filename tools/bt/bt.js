@@ -1955,6 +1955,7 @@ function hintCard(txt,yo){
   if(S.hintT>(S._hp||0)+.5) S.hcT0=clock; S._hp=S.hintT;
   const a=Math.min(1,S.hintT*1.2,(clock-(S.hcT0||0))*2.2); if(a<=0.01) return;
   const tch=touchUI&&touchUI.on; if(tch) txt=txt.replace(/↑ \/ W/g,'▲').replace(/↓ \/ S/g,'▼').replace(/← →/g,'◀ ▶').replace(/W\/S \(↑\/↓\)/g,'▲▼').replace(/удар \(E\)/g,'✊ удар').replace(/прыжок \(Q\)/g,'⤒ прыжок');
+  if(typeof tr==='function'){ try{ txt=tr(txt); }catch(e){} }   // сначала переводим фразу целиком, потом режем на плашки (иначе вторая половина не находится в словаре)
   const parts=txt.split(/\s*·\s*/).map(x=>x.trim()).filter(Boolean); ctx.save(); ctx.font="600 15px Rubik,'Segoe UI',Arial,sans-serif"; ctx.textBaseline='middle'; ctx.textAlign='left';
   const padX=14, gap=8, H=32, ws=parts.map(x=>Math.ceil(ctx.measureText(x).width)+padX*2); const max=VW-60; const rows=[[]]; let cur=0;
   parts.forEach((x,i)=>{ if(cur+ws[i]>max&&rows[rows.length-1].length){ rows.push([]); cur=0; } rows[rows.length-1].push(i); cur+=ws[i]+gap; });
