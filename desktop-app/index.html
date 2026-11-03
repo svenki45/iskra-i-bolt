@@ -4109,7 +4109,7 @@ if(PC_GFX) try{ window.ibSys.gfxGet().then(g=>{ settings.vsync=!(g&&g.vsync===fa
 function frame(now){
   { const cap=(settings&&settings.fps!=null)?settings.fps:60, minMs=cap?1000/cap-1.2:0; if(last&&now-last<minMs){ requestAnimationFrame(frame); return; } }   // ограничение FPS из настроек (по умолчанию 60)
   const dt=Math.min(0.05,Math.max(0,(now-last)/1000)); last=now;
-  perfFrame(now);
+  perfFrame(now); PERF._u0=performance.now();
   if(state==='arena'){ ARENA.tick(dt); requestAnimationFrame(frame); return; }
   pollPadNav(dt);
   handleMeta();
@@ -4126,7 +4126,7 @@ function frame(now){
   demoTick(dt);
   tick(dt); netSend(dt);
   hudT-=dt; if(hudT<=0){ hudT=.25; $('time').textContent=fmt(totalTime); }
-  draw(); try{ ambTick(now); }catch(e){}
+  PERF.up+=performance.now()-PERF._u0; { const _d0=performance.now(); draw(); PERF.dr+=performance.now()-_d0; } try{ ambTick(now); }catch(e){}
   if(state==='custom'||state==='hero'||state==='pause'||state==='story') drawPreviews();
   if(state==='controls') pollPadCapture();
   updateMusic();
@@ -4924,7 +4924,7 @@ function draw(){
   else if(state==='play') atomFocus=null;
   draw.view={z,ox,oy};
   ctx.setTransform(scale*z,0,0,scale*z,(sx+ox)*scale,(sy+oy)*scale);
-  let r3ok=r3; if(r3){ try{ R3D.render(z,ox+sx,oy+sy); }catch(err){ R3D.fail(err); r3ok=false; } } if(!r3ok){ if(r3){ r3=false; R3D.hide(); ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle='#0b1830'; ctx.fillRect(0,0,cv.width,cv.height); ctx.setTransform(scale*z,0,0,scale*z,(sx+ox)*scale,(sy+oy)*scale); }
+  let r3ok=r3; if(r3){ try{ const _r0=performance.now(); R3D.render(z,ox+sx,oy+sy); PERF.r3+=performance.now()-_r0; }catch(err){ R3D.fail(err); r3ok=false; } } if(!r3ok){ if(r3){ r3=false; R3D.hide(); ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle='#0b1830'; ctx.fillRect(0,0,cv.width,cv.height); ctx.setTransform(scale*z,0,0,scale*z,(sx+ox)*scale,(sy+oy)*scale); }
   blitLayer(staticLayer);
   if(LIVE&&state!=='title'&&settings.ambient) for(let v=0;v*VH<WH;v++) for(let s=0;s*VW<WW;s++){ ctx.save(); ctx.translate(s*VW,v*VH); drawLive(); ctx.restore(); }
   if(state!=='title') blitLayer(wallLayer); }
@@ -5911,7 +5911,7 @@ function netSmooth(dt){
   if(boss) boss.t=(boss.t||0)+dt;
 }
 /* ===== оверлей производительности (F3): FPS, кадры, фризы, память, нагрузка ПК, пинг, потери пакетов ===== */
-const PERF={last:0,n:0,t0:0,sum:0,max:0,frz:[],fps:0,avg:0,mx:0,el:null,sq:0,rq:null,got:0,lost:0,loss:null,rtt:null,sys:null,sysT:0,winT:0};
+const PERF={up:0,dr:0,r3:0,aup:0,adr:0,ar3:0,_u0:0,last:0,n:0,t0:0,sum:0,max:0,frz:[],fps:0,avg:0,mx:0,el:null,sq:0,rq:null,got:0,lost:0,loss:null,rtt:null,sys:null,sysT:0,winT:0};
 function perfShow(){ if(!PERF.el){ const d=document.createElement('div'); d.id='perfHud';
     d.style.cssText='position:fixed;top:6px;right:8px;z-index:99999;pointer-events:none;font:12px/1.35 ui-monospace,Consolas,monospace;color:#d8f5d0;background:rgba(5,12,24,.78);border:1px solid rgba(156,195,255,.25);border-radius:6px;padding:5px 8px;white-space:pre';
     document.body.appendChild(d); PERF.el=d; }
@@ -5927,12 +5927,12 @@ function perfFrame(now){
   if(PERF.last){ const ms=now-PERF.last; PERF.n++; PERF.sum+=ms; if(ms>PERF.max) PERF.max=ms; if(ms>50) PERF.frz.push(now); }
   lowFpsCheck(now,PERF.last?now-PERF.last:0); PERF.last=now; if(!settings.perf) return;
   if(now-PERF.t0<500) return;
-  const el=now-PERF.t0; PERF.t0=now; if(PERF.n){ PERF.fps=Math.round(PERF.n*1000/el); PERF.avg=PERF.sum/PERF.n; PERF.mx=PERF.max; } PERF.n=0; PERF.sum=0; PERF.max=0;
+  const el=now-PERF.t0; PERF.t0=now; if(PERF.n){ PERF.fps=Math.round(PERF.n*1000/el); PERF.avg=PERF.sum/PERF.n; PERF.mx=PERF.max; PERF.aup=PERF.up/PERF.n; PERF.adr=PERF.dr/PERF.n; PERF.ar3=PERF.r3/PERF.n; } PERF.up=PERF.dr=PERF.r3=0; PERF.n=0; PERF.sum=0; PERF.max=0;
   PERF.frz=PERF.frz.filter(t=>now-t<10000);
   if(now-PERF.winT>5000){ PERF.winT=now; const tot=PERF.got+PERF.lost; PERF.loss=tot?PERF.lost/tot*100:null; PERF.got=0; PERF.lost=0; }
   if(window.ibSys&&now-PERF.sysT>1000){ PERF.sysT=now; window.ibSys.metrics().then(m=>PERF.sys=m).catch(()=>{}); }
   perfShow();
-  const L=[`FPS ${PERF.fps}   кадр ${PERF.avg.toFixed(1)} мс (макс ${PERF.mx.toFixed(0)})`,`фризы >50 мс за 10 с: ${PERF.frz.length}`];
+  const L=[`FPS ${PERF.fps}   кадр ${PERF.avg.toFixed(1)} мс (макс ${PERF.mx.toFixed(0)})`,`фризы >50 мс за 10 с: ${PERF.frz.length}`,`logic ${PERF.aup.toFixed(1)} · draw ${PERF.adr.toFixed(1)} (3D ${PERF.ar3.toFixed(1)}) ms`];
   const mem=performance.memory; if(mem) L.push(`память игры (JS) ${Math.round(mem.usedJSHeapSize/1048576)} МБ`);
   const S=PERF.sys; if(S) L.push(`CPU игры ${S.gameCpu}%   CPU ПК ${S.sysCpu==null?'…':S.sysCpu+'%'}`,`ОЗУ игры ${S.gameRamMB} МБ   ОЗУ ПК ${S.sysRamUsedGB}/${S.sysRamGB} ГБ`);
   L.push(`${R3D&&R3D.on?'3D':'2D'}   ${cv.width}×${cv.height}`);
@@ -8390,7 +8390,7 @@ const myHero=()=>{ const me=P&&P.find(f=>f.me); return me?me.hero:cfgs[0].hero; 
 return {open, resume, tick, drawBg, back, myHero, get fighting(){ return on&&view==='fight'; }, get on(){ return on; }};
 })();
 
-const GAME_VER='1.66.31g';
+const GAME_VER='1.66.31h';
 (()=>{ const v=document.createElement('div'); v.id='verTag'; v.textContent='v'+GAME_VER+' · сборка '+(typeof BUILD_STAMP!=='undefined'?BUILD_STAMP:''); $('screen').appendChild(v); })();
 // меню читов для тестировщиков с телефона: 7 быстрых касаний по надписи версии в углу (в меню / на заставке) — то же, что набрать bebrik
 (()=>{ let n=0, t0=0;
